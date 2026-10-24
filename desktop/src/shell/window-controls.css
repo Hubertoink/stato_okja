@@ -49,8 +49,10 @@
 html.stato-window-fallback { scroll-padding-top: 36px; }
 html.stato-window-fallback body { padding-top: 36px; box-sizing: border-box; }
 html.stato-window-fallback #setup, html.stato-window-fallback #splash { min-height: calc(100vh - 36px); }
-@media (max-width: 800px) {
+@media (max-width: 1000px) {
   .stato-window-drag .desktop-header-user-copy { display: none; }
+}
+@media (max-width: 800px) {
   #stato-window-controls { margin-left: 0; }
   #stato-window-controls button { width: 32px; }
 }

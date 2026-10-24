@@ -10,6 +10,7 @@ const {
   safeStorage,
   Notification,
 } = require('electron');
+const { attachWindowChrome } = require('./window-chrome.cjs');
 const { autoUpdater } = require('electron-updater');
 const { createUpdateController } = require('./updates.cjs');
 const { join, basename } = require('node:path');
@@ -300,6 +301,7 @@ async function performConnection(url, open) {
     const view = new WebContentsView({
       webPreferences: { ...preferences, session: remoteSession, preload: join(__dirname, 'remote-preload.cjs') },
     });
+    attachWindowChrome(view.webContents);
     ownedView = view;
     remoteView = view;
     loginPromptDeclined = false;
@@ -394,6 +396,7 @@ async function changeServer() {
     const view = new WebContentsView({
       webPreferences: { ...preferences, preload: join(__dirname, 'switch-preload.cjs') },
     });
+    attachWindowChrome(view.webContents);
     switchView = view;
     view.setBackgroundColor('#00000000');
     view.setVisible(false);
@@ -436,6 +439,26 @@ async function finishServerSwitch() {
 }
 
 function registerIpc() {
+  const windowHandlers = {
+    'stato:window-state': () => ({ maximized: window.isMaximized() }),
+    'stato:window-minimize': () => window.minimize(),
+    'stato:window-maximize': () => window.isMaximized() ? window.unmaximize() : window.maximize(),
+    'stato:window-close': () => window.close(),
+  };
+  for (const [channel, handler] of Object.entries(windowHandlers)) {
+    ipcMain.handle(channel, (event) => {
+      if (!window || window.isDestroyed() || closing) return;
+      const frame = event.senderFrame;
+      const local = event.sender === window.webContents && frame === window.webContents.mainFrame && frame.url === shellUrl;
+      const remote = remoteView && event.sender === remoteView.webContents &&
+        frame === remoteView.webContents.mainFrame && isServerNavigation(frame.url, state.serverUrl);
+      const switching = switchView && event.sender === switchView.webContents &&
+        frame === switchView.webContents.mainFrame && frame.url === switchUrl;
+      if (!local && !remote && !switching) throw new Error('Nicht autorisierter Desktop-Aufruf.');
+      return handler();
+    });
+  }
+
   const updateHandlers = {
     'stato:update-state': () => updateController.getState(),
     'stato:update-open': () => openUpdates(),
@@ -556,9 +579,16 @@ async function createWindow() {
     minHeight: 700,
     icon,
     title: 'StatO',
+    frame: false,
     show: false,
     backgroundColor: '#f3f7f5',
     webPreferences: { ...preferences, preload: join(__dirname, 'preload.cjs') },
+  });
+  attachWindowChrome(window.webContents);
+  for (const event of ['maximize', 'unmaximize']) window.on(event, () => {
+    for (const contents of [window.webContents, remoteView?.webContents, switchView?.webContents]) {
+      if (contents && !contents.isDestroyed()) contents.send('stato:window-state-changed', { maximized: window.isMaximized() });
+    }
   });
   window.webContents.on('will-navigate', (event) => event.preventDefault());
   window.webContents.on('will-attach-webview', (event) => event.preventDefault());

@@ -140,6 +140,7 @@ async function switchModal(application, local) {
     local = await application.firstWindow();
     local.setDefaultTimeout(15000);
     await waitState(local, 'setup');
+    await local.locator('#stato-window-titlebar button[aria-label="Fenster schließen"]').waitFor();
     await application.evaluate(async ({ app }) => {
       const require = process.getBuiltinModule('module').createRequire(`${app.getAppPath()}/package.json`);
       const { createServer } = require('node:http');
@@ -204,6 +205,31 @@ async function switchModal(application, local) {
     const remote = await remotePage(application, first.url);
     await remote.waitForSelector('h1');
     assert.equal(await remote.locator('h1').textContent(), 'Server A');
+    await remote.locator('#stato-window-titlebar').waitFor();
+    await remote.evaluate(() => {
+      const header = document.createElement('header');
+      header.className = 'mobile-header-row';
+      header.style.cssText = 'display:flex;align-items:center;gap:12px;padding:16px;background:#eef0ff';
+      header.innerHTML = '<strong>StatO</strong><div class="mobile-header-user"><button id="avatar">Avatar</button></div>';
+      document.body.prepend(header);
+    });
+    await remote.locator('.mobile-header-row #stato-window-controls').waitFor();
+    assert.equal(await remote.locator('#stato-window-titlebar').count(), 0);
+    assert.equal(await remote.locator('#avatar').evaluate((el) => getComputedStyle(el).webkitAppRegion), 'no-drag');
+    assert.equal(await remote.locator('.mobile-header-row').evaluate((el) => getComputedStyle(el).webkitAppRegion), 'drag');
+    await remote.getByRole('button', { name: 'Fenster maximieren', exact: true }).click();
+    await remote.getByRole('button', { name: 'Fenster wiederherstellen', exact: true }).waitFor();
+    assert.equal(await remote.evaluate(async () => (await window.statoWindow.getState()).maximized), true);
+    await remote.getByRole('button', { name: 'Fenster wiederherstellen', exact: true }).click();
+    await remote.getByRole('button', { name: 'Fenster maximieren', exact: true }).waitFor();
+    await remote.getByRole('button', { name: 'Fenster minimieren', exact: true }).click();
+    assert.equal(await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isMinimized()), true);
+    await application.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0].restore(); });
+    await remote.screenshot({ path: join(artifacts, 'integrated-window-controls.png') });
+    await remote.evaluate(() => document.querySelector('.mobile-header-row').remove());
+    await remote.locator('#stato-window-titlebar').waitFor();
+    console.log('PASS: integrated window controls, drag exclusions, maximize/restore/minimize and SPA fallback');
+
     const footer = await local.locator('#desktop-footer').boundingBox();
     const remoteBounds = await application.evaluate(({ BrowserWindow }, url) => {
       const localWindow = BrowserWindow.getAllWindows().find((win) =>
@@ -355,7 +381,7 @@ async function switchModal(application, local) {
         catch { blocked = true; }
         if (!blocked) throw new Error(`Server renderer was allowed to invoke ${channel}`);
       }
-      for (const channel of ['stato:update-state', 'stato:update-open']) {
+      for (const channel of ['stato:update-state', 'stato:update-open', 'stato:window-state', 'stato:window-minimize', 'stato:window-maximize', 'stato:window-close']) {
         let blocked = false;
         try { await ipcMain._invokeHandlers.get(channel)({ sender: wc, senderFrame: { url: wc.getURL() } }); }
         catch { blocked = true; }
@@ -510,12 +536,18 @@ async function switchModal(application, local) {
     assert.match(await local.locator('#status').textContent(), /Verbindung fehlgeschlagen/);
     await capture(application, 'offline-server.png');
     console.log('PASS: HTTP page errors, saved address, restart and offline recovery');
+    const closed = application.waitForEvent('close');
+    await local.getByRole('button', { name: 'Fenster schließen', exact: true }).click();
+    await closed;
+    application = undefined;
+    console.log('PASS: custom close button quits the application');
     await writeFile(
       join(artifacts, 'smoke-result.json'),
       JSON.stringify(
         {
           status: 'passed',
           checks: [
+            'window-controls',
             'connection',
             'sandbox',
             'download',

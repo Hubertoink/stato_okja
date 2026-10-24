@@ -7,6 +7,12 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.18.2] - 2026-10-24
+
+### Changed
+- Desktop-Fenstersteuerung direkt neben dem Avatar statt einer separaten Windows-Titelleiste.
+- Verschiebbare Header-Flächen und kompakte Ersatzleiste bei Anmeldung, Serverauswahl und Verbindungsfehlern; kein Server-Update erforderlich.
+
 ## [1.18.1] - 2026-10-22
 
 ### Fixed

@@ -5,7 +5,14 @@ eines konfigurierten Servers. Frontend, Backend und Datenbank werden nicht kopie
 oder lokal gestartet. Für den Client brauchen Nutzende weder Node.js noch Docker.
 Die erste Distribution ist ein Windows-x64-Installer für das aktuelle Benutzerkonto.
 
-Download: [StatO Desktop 1.17.0 – Windows-Vorschau](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.17.0).
+Download: [StatO Desktop 1.18.2 – Windows-Vorschau](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.18.2).
+
+## Integrierte Fenstersteuerung (ab Version 1.18.2)
+
+Minimieren, Maximieren/Wiederherstellen und Schließen stehen rechts neben dem
+Avatar. Freie Header-Flächen verschieben das Fenster; interaktive Elemente bleiben
+anklickbar. Auf Seiten ohne App-Header erscheint eine kompakte Ersatzleiste.
+Die Integration wird vom Desktop-Client bereitgestellt und benötigt kein Server-Update.
 
 ## Desktop-Updates (ab Version 1.17.0)
 

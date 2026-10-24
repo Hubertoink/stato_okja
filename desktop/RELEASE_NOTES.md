@@ -2,9 +2,11 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Minimieren, Maximieren/Wiederherstellen und Schließen bleiben jetzt am rechten Fensterrand, unabhängig von der Inhaltsbreite des Headers.
-- Die Position bleibt auch beim Vergrößern, Maximieren und Wiederherstellen des Fensters stabil.
-- Kein Server-Update erforderlich.
+- Desktop-Updates öffnen als kompakter Dialog direkt in der App, ohne separates Fenster.
+- Der Dialog übernimmt das aktive App-Theme und zeigt nur Version, Status und die jeweils nötige Aktion.
+- Der Hinweis zum Speichern erscheint erst, wenn das Update zur Installation bereit ist.
+- Der Eintrag im Avatar-Menü ist linksbündig im Menüstil gestaltet; die Versionsanzeige bleibt erhalten.
+- Dialog und Menügestaltung funktionieren auch mit bestehenden Serveroberflächen ohne Server-Update.
 
 ### Installation und einmaliger Umstieg
 

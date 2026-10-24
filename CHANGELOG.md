@@ -7,6 +7,13 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.18.4] - 2026-10-24
+
+### Changed
+- Desktop-Updates als kompakter, themenangepasster Dialog innerhalb der App statt eines separaten Fensters.
+- Update-Menüeintrag an die übrigen Menüpunkte angeglichen; Versionsanzeige bleibt sichtbar.
+- Update-Dialog auf Version, Status und kontextabhängige Aktionen reduziert.
+
 ## [1.18.3] - 2026-10-24
 
 ### Fixed

@@ -5,7 +5,7 @@ eines konfigurierten Servers. Frontend, Backend und Datenbank werden nicht kopie
 oder lokal gestartet. Für den Client brauchen Nutzende weder Node.js noch Docker.
 Die erste Distribution ist ein Windows-x64-Installer für das aktuelle Benutzerkonto.
 
-Download: [StatO Desktop 1.18.3 – Windows-Vorschau](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.18.3).
+Download: [StatO Desktop 1.18.4 – Windows-Vorschau](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.18.4).
 
 ## Integrierte Fenstersteuerung (ab Version 1.18.2)
 
@@ -16,17 +16,16 @@ Die Integration wird vom Desktop-Client bereitgestellt und benötigt kein Server
 
 ## Desktop-Updates (ab Version 1.17.0)
 
-Die installierte Windows-App prüft 15 Sekunden nach dem Start und alle vier Stunden
-auf neue Desktop-Releases. Im Avatar-Menü öffnet **Desktop-Updates** ein lokales
-Fenster mit installierter Version, Prüfzeitpunkt, Download-Fortschritt und den
+Die installierte Windows-App prüft direkt beim Start und alle vier Stunden
+auf neue Desktop-Releases. Im Avatar-Menü öffnet **Desktop-Updates** einen lokalen
+Dialog innerhalb der App mit installierter Version, Status, Download-Fortschritt und den
 Aktionen **Jetzt prüfen**, **Update herunterladen** und **Neu starten & installieren**.
 Eine neue Version wird per Toast in der Weboberfläche und Windows-Benachrichtigung
 gemeldet. Die Desktop-Fußzeile bietet denselben Zugang auch mit älteren Servern.
 Der Avatar-Eintrag und der In-App-Toast benötigen die aktualisierte Serveroberfläche.
 
 Downloads beginnen erst auf Wunsch; auch beim Beenden wird nichts automatisch
-installiert. Vor dem Neustart verlangt die lokale App eine Bestätigung zum Speichern
-offener Eingaben. Fehlgeschlagene Prüfungen/Downloads können wiederholt werden.
+installiert. Vor dem Neustart erinnert der Dialog an das Speichern offener Eingaben. Fehlgeschlagene Prüfungen/Downloads können wiederholt werden.
 Entwicklungsstarts führen keine Update-Netzwerkanfragen aus.
 
 **Einmaliger Umstieg:** Desktop 1.16.0 und ältere Versionen enthalten keinen Updater.

@@ -40,7 +40,7 @@ let window;
 let remoteView;
 let remoteSession;
 let switchView;
-let updateWindow;
+let updateView;
 let updateController;
 let updateTimer;
 let updateNotification;
@@ -85,6 +85,7 @@ function layoutRemote() {
   if (!window || window.isDestroyed()) return;
   const [width, height] = window.getContentSize();
   switchView?.setBounds({ x: 0, y: 0, width, height });
+  updateView?.setBounds({ x: 0, y: 0, width, height });
   remoteView?.setBounds({
     x: 0,
     y: 0,
@@ -94,6 +95,7 @@ function layoutRemote() {
 }
 
 async function discardConnection() {
+  closeUpdates(false);
   closeServerSwitch(false);
   const view = remoteView;
   const previousSession = remoteSession;
@@ -392,6 +394,7 @@ function closeServerSwitch(restoreFocus = true) {
 
 async function changeServer() {
   if (state.busy || switchView || closing) return state;
+  closeUpdates(false);
   if (remoteView) {
     const view = new WebContentsView({
       webPreferences: { ...preferences, preload: join(__dirname, 'switch-preload.cjs') },
@@ -462,6 +465,7 @@ function registerIpc() {
   const updateHandlers = {
     'stato:update-state': () => updateController.getState(),
     'stato:update-open': () => openUpdates(),
+    'stato:update-close': () => closeUpdates(),
     'stato:update-check': () => updateController.check(),
     'stato:update-download': () => updateController.download(),
     'stato:update-install': () => closing ? updateController.getState() : updateController.install(),
@@ -469,8 +473,8 @@ function registerIpc() {
   for (const [channel, handler] of Object.entries(updateHandlers)) {
     ipcMain.handle(channel, (event) => {
       const frame = event.senderFrame;
-      const trustedPanel = updateWindow && !updateWindow.isDestroyed() && event.sender === updateWindow.webContents &&
-        frame === updateWindow.webContents.mainFrame && frame.url === updateUrl;
+      const trustedPanel = updateView && !updateView.webContents.isDestroyed() && event.sender === updateView.webContents &&
+        frame === updateView.webContents.mainFrame && frame.url === updateUrl;
       const trustedShell = window && event.sender === window.webContents &&
         frame === window.webContents.mainFrame && frame.url === shellUrl;
       const currentServer = remoteView && event.sender === remoteView.webContents &&
@@ -522,26 +526,56 @@ function registerIpc() {
   }
 }
 
+function closeUpdates(restoreFocus = true) {
+  const view = updateView;
+  updateView = undefined;
+  if (!view) return;
+  if (window && !window.isDestroyed()) window.contentView.removeChildView(view);
+  if (!view.webContents.isDestroyed()) view.webContents.close();
+  if (restoreFocus && window && !window.isDestroyed() && !closing) {
+    (remoteView?.webContents ?? window.webContents).focus();
+  }
+}
+
 async function openUpdates() {
-  if (closing || !window) return updateController.getState();
-  if (updateWindow && !updateWindow.isDestroyed()) {
-    if (!hiddenForTest) updateWindow.show();
-    updateWindow.focus();
+  if (closing || !window || switchView) return updateController.getState();
+  if (updateView && !updateView.webContents.isDestroyed()) {
+    updateView.webContents.focus();
     return updateController.getState();
   }
-  const panel = new BrowserWindow({
-    parent: window, width: 600, height: 630, minWidth: 540, minHeight: 600,
-    title: 'StatO – Desktop-Updates', icon, autoHideMenuBar: true, show: false,
-    backgroundColor: '#f3f7f5',
+  const panel = new WebContentsView({
     webPreferences: { ...preferences, preload: join(__dirname, 'update-preload.cjs') },
   });
-  updateWindow = panel;
+  updateView = panel;
+  panel.setBackgroundColor('#00000000');
+  panel.setVisible(false);
   panel.webContents.on('will-navigate', (event) => event.preventDefault());
   panel.webContents.on('will-attach-webview', (event) => event.preventDefault());
   panel.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-  panel.on('closed', () => { if (updateWindow === panel) updateWindow = undefined; });
-  await panel.loadFile(updateFile);
-  if (!panel.isDestroyed() && !hiddenForTest) panel.show();
+  panel.webContents.on('render-process-gone', () => { if (updateView === panel) closeUpdates(); });
+  window.contentView.addChildView(panel);
+  layoutRemote();
+  try {
+    // Only presentation tokens cross from the server to the trusted local dialog.
+    const source = remoteView?.webContents ?? window.webContents;
+    const theme = await source.executeJavaScriptInIsolatedWorld(loginWorldId, [{
+      code: `(() => {
+        const style = getComputedStyle(document.documentElement);
+        const tokens = Object.fromEntries(['--viridian', '--surface-elevated', '--text-primary',
+          '--text-muted', '--border-subtle', '--interactive-soft', '--overlay-backdrop',
+          '--focus-ring'].map(name => [name, style.getPropertyValue(name).trim()]));
+        return { ...tokens, '--desktop-font': getComputedStyle(document.body).fontFamily };
+      })()`,
+    }]).catch(() => ({}));
+    if (updateView !== panel || closing) return updateController.getState();
+    await panel.webContents.loadFile(updateFile);
+    if (updateView !== panel || closing) return updateController.getState();
+    panel.webContents.send('stato:update-theme', theme);
+    panel.setVisible(true);
+    panel.webContents.focus();
+  } catch {
+    if (updateView === panel) closeUpdates();
+  }
   return updateController.getState();
 }
 
@@ -549,7 +583,7 @@ function startUpdates() {
   updateController = createUpdateController({
     updater: autoUpdater, currentVersion: app.getVersion(), enabled: app.isPackaged && process.platform === 'win32',
     onState: (update) => {
-      for (const contents of [window?.webContents, remoteView?.webContents, updateWindow?.webContents]) {
+      for (const contents of [window?.webContents, remoteView?.webContents, updateView?.webContents]) {
         if (contents && !contents.isDestroyed()) contents.send('stato:update-state-changed', update);
       }
       const notice = `${update.status}:${update.version}`;

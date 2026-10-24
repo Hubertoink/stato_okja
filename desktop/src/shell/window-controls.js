@@ -35,6 +35,12 @@
   fallback.append(title);
   let header;
   const place = () => {
+    // Keep the menu presentation consistent on servers predating this client.
+    const updateEntry = [...document.querySelectorAll('.mobile-header-user-menu button')]
+      .find((button) => [...button.querySelectorAll('span')].some((span) => span.textContent.trim() === 'Desktop-Updates'));
+    if (updateEntry && !updateEntry.hasAttribute('data-stato-desktop-updates')) {
+      updateEntry.setAttribute('data-stato-desktop-updates', '');
+    }
     const target = document.querySelector('.mobile-header-row');
     if (header !== target) {
       header?.classList.remove('stato-window-drag');

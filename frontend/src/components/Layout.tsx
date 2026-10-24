@@ -649,16 +649,13 @@ export default function Layout() {
                     </button>
                   </li>
                   {desktopUpdates.available && (
-                    <li className="border-t border-b theme-menu-section">
-                      <Button variant="ghost" className="w-full justify-start px-4 py-2 theme-menu-item"
+                    <li>
+                      <Button variant="ghost" data-stato-desktop-updates className="desktop-update-menu-item w-full px-4 py-2 theme-menu-item"
                         onClick={() => { setMenuOpen(false); desktopUpdates.open(); }}>
                         <span className="text-left">
                           <span className="block">Desktop-Updates</span>
                           <span className="block text-xs text-gray-500">
-                            {desktopUpdates.state?.status === 'downloaded' ? 'Bereit zur Installation'
-                              : desktopUpdates.state?.status === 'available' ? `Version ${desktopUpdates.state.version} verfügbar`
-                              : desktopUpdates.state?.status === 'downloading' ? `Download: ${desktopUpdates.state.percent} %`
-                              : `Version ${desktopUpdates.state?.currentVersion ?? '…'}`}
+                            Version {desktopUpdates.state?.currentVersion ?? '…'}
                           </span>
                         </span>
                       </Button>

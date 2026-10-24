@@ -24,6 +24,15 @@
   color: var(--text-primary, #1f2937);
 }
 .stato-window-drag .mobile-header-user { margin-left: auto; }
+.mobile-header-user-menu li:has([data-stato-desktop-updates]) { border: 0; }
+.mobile-header-user-menu button[data-stato-desktop-updates] {
+  display: block;
+  text-align: left;
+  font-weight: 400;
+  border: 0;
+  border-radius: 0;
+  padding: 8px 16px;
+}
 #stato-window-controls button {
   display: grid;
   place-items: center;

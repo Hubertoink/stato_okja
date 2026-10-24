@@ -8,7 +8,7 @@
   width: 100%;
   max-width: none;
   margin-inline: 0;
-  padding-right: 6px;
+  padding-right: 134px;
   box-sizing: border-box;
 }
 .stato-window-drag :is(button, a, input, select, textarea, [role="button"], [role="menu"], .mobile-header-user),
@@ -16,11 +16,15 @@
   -webkit-app-region: no-drag;
 }
 #stato-window-controls {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 2147483647;
   display: flex;
   align-items: center;
   flex: 0 0 auto;
   gap: 2px;
-  margin-left: 8px;
+  margin: 0;
   color: var(--text-primary, #1f2937);
 }
 .stato-window-drag .mobile-header-user { margin-left: auto; }
@@ -41,7 +45,7 @@
   padding: 0;
   margin: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   color: inherit;
   cursor: default;
@@ -71,10 +75,9 @@ html.stato-window-fallback #setup, html.stato-window-fallback #splash { min-heig
   .stato-window-drag .desktop-header-user-copy { display: none; }
 }
 @media (max-width: 800px) {
-  #stato-window-controls { margin-left: 0; }
+  .mobile-header-row.stato-window-drag { padding-right: 116px; }
   #stato-window-controls button { width: 32px; }
 }
 @media (max-width: 767px) {
-  .mobile-header-row.stato-window-drag { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px auto; }
-  .stato-window-drag #stato-window-controls { grid-column: 4; grid-row: 1; }
+  .mobile-header-row.stato-window-drag { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; }
 }

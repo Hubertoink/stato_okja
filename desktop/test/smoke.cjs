@@ -229,17 +229,17 @@ async function switchModal(application, local) {
     const assertRightAligned = async () => {
       await remote.waitForFunction(() => {
         const rect = document.getElementById('stato-window-controls').getBoundingClientRect();
-        return Math.abs(innerWidth - rect.right - 6) < 1;
+        return Math.abs(innerWidth - rect.right) < 1 && Math.abs(rect.top) < 1;
       });
       const geometry = await remote.evaluate(() => {
         const controls = document.getElementById('stato-window-controls').getBoundingClientRect();
         const avatar = document.getElementById('avatar').getBoundingClientRect();
         return { gap: innerWidth - controls.right, left: controls.left, avatarRight: avatar.right,
-          centerDifference: Math.abs(controls.y + controls.height / 2 - avatar.y - avatar.height / 2) };
+          top: controls.top };
       });
-      assert.ok(Math.abs(geometry.gap - 6) < 1, 'Controls must stay 6px from the window edge');
+      assert.ok(Math.abs(geometry.gap) < 1, 'Controls must touch the right window edge');
       assert.ok(geometry.left >= geometry.avatarRight, 'Controls must not overlap the avatar');
-      assert.ok(geometry.centerDifference < 1, 'Controls must stay on the avatar row');
+      assert.ok(Math.abs(geometry.top) < 1, 'Controls must touch the top window edge');
     };
     for (const width of [720, 900, 1200, 1600]) {
       await application.evaluate(({ BrowserWindow }, width) => BrowserWindow.getAllWindows()[0].setSize(width, 850), width);

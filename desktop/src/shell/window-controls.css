@@ -2,6 +2,15 @@
   -webkit-app-region: drag;
   user-select: none;
 }
+/* The web header uses a centered, width-limited container. Window chrome must
+   span the client area, including when maximized or at responsive breakpoints. */
+.mobile-header-row.stato-window-drag {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding-right: 6px;
+  box-sizing: border-box;
+}
 .stato-window-drag :is(button, a, input, select, textarea, [role="button"], [role="menu"], .mobile-header-user),
 #stato-window-controls, #stato-window-controls * {
   -webkit-app-region: no-drag;

@@ -208,8 +208,16 @@ async function switchModal(application, local) {
     await remote.locator('#stato-window-titlebar').waitFor();
     await remote.evaluate(() => {
       const header = document.createElement('header');
-      header.className = 'mobile-header-row';
-      header.style.cssText = 'display:flex;align-items:center;gap:12px;padding:16px;background:#eef0ff';
+      header.className = 'mobile-header-row container';
+      const style = document.createElement('style');
+      style.textContent = `body { margin: 0; }
+        .container { width: 84%; max-width: 1100px; margin: 0 auto; }
+        .mobile-header-row { display:flex; align-items:center; gap:12px; padding:16px; background:#eef0ff; }
+        @media(max-width:767px) {
+          .mobile-header-row { display:grid; grid-template-columns:1fr 1fr 44px; }
+          .mobile-header-user { grid-column:3; grid-row:1; }
+        }`;
+      document.head.append(style);
       header.innerHTML = '<strong>StatO</strong><div class="mobile-header-user"><button id="avatar">Avatar</button></div>';
       document.body.prepend(header);
     });
@@ -217,11 +225,34 @@ async function switchModal(application, local) {
     assert.equal(await remote.locator('#stato-window-titlebar').count(), 0);
     assert.equal(await remote.locator('#avatar').evaluate((el) => getComputedStyle(el).webkitAppRegion), 'no-drag');
     assert.equal(await remote.locator('.mobile-header-row').evaluate((el) => getComputedStyle(el).webkitAppRegion), 'drag');
+    const assertRightAligned = async () => {
+      await remote.waitForFunction(() => {
+        const rect = document.getElementById('stato-window-controls').getBoundingClientRect();
+        return Math.abs(innerWidth - rect.right - 6) < 1;
+      });
+      const geometry = await remote.evaluate(() => {
+        const controls = document.getElementById('stato-window-controls').getBoundingClientRect();
+        const avatar = document.getElementById('avatar').getBoundingClientRect();
+        return { gap: innerWidth - controls.right, left: controls.left, avatarRight: avatar.right,
+          centerDifference: Math.abs(controls.y + controls.height / 2 - avatar.y - avatar.height / 2) };
+      });
+      assert.ok(Math.abs(geometry.gap - 6) < 1, 'Controls must stay 6px from the window edge');
+      assert.ok(geometry.left >= geometry.avatarRight, 'Controls must not overlap the avatar');
+      assert.ok(geometry.centerDifference < 1, 'Controls must stay on the avatar row');
+    };
+    for (const width of [720, 900, 1200, 1600]) {
+      await application.evaluate(({ BrowserWindow }, width) => BrowserWindow.getAllWindows()[0].setSize(width, 850), width);
+      await remote.waitForFunction((width) => innerWidth === width, width);
+      await assertRightAligned();
+    }
+    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1200, 850));
     await remote.getByRole('button', { name: 'Fenster maximieren', exact: true }).click();
     await remote.getByRole('button', { name: 'Fenster wiederherstellen', exact: true }).waitFor();
     assert.equal(await remote.evaluate(async () => (await window.statoWindow.getState()).maximized), true);
+    await assertRightAligned();
     await remote.getByRole('button', { name: 'Fenster wiederherstellen', exact: true }).click();
     await remote.getByRole('button', { name: 'Fenster maximieren', exact: true }).waitFor();
+    await assertRightAligned();
     await remote.getByRole('button', { name: 'Fenster minimieren', exact: true }).click();
     assert.equal(await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isMinimized()), true);
     await application.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0].restore(); });

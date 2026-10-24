@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
-    "@nestjs/common": "11.1.28",
+    "@nestjs/common": "12.2.0",
     "@nestjs/core": "11.1.28",
     "concurrently": "^10.0.6",
     "eslint": "^9.39.5",
@@ -44,7 +44,7 @@
   },
   "overrides": {
     "proxy-addr": "2.0.8",
-    "@nestjs/common": "11.1.28",
+    "@nestjs/common": "12.2.0",
     "@nestjs/core": "11.1.28",
     "form-data": "4.0.6",
     "lodash": "4.18.1",

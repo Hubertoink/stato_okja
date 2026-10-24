@@ -32,7 +32,7 @@
     "type-check:strict": "tsc --project tsconfig.quality.json --noEmit"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.28",
+    "@nestjs/common": "^12.2.0",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.28",
     "@nestjs/jwt": "^11.0.2",

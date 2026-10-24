@@ -7,6 +7,12 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [1.18.5] - 2026-10-24
+
+### Fixed
+- Minimieren, Maximieren/Wiederherstellen und Schließen direkt an der oberen rechten Fensterecke statt vertikal mittig neben dem Avatar.
+- Platz für die Fensterknöpfe bleibt im Header reserviert, auch bei schmalen Fenstern.
+
 ## [1.18.4] - 2026-10-24
 
 ### Changed

@@ -2,6 +2,7 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
+- Fensterknöpfe sitzen direkt in der oberen rechten Fensterecke, unabhängig von der Höhe des App-Headers.
 - Desktop-Updates öffnen als kompakter Dialog direkt in der App, ohne separates Fenster.
 - Der Dialog übernimmt das aktive App-Theme und zeigt nur Version, Status und die jeweils nötige Aktion.
 - Der Hinweis zum Speichern erscheint erst, wenn das Update zur Installation bereit ist.

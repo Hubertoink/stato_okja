@@ -2,11 +2,10 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Update-Prüfung direkt beim App-Start, unabhängig von der Serververbindung.
-- Farbiger Update-Hinweis rechts unten, sobald eine neue Desktop-Version verfügbar oder bereit zur Installation ist.
-- „Neu starten & installieren“ führt das Update ohne zusätzliche Rückfrage durch und öffnet StatO danach automatisch.
-- Der Setup-Assistent startet StatO nach Abschluss standardmäßig; die Option kann abgewählt werden.
-- Für diese Desktop-Korrekturen ist kein Server-Update erforderlich.
+- Die separate Windows-Titelleiste entfällt. Minimieren, Maximieren/Wiederherstellen und Schließen stehen direkt rechts neben dem Avatar.
+- Freie Flächen im App-Header dienen zum Verschieben des Fensters; die Fenstersteuerung passt sich auch schmalen Fenstern an.
+- Bei Anmeldung, Serverauswahl und Verbindungsfehlern bleibt eine kompakte Fenstersteuerung erreichbar.
+- Die Integration funktioniert mit bestehenden StatO-Servern ohne Server-Update.
 
 ### Installation und einmaliger Umstieg
 

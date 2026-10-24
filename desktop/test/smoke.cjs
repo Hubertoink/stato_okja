@@ -210,9 +210,10 @@ async function switchModal(application, local) {
       const header = document.createElement('header');
       header.className = 'mobile-header-row container';
       const style = document.createElement('style');
-      style.textContent = `body { margin: 0; }
+      style.textContent = `body { margin: 0; font-family: system-ui, sans-serif; }
         .container { width: 84%; max-width: 1100px; margin: 0 auto; }
         .mobile-header-row { display:flex; align-items:center; gap:12px; padding:16px; background:#eef0ff; }
+        .mobile-header-user { display:flex; align-items:center; }
         @media(max-width:767px) {
           .mobile-header-row { display:grid; grid-template-columns:1fr 1fr 44px; }
           .mobile-header-user { grid-column:3; grid-row:1; }
@@ -295,16 +296,52 @@ async function switchModal(application, local) {
     assert.equal(await remote.evaluate(() => typeof window.require), 'undefined');
     assert.deepEqual(await remote.evaluate(() => Object.keys(window.statoDesktopUpdates).sort()), ['getState', 'onState', 'open']);
     assert.equal(await remote.evaluate(async () => (await window.statoDesktopUpdates.getState()).status), 'disabled');
-    await remote.evaluate(() => window.statoDesktopUpdates.open());
+    await remote.evaluate(() => {
+      document.documentElement.style.setProperty('--viridian', '#5b5fff');
+      document.documentElement.style.setProperty('--surface-elevated', '#ffffff');
+      return window.statoDesktopUpdates.open();
+    });
     const updatePanel = application.context().pages().find((page) => page.url().endsWith('/updates.html'));
     await updatePanel.getByRole('heading', { name: 'Desktop-Updates' }).waitFor();
     assert.equal(await updatePanel.locator('#check-update').isDisabled(), true);
+    assert.equal(await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length), 1);
+    await updatePanel.getByRole('dialog').waitFor();
+    assert.equal(await updatePanel.locator('#check-update').evaluate((el) => getComputedStyle(el).backgroundColor), 'rgb(91, 95, 255)');
+    for (const [revision, status] of [[200, 'current'], [201, 'available'], [202, 'downloading'], [203, 'downloaded']]) {
+      await application.evaluate(({ webContents }, { revision, status }) => {
+        webContents.getAllWebContents().find((wc) => wc.getURL().endsWith('/updates.html'))
+          .send('stato:update-state-changed', { revision, status, currentVersion: '1.18.3', version: '99.0.0', percent: 42, checkedAt: null });
+      }, { revision, status });
+      await updatePanel.waitForFunction((status) => {
+        if (status === 'current') return document.getElementById('status').textContent.includes('neuesten Stand');
+        if (status === 'available') return !document.getElementById('download-update').hidden;
+        if (status === 'downloading') return !document.getElementById('progress').hidden;
+        return !document.getElementById('install-update').hidden;
+      }, status);
+      assert.equal(await updatePanel.locator('#save-hint').isVisible(), status === 'downloaded');
+      assert.equal(await updatePanel.locator('#check-update').isVisible(), status === 'current');
+    }
+    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(900, 750));
+    await updatePanel.waitForFunction(() => innerWidth === 900 && innerHeight === 750);
+    const dialogBox = await updatePanel.getByRole('dialog').boundingBox();
+    assert.ok(Math.abs(dialogBox.x + dialogBox.width / 2 - 450) < 1);
+    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1200, 850));
     const updatePng = await application.evaluate(async ({ webContents }) => {
       const contents = webContents.getAllWebContents().find((wc) => wc.getURL().endsWith('/updates.html'));
       return (await contents.capturePage(undefined, { stayHidden: true, stayAwake: true })).toPNG().toString('base64');
     });
     await writeFile(join(artifacts, 'desktop-updates.png'), Buffer.from(updatePng, 'base64'));
-    await updatePanel.close();
+    const panelClosed = updatePanel.waitForEvent('close');
+    await updatePanel.getByRole('button', { name: 'Schließen', exact: true }).click();
+    await panelClosed;
+    await remote.evaluate(() => window.statoDesktopUpdates.open());
+    const reopened = application.context().pages().find((page) => page.url().endsWith('/updates.html'));
+    await reopened.getByRole('dialog').waitFor();
+    const escapeClosed = reopened.waitForEvent('close');
+    await reopened.keyboard.press('Escape').catch((error) => { if (!reopened.isClosed()) throw error; });
+    await escapeClosed;
+    assert.equal(await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length), 1);
+    console.log('PASS: in-app update dialog, theme, states, resizing, close and Escape');
     const security = await application.evaluate(({ webContents }, url) => {
       const contents = webContents
         .getAllWebContents()
@@ -406,7 +443,7 @@ async function switchModal(application, local) {
         rejected = true;
       }
       if (!rejected) throw new Error('Remote renderer was allowed to invoke desktop IPC');
-      for (const channel of ['stato:update-check', 'stato:update-download', 'stato:update-install']) {
+      for (const channel of ['stato:update-check', 'stato:update-download', 'stato:update-install', 'stato:update-close']) {
         let blocked = false;
         try { await ipcMain._invokeHandlers.get(channel)({ sender: wc, senderFrame: wc.mainFrame }); }
         catch { blocked = true; }

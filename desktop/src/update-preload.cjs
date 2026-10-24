@@ -5,6 +5,10 @@ contextBridge.exposeInMainWorld('statoUpdates', {
   check: () => ipcRenderer.invoke('stato:update-check'),
   download: () => ipcRenderer.invoke('stato:update-download'),
   install: () => ipcRenderer.invoke('stato:update-install'),
+  close: () => ipcRenderer.invoke('stato:update-close'),
+  onTheme: (callback) => {
+    ipcRenderer.once('stato:update-theme', (_event, theme) => callback(theme));
+  },
   onState: (callback) => {
     const listener = (_event, state) => callback(state);
     ipcRenderer.on('stato:update-state-changed', listener);

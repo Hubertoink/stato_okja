@@ -187,3 +187,12 @@
   .mobile-header-organization-static { display: inline-flex; align-items: center; border: 1px solid var(--border-subtle); background: var(--surface-2); color: var(--text-primary); border-radius: 999px; padding: 8px 12px; font-size: 12px; font-weight: 600; }
   .mobile-header-user-menu { left: auto; right: 0; max-width: calc(100vw - 16px); }
 }
+
+/* Same alignment and weight as the adjacent avatar-menu entries. */
+.desktop-update-menu-item {
+  display: block;
+  text-align: left;
+  font-weight: 400;
+  border: 0;
+  border-radius: 0;
+}

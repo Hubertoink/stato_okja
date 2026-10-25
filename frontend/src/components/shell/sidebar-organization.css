@@ -23,44 +23,44 @@
 .sidebar-org-control > span {
   overflow-wrap: anywhere;
 }
-.sidebar-org-control:has(select) {
-  padding: 0;
+/* Share the app menu surface, rather than the operating system select popup. */
+.sidebar-org-anchor {
+  min-width: 0;
 }
-.sidebar-org-control:has(select) > svg {
-  position: absolute;
-  left: 12px;
-  z-index: 1;
-}
-.app-sidebar .sidebar-org-control select {
+.app-sidebar .sidebar-org-trigger {
+  width: 100%;
   min-height: 44px;
-  padding-left: 40px;
-  border-color: transparent;
-  background-color: transparent;
-  color: transparent;
-  appearance: none;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+}
+.app-sidebar .sidebar-org-trigger > svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.sidebar-org-trigger > span {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
 }
-.app-sidebar .sidebar-org-control option {
-  color: var(--text-primary);
-  background: var(--surface-1);
+.app-sidebar .sidebar-org-trigger .sidebar-org-chevron {
+  margin-left: auto;
+  width: 16px;
 }
-.sidebar-org-control:focus-within {
+.sidebar-org-menu {
+  position: fixed;
+  z-index: 60;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+}
+.sidebar-org-menu button:focus-visible {
   outline: 2px solid var(--focus-ring);
-  border-radius: 10px;
+  outline-offset: -2px;
 }
 .sidebar-org-retry {
   max-width: 100%;
   overflow-wrap: anywhere;
-}
-@media (min-width: 768px) and (max-width: 1279px) {
-  .app-sidebar.is-expanded .sidebar-org-control select {
-    color: var(--text-primary);
-    appearance: auto;
-  }
-}
-@media (min-width: 1280px) {
-  .app-sidebar:not(.is-collapsed) .sidebar-org-control select {
-    color: var(--text-primary);
-    appearance: auto;
-  }
 }

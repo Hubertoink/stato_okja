@@ -91,7 +91,7 @@
   }
   .sidebar-brand img {
     width: 36px;
-    height: 36px;
+    height: 44px;
     object-fit: contain;
   }
   .sidebar-brand strong {
@@ -102,7 +102,7 @@
     align-items: center;
     justify-content: center;
     width: 44px;
-    height: 36px;
+    height: 44px;
     border-radius: 8px;
     color: var(--text-secondary);
   }
@@ -223,4 +223,10 @@
   max-width: 40vw;
   order: -1;
   text-align: right;
+}
+
+.app-sidebar .sidebar-toggle > svg {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
 }

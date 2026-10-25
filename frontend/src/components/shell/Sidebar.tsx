@@ -56,6 +56,7 @@ export default function Sidebar({
         <Button
           variant="ghost"
           type="button"
+          size="icon-touch"
           className="sidebar-toggle sidebar-toggle-wide"
           onClick={onToggle}
           aria-label={t(collapsed ? 'shell.expand' : 'shell.collapse')}
@@ -66,6 +67,7 @@ export default function Sidebar({
         <Button
           variant="ghost"
           type="button"
+          size="icon-touch"
           className="sidebar-toggle sidebar-toggle-narrow"
           onClick={() => setExpanded(!expanded)}
           aria-label={t(expanded ? 'shell.collapse' : 'shell.expand')}

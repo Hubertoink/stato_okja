@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAuth } from '@/lib/auth';
@@ -40,34 +40,53 @@ beforeEach(() => {
 describe('direct sidebar organization switching', () => {
   it('loads only accessible organizations and switches immediately without a dialog', async () => {
     renderSwitcher();
-    await screen.findByRole('option', { name: 'Zweites Haus' });
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'two' } });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Organisation auswählen' })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Organisation auswählen' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Zweites Haus' }));
     expect(setScope).toHaveBeenCalledWith('two');
     expect(listOrgs).not.toHaveBeenCalled();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+  it('focuses the selection, supports arrow keys and restores focus on Escape', async () => {
+    renderSwitcher();
+    const trigger = screen.getByRole('button', { name: 'Organisation auswählen' });
+    await waitFor(() => expect(trigger).toBeEnabled());
+    fireEvent.keyDown(trigger, { key: 'ArrowDown' });
+    expect(screen.getByRole('menuitemradio', { name: 'Hochi' })).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
+    expect(screen.getByRole('menuitemradio', { name: 'Zweites Haus' })).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+    expect(setScope).not.toHaveBeenCalled();
   });
   it('offers the global scope only to superadmins', async () => {
     vi.mocked(useAuth).mockReturnValue({ user: { id: 'admin', role: 'superadmin' } } as ReturnType<
       typeof useAuth
     >);
     renderSwitcher();
-    await screen.findByRole('option', { name: 'Hochi' });
-    expect(screen.getByRole('option', { name: 'Superadmin-Bereich' })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Organisation auswählen' })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Organisation auswählen' }));
+    expect(screen.getByRole('menuitemradio', { name: 'Superadmin-Bereich' })).toBeInTheDocument();
     expect(listOrgs).toHaveBeenCalled();
     expect(listAccessibleOrgs).not.toHaveBeenCalled();
   });
   it('shows a static organization for accounts without switching permission', () => {
     renderSwitcher(false);
     expect(screen.getByText('Hochi')).toBeInTheDocument();
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Organisation auswählen' })).not.toBeInTheDocument();
     expect(listAccessibleOrgs).not.toHaveBeenCalled();
   });
   it('keeps the current organization and offers retry on a loading error', async () => {
     vi.mocked(listAccessibleOrgs).mockRejectedValueOnce(new Error('offline'));
     renderSwitcher();
     await screen.findByRole('button', { name: 'Organisationen erneut laden' });
-    expect(screen.getByRole('combobox')).toBeDisabled();
-    expect(screen.getByRole('option', { name: 'Hochi' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Organisation auswählen' })).toBeDisabled();
+    expect(screen.getByText('Hochi')).toBeInTheDocument();
     expect(setScope).not.toHaveBeenCalled();
   });
 });

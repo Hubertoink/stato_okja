@@ -110,7 +110,7 @@ export default function UserMenu({
               Desktop-Updates · {updates.state?.currentVersion ?? '…'}
             </Button>
           )}
-          {!restricted && canSwitchOrganization && (
+          {!restricted && !sidebar && canSwitchOrganization && (
             <Button
               variant="ghost"
               type="button"

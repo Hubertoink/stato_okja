@@ -1,10 +1,11 @@
 import { Button } from '@/components/ui/Button';
 import { useEffect, useState } from 'react';
-import { Building2, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth';
 import logoUrl from '../../../assets/Stato_Logo.png';
 import NavigationLinks from './NavigationLinks';
+import SidebarOrganization from './SidebarOrganization';
 import UserMenu, { type UserMenuProps } from './UserMenu';
 import { administrationItems, type NavigationItem } from './navigationItems';
 
@@ -36,6 +37,8 @@ export default function Sidebar({
         <Button
           variant="ghost"
           className="sidebar-backdrop"
+          // This full-screen dismiss target must never inherit a button hover fill.
+          style={{ backgroundColor: 'rgb(0 0 0 / 20%)', borderRadius: 0, border: 0 }}
           aria-label={t('shell.collapse')}
           onClick={() => setExpanded(false)}
         >
@@ -70,19 +73,6 @@ export default function Sidebar({
         >
           {expanded ? <PanelLeftClose /> : <PanelLeftOpen />}
         </Button>
-        <Button
-          variant="ghost"
-          type="button"
-          className="sidebar-organization"
-          title={userMenu.activeOrgName || t('workflow.noOrganization')}
-          disabled={!userMenu.canSwitchOrganization}
-          onClick={userMenu.onSwitchOrganization}
-        >
-          <Building2 className="h-5 w-5 shrink-0" />
-          <span className="sidebar-label">
-            {userMenu.activeOrgName || t('workflow.noOrganization')}
-          </span>
-        </Button>
         <div className="sidebar-scroll">
           <nav aria-label={t('shell.navigation')}>
             <NavigationLinks
@@ -91,6 +81,10 @@ export default function Sidebar({
               onNavigate={() => setExpanded(false)}
             />
           </nav>
+          <SidebarOrganization
+            activeOrgName={userMenu.activeOrgName}
+            canSwitch={userMenu.canSwitchOrganization}
+          />
           {admins.length > 0 && (
             <nav className="sidebar-admin" aria-label={t('shell.administration')}>
               <p className="sidebar-label">{t('shell.administration')}</p>

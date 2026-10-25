@@ -1,0 +1,66 @@
+.sidebar-organization-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+.sidebar-organization-section > p {
+  padding: 4px 12px 10px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+.sidebar-org-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 0.875rem;
+}
+.sidebar-org-control > svg {
+  pointer-events: none;
+}
+.sidebar-org-control > span {
+  overflow-wrap: anywhere;
+}
+.sidebar-org-control:has(select) {
+  padding: 0;
+}
+.sidebar-org-control:has(select) > svg {
+  position: absolute;
+  left: 12px;
+  z-index: 1;
+}
+.app-sidebar .sidebar-org-control select {
+  min-height: 44px;
+  padding-left: 40px;
+  border-color: transparent;
+  background-color: transparent;
+  color: transparent;
+  appearance: none;
+  text-overflow: ellipsis;
+}
+.app-sidebar .sidebar-org-control option {
+  color: var(--text-primary);
+  background: var(--surface-1);
+}
+.sidebar-org-control:focus-within {
+  outline: 2px solid var(--focus-ring);
+  border-radius: 10px;
+}
+.sidebar-org-retry {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+@media (min-width: 768px) and (max-width: 1279px) {
+  .app-sidebar.is-expanded .sidebar-org-control select {
+    color: var(--text-primary);
+    appearance: auto;
+  }
+}
+@media (min-width: 1280px) {
+  .app-sidebar:not(.is-collapsed) .sidebar-org-control select {
+    color: var(--text-primary);
+    appearance: auto;
+  }
+}

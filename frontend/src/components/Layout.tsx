@@ -460,6 +460,7 @@ export default function Layout() {
         ref={headerRef}
         className={`header-navigation-shell fixed inset-x-0 top-0 z-40 ${headerCompact ? 'header-navigation-shell-compact' : ''} ${activeBannerSrc ? 'header-navigation-shell-with-banner' : ''}`}
         style={{
+          display: sidebarActive ? 'none' : undefined,
           '--organization-banner-position': `${activeOrgBranding?.bannerPosition ?? 50}%`,
         } as CSSProperties}
       >
@@ -530,7 +531,7 @@ export default function Layout() {
       </div>
 
       {/* Tiny spacer below fixed desktop nav for visual breathing room */}
-      {!restrictToPasswordChange && <div className="hidden md:block h-[5px]" aria-hidden="true" />}
+      {!restrictToPasswordChange && !sidebarActive && <div className="hidden md:block h-[5px]" aria-hidden="true" />}
 
       {/* Main Content */}
       <main

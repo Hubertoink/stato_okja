@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Folder, Tag as TagIcon, Users as UsersIcon, Calendar, MapPin, Sun, LayoutTemplate, Clock, Menu, X } from 'lucide-react';
+import { Folder, Tag as TagIcon, Users as UsersIcon, Calendar, MapPin, Sun, LayoutTemplate, Clock, Menu, X, Monitor } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import SettingsTeam from './SettingsTeam';
+import ViewDensitySettings from '@/components/settings/ViewDensitySettings';
 import SettingsCategories from './SettingsCategories';
 import SettingsTags from './SettingsTags';
 import SettingsCohorts from './SettingsCohorts';
@@ -14,8 +15,8 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import DemoHoverHint from '@/demo/DemoHoverHint';
 import { useTranslation } from 'react-i18next';
 
-type Tab = 'categories' | 'templates' | 'tags' | 'cohorts' | 'team' | 'locations' | 'holidays' | 'openingHours';
-const VALID_TABS: ReadonlySet<string> = new Set<Tab>(['categories', 'templates', 'tags', 'cohorts', 'team', 'locations', 'holidays', 'openingHours']);
+type Tab = 'appearance' | 'categories' | 'templates' | 'tags' | 'cohorts' | 'team' | 'locations' | 'holidays' | 'openingHours';
+const VALID_TABS: ReadonlySet<string> = new Set<Tab>(['appearance', 'categories', 'templates', 'tags', 'cohorts', 'team', 'locations', 'holidays', 'openingHours']);
 
 export default function Settings() {
   const { t } = useTranslation('settings');
@@ -30,6 +31,7 @@ export default function Settings() {
   const canManageTemplates = user?.role === 'superadmin' || user?.role === 'org_admin';
 
   const tabs = [
+    { id: 'appearance' as Tab, label: t('tabs.appearance'), icon: Monitor },
     { id: 'categories' as Tab, label: t('tabs.categories'), icon: Folder },
     ...(canManageTemplates ? [{ id: 'templates' as Tab, label: t('tabs.templates'), icon: LayoutTemplate }] : []),
     { id: 'tags' as Tab, label: t('tabs.tags'), icon: TagIcon },
@@ -159,6 +161,8 @@ export default function Settings() {
         description={t(`descriptions.${activeTab}`)}
         placement="bottom"
       >
+        {activeTab === 'appearance' && <ViewDensitySettings />}
+
         {activeTab === 'categories' && <SettingsCategories />}
 
         {activeTab === 'templates' && <SettingsProjectTemplates />}

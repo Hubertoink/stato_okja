@@ -76,7 +76,7 @@
 /* The compact desktop scale fits the labels earlier. Keep the ordinary
    breakpoint for touch devices and the narrower icon navigation below 1280px. */
 @media screen and (min-width: 1280px) and (max-width: 1399px) and (hover: hover) and (pointer: fine) {
-  .nav-label {
+  html[data-view-density='compact'] .nav-label {
     position: relative;
     width: auto;
     height: auto;
@@ -85,15 +85,15 @@
     clip: auto;
   }
 
-  .nav-label::after {
+  html[data-view-density='compact'] .nav-label::after {
     display: block;
   }
 
-  .nav-item-tooltip > svg {
+  html[data-view-density='compact'] .nav-item-tooltip > svg {
     margin-right: 0.5rem;
   }
 
-  .nav-item-tooltip::after {
+  html[data-view-density='compact'] .nav-item-tooltip::after {
     display: none;
   }
 }

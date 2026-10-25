@@ -814,6 +814,18 @@ export const resources = {
     },
     settings: {
       title: 'Einstellungen',
+      viewDensity: {
+        title: 'Ansichtsmodus',
+        description: 'Wähle, wie groß Schrift und Bedienelemente auf deinem Desktop dargestellt werden.',
+        normal: 'Normal',
+        normalDescription: 'Größere Schrift und großzügige Abstände für entspanntes Lesen.',
+        compact: 'Kompakt',
+        compactDescription: 'Kleinere Schrift und Abstände für mehr Inhalt auf einen Blick.',
+        deviceHint: 'Gilt für dein Benutzerkonto auf Desktop-Geräten mit Maus oder Trackpad. Touch-Ansichten und Ausdrucke bleiben unverändert.',
+        saving: 'Ansichtsmodus wird gespeichert…',
+        saved: 'Ansichtsmodus gespeichert.',
+        error: 'Der Ansichtsmodus konnte nicht gespeichert werden. Deine bisherige Auswahl bleibt erhalten. Bitte versuche es erneut.',
+      },
       areas: 'Einstellungsbereiche',
       areasDescription:
         'Die Einstellungsbereiche sind die gemeinsame Stammdatenbasis des Dokumentationstools. Hier werden Begriffe, Orte, Gruppen und Zeitregeln gepflegt, auf die Erfassung, Kalender und Auswertungen zurückgreifen.',
@@ -821,6 +833,7 @@ export const resources = {
       menu: 'Menü',
       closeMenu: 'Menü schließen',
       tabs: {
+        appearance: 'Darstellung',
         categories: 'Kategorien',
         templates: 'Vorlagen',
         tags: 'Tags',
@@ -831,6 +844,7 @@ export const resources = {
         openingHours: 'Öffnungszeiten',
       },
       descriptions: {
+        appearance: 'Passe die Ansichtsgröße an deine Arbeitsweise an. Die Auswahl gilt für dein Benutzerkonto.',
         categories:
           'Kategorien geben der Dokumentation eine feste fachliche Struktur. Sie machen sichtbar, welche Schwerpunkte eine Aktivität abdeckt, und halten Erfassung und Auswertung vergleichbar.',
         templates:
@@ -1902,6 +1916,18 @@ export const resources = {
     },
     settings: {
       title: 'Settings',
+      viewDensity: {
+        title: 'View mode',
+        description: 'Choose the size of text and controls on your desktop.',
+        normal: 'Normal',
+        normalDescription: 'Larger text and generous spacing for comfortable reading.',
+        compact: 'Compact',
+        compactDescription: 'Smaller text and spacing to see more at a glance.',
+        deviceHint: 'Applies to your account on desktop devices with a mouse or trackpad. Touch layouts and printed pages stay unchanged.',
+        saving: 'Saving view mode…',
+        saved: 'View mode saved.',
+        error: 'Could not save your view mode. Your previous selection is unchanged. Please try again.',
+      },
       areas: 'Settings sections',
       areasDescription:
         'The settings sections contain the shared master data for the documentation system. Terms, locations, groups and time rules used by data entry, calendars and reports are maintained here.',
@@ -1909,6 +1935,7 @@ export const resources = {
       menu: 'Menu',
       closeMenu: 'Close menu',
       tabs: {
+        appearance: 'Appearance',
         categories: 'Categories',
         templates: 'Templates',
         tags: 'Tags',
@@ -1919,6 +1946,7 @@ export const resources = {
         openingHours: 'Opening hours',
       },
       descriptions: {
+        appearance: 'Choose the view size that suits you. Your selection applies to your account.',
         categories:
           'Categories give documentation a consistent professional structure. They show which topics an activity covers and keep data entry and reporting comparable.',
         templates:

@@ -1,0 +1,74 @@
+.view-density-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 1rem;
+  max-width: 48rem;
+  margin-top: 1.25rem;
+}
+
+.view-density-option {
+  cursor: pointer;
+  border: 2px solid var(--border-subtle);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: var(--surface-1);
+}
+
+.view-density-option:hover,
+.view-density-option-selected {
+  border-color: var(--viridian);
+}
+
+.view-density-option:focus-within {
+  outline: 2px solid var(--viridian);
+  outline-offset: 3px;
+}
+
+.view-density-option input[type='radio'] {
+  width: 1rem;
+  height: 1rem;
+  min-height: 0;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+fieldset:disabled .view-density-option {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+/* Fixed preview canvas: both examples remain comparable at either app density. */
+.view-density-preview {
+  height: 150px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  background: var(--app-bg);
+}
+
+.view-density-preview-app { font-size: 10px; }
+.view-density-preview-app-compact { font-size: 8px; }
+.view-density-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  padding: 1em;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.view-density-preview-header span {
+  width: 3em;
+  height: 0.6em;
+  border-radius: 0.3em;
+  background: var(--text-muted);
+  opacity: 0.4;
+}
+.view-density-preview-header span:first-child { background: var(--viridian); opacity: 1; }
+.view-density-preview-content { padding: 1em; }
+.view-density-preview-title { width: 7em; height: 0.8em; background: var(--text-primary); opacity: 0.65; border-radius: 0.3em; margin-bottom: 1em; }
+.view-density-preview-cards { display: flex; gap: 0.8em; margin-bottom: 0.8em; }
+.view-density-preview-cards span { flex: 1; height: 2.6em; border: 1px solid var(--border-subtle); border-radius: 0.4em; background: var(--surface-1); }
+.view-density-preview-row { display: flex; align-items: center; gap: 1em; height: 1.9em; border-bottom: 1px solid var(--border-subtle); }
+.view-density-preview-row span { width: 25%; height: 0.45em; border-radius: 0.3em; background: var(--text-muted); opacity: 0.3; }
+.view-density-preview-row span:first-child { width: 40%; }

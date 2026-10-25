@@ -5,7 +5,7 @@
  * and browser zoom. Touch layouts and printed documents keep their scale.
  * No transform/zoom: sticky headers and portal coordinates stay in CSS pixels. */
 @media screen and (min-width: 1024px) and (hover: hover) and (pointer: fine) {
-  html {
+  html[data-view-density='compact'] {
     font-size: 80%;
   }
 }

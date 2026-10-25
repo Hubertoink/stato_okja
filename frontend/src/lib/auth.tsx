@@ -17,6 +17,7 @@ import { applyStoredThemePreference, applyTheme, normalizeThemeMode, type ThemeM
 import { setPreferredLocale } from '@/i18n';
 import { normalizeAppLocale, type AppLocale } from '@/i18n/locales';
 import { autoT } from '@/i18n/auto';
+import { applyViewDensity, type ViewDensity } from './viewDensity';
 
 export type Role = 'superadmin' | 'org_admin' | 'editor' | 'user';
 
@@ -29,7 +30,7 @@ export type OrganizationMembership = {
   role: Exclude<Role, 'superadmin'>;
 };
 
-export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; memberships?: OrganizationMembership[]; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; locale?: AppLocale; mustChangePassword?: boolean; termsAcceptanceRequired?: boolean }
+export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; memberships?: OrganizationMembership[]; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; viewDensity?: ViewDensity; locale?: AppLocale; mustChangePassword?: boolean; termsAcceptanceRequired?: boolean }
 
 type TwoFactorChallenge = {
   requiresTwoFactor: true;
@@ -87,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const locale = normalizeAppLocale(nextUser.locale);
     setUser({ ...nextUser, theme: normalizedTheme, themeMode, locale });
     applyTheme(normalizedTheme, themeMode);
+    applyViewDensity(nextUser.viewDensity);
     void setPreferredLocale(locale, { reload: true });
     if (options?.resetCache) {
       qc.clear();

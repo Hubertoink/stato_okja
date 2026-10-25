@@ -29,6 +29,7 @@ import './styles/theme-overrides.css';
 
 import { applyStoredBackground } from './lib/background';
 import { applyStoredThemePreference, listenForSystemThemeChanges } from './lib/theme';
+import { applyStoredViewDensity } from './lib/viewDensity';
 import { attachQueryClientMetrics } from './lib/devMetrics';
 import { demoModeEnabled } from './demo/config';
 
@@ -53,6 +54,7 @@ attachQueryClientMetrics(queryClient);
 applyStoredBackground();
 applyStoredThemePreference();
 listenForSystemThemeChanges();
+applyStoredViewDensity();
 
 if (demoModeEnabled) {
   document.title = 'Stato - Demo';

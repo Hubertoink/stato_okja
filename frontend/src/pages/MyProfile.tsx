@@ -18,6 +18,7 @@ import { autoT } from '@/i18n/auto';
 import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { useToast } from '@/components/Toast';
 import { Button } from '@/components/ui/Button';
+import ViewDensitySettings from '@/components/settings/ViewDensitySettings';
 
 export default function MyProfile() {
   const { user, refresh, replaceSession } = useAuth();
@@ -32,6 +33,7 @@ export default function MyProfile() {
         {!mustChangePassword && (
           <ProfileCard userName={user?.name || ''} avatarUrl={user?.avatarUrl || null} onUpdated={refresh} email={user?.email || ''} theme={user?.theme || DEFAULT_LIGHT_THEME} themeMode={user?.themeMode || 'system'} locale={user?.locale || 'de'} />
         )}
+        {!mustChangePassword && <ViewDensitySettings />}
         {!mustChangePassword && <MobileNavigationSettings userId={user?.id} />}
         <PasswordSection mustChangePassword={mustChangePassword} onPasswordChanged={replaceSession} />
         {!mustChangePassword && <SessionsSection />}

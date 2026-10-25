@@ -10,6 +10,7 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 ## [Unreleased]
 
 ### Changed
+- Ansichtsmodus pro Benutzerkonto: In Einstellungen → Darstellung und im Profil kann mit kleiner Vorschau zwischen normaler und kompakter Desktop-Ansicht gewechselt werden.
 - Backend auf NestJS 12.2 mit abgestimmten Adaptern, Auth-, Konfigurations-, Swagger- und Testpaketen aktualisiert. Backend-Compiler und CLI verwenden TypeScript 6; CommonJS und bestehende DTO-Validierung bleiben erhalten.
 - Backend-Tests laden die ESM-Pakete auch im Watch-, Coverage- und Debug-Modus.
 - Dependabot fasst NestJS-Pakete einschließlich CLI und Tests in einer gemeinsamen Update-Gruppe zusammen.

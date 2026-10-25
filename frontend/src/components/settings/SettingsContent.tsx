@@ -1,3 +1,5 @@
+import AppearanceSettings from './AppearanceSettings';
+import MobileNavigationSettings from './MobileNavigationSettings';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import NavigationSettings from './NavigationSettings';
@@ -24,7 +26,9 @@ export default function SettingsContent({ tab }: { tab: SettingsTab }) {
           >
             {t('sections.profileLink')}
           </Link>
+          <AppearanceSettings />
           <NavigationSettings />
+          <MobileNavigationSettings />
           <ViewDensitySettings />
         </div>
       );

@@ -57,25 +57,10 @@ describe('shared user menu and administration', () => {
     expect(document.querySelector('a[href="/admin/users"]')).toBeNull();
     expect(document.querySelector('a[href="/me"]')).not.toBeNull();
   });
-  it.each([true, false])(
-    'shows role information below the avatar and can open it while the user menu is open (sidebar=%s)',
-    (sidebar) => {
-      renderMenu(sidebar);
-      const role = screen.getByRole('button', { name: 'Berechtigungen: Org-Admin' });
-      fireEvent.click(screen.getByRole('button', { name: 'Benutzermenü öffnen' }));
-      fireEvent.click(role);
-      const info = screen.getByRole('dialog', { name: 'Org-Admin' });
-      expect(info).toHaveTextContent('organisationsweite Vorgaben');
-      expect(info).toHaveTextContent('aktuellen Organisationskontext');
-      expect(screen.getByRole('button', { name: 'Benutzermenü öffnen' })).toHaveAttribute(
-        'aria-expanded',
-        'false',
-      );
-      fireEvent.keyDown(info, { key: 'Escape' });
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-      expect(role).toHaveFocus();
-    },
-  );
+  it.each([true, false])('keeps role details out of the global avatar (sidebar=%s)', (sidebar) => {
+    renderMenu(sidebar);
+    expect(screen.queryByRole('button', { name: 'Berechtigungen: Org-Admin' })).not.toBeInTheDocument();
+  });
   it('preserves role guards for administration links', () => {
     const t = i18n.getFixedT('de', 'common');
     expect(administrationItems('user', t)).toEqual([]);

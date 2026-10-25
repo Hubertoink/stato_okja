@@ -1,4 +1,3 @@
-import RoleInfo from './RoleInfo';
 import SidebarTooltip from './SidebarTooltip';
 import { Button } from '@/components/ui/Button';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -93,7 +92,6 @@ export default function UserMenu({
           </span>
         </Button>
       </SidebarTooltip>
-      <RoleInfo role={user?.role || 'user'} dismiss={open} onOpen={() => setOpen(false)} />
       {open && (
         <div id={id} className="shell-user-panel theme-menu-panel" onClick={() => setOpen(false)}>
           <div className="px-4 py-3 border-b theme-menu-section">

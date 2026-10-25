@@ -6,15 +6,7 @@ import { useAnchoredPopoverPosition } from '@/components/ui/useAnchoredPopoverPo
 import type { Role } from '@/lib/auth';
 import './role-info.css';
 
-export default function RoleInfo({
-  role,
-  dismiss,
-  onOpen,
-}: {
-  role: Role;
-  dismiss: boolean;
-  onOpen: () => void;
-}) {
+export default function RoleInfo({ role }: { role: Role }) {
   const { t } = useTranslation('common');
   const [open, setOpen] = useState(false);
   const anchor = useRef<HTMLDivElement>(null);
@@ -26,9 +18,6 @@ export default function RoleInfo({
     setOpen(false);
     anchor.current?.querySelector('button')?.focus();
   };
-  useEffect(() => {
-    if (dismiss) setOpen(false);
-  }, [dismiss]);
   useEffect(() => {
     setOpen(false);
   }, [role]);
@@ -43,16 +32,15 @@ export default function RoleInfo({
     return () => document.removeEventListener('pointerdown', outside);
   }, [open]);
   return (
-    <div ref={anchor} className="sidebar-role">
+    <div ref={anchor} className="profile-role">
       <Button
         variant="ghost"
-        className="sidebar-role-trigger"
+        className="profile-role-trigger"
         aria-label={t('roleInfo.label', { role: label })}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         onClick={() => {
-          if (!open) onOpen();
           setOpen(!open);
         }}
       >
@@ -67,7 +55,7 @@ export default function RoleInfo({
             tabIndex={-1}
             aria-labelledby={`${id}-title`}
             aria-describedby={`${id}-description`}
-            className="sidebar-role-panel theme-menu-panel"
+            className="profile-role-panel theme-menu-panel"
             style={position}
             onKeyDown={(event) => {
               if (event.key === 'Escape') {

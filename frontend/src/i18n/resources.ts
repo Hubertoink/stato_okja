@@ -830,7 +830,7 @@ export const resources = {
         personal: { title: 'Persönliche Einstellungen', description: 'Passe Darstellung und Navigation für dein Benutzerkonto an.' },
         masterData: { title: 'Stammdaten', description: 'Pflege die gemeinsamen Begriffe, Altersgruppen, das Team, Orte und Vorlagen deiner Organisation.' },
         operations: { title: 'Betrieb', description: 'Verwalte Öffnungszeiten und wähle aus, welche Ferien und Feiertage im Kalender angezeigt werden.' },
-        profileLink: 'Profil, Sprache und Design anpassen',
+        profileLink: 'Profil und Sprache anpassen',
       },
       navigationLayout: {
         title: 'Navigation', description: 'Wähle die Navigation für Desktop und Tablet.',
@@ -1958,7 +1958,7 @@ export const resources = {
         personal: { title: 'Personal settings', description: 'Choose appearance and navigation for your account.' },
         masterData: { title: 'Master data', description: 'Manage the shared terms, age groups, team, locations and templates of your organization.' },
         operations: { title: 'Operations', description: 'Manage opening hours and choose which vacations and public holidays appear in the calendar.' },
-        profileLink: 'Edit profile, language and theme',
+        profileLink: 'Edit profile and language',
       },
       navigationLayout: {
         title: 'Navigation', description: 'Choose your desktop and tablet navigation.',

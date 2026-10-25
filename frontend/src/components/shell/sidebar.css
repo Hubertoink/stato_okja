@@ -87,15 +87,25 @@
     align-items: center;
     gap: 10px;
     padding: 4px;
-    min-height: 44px;
+    height: 52px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
   }
   .sidebar-brand img {
     width: 36px;
     height: 44px;
     object-fit: contain;
+    flex-shrink: 0;
   }
   .sidebar-brand strong {
     font-size: 1.3rem;
+  }
+  .sidebar-toggle-row {
+    display: flex;
+    justify-content: flex-end;
+    height: 44px;
+    flex-shrink: 0;
   }
   .app-sidebar .sidebar-toggle {
     display: flex;
@@ -128,10 +138,16 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    min-height: 44px;
+    height: 44px;
     padding: 10px 12px;
     border-radius: 10px;
     font-size: 0.875rem;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .sidebar-link .sidebar-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .sidebar-link[aria-current='page'] {
     font-weight: 600;
@@ -148,7 +164,19 @@
   }
   .app-sidebar .sidebar-label,
   .app-sidebar .shell-user-copy {
-    display: none;
+    visibility: hidden;
+    opacity: 0;
+  }
+  /* Keep section headings in the flow in both states, so every icon stays at its Y position. */
+  .app-sidebar .sidebar-admin > p,
+  .app-sidebar .sidebar-organization-section > p {
+    display: block;
+    height: 32px;
+    line-height: 18px;
+    white-space: nowrap;
+  }
+  .app-sidebar .sidebar-label {
+    min-width: 0;
   }
   .shell-user-sidebar {
     border-top: 1px solid var(--border-subtle);
@@ -157,6 +185,11 @@
   .shell-user-sidebar .shell-user-trigger {
     justify-content: flex-start;
     width: 100%;
+    height: 44px;
+    min-height: 44px;
+  }
+  .shell-user-sidebar .shell-user-copy {
+    line-height: 16px;
   }
   .shell-user-sidebar .shell-user-panel {
     top: auto;
@@ -167,11 +200,10 @@
   .app-sidebar.is-expanded {
     width: 240px;
   }
-  .app-sidebar.is-expanded .sidebar-label {
-    display: block;
-  }
+  .app-sidebar.is-expanded .sidebar-label,
   .app-sidebar.is-expanded .shell-user-copy {
-    display: flex;
+    visibility: visible;
+    opacity: 1;
   }
   .app-shell > .sidebar-backdrop {
     display: block;
@@ -198,15 +230,15 @@
   .app-sidebar.is-expanded {
     width: var(--sidebar-width);
   }
-  .app-sidebar:not(.is-collapsed) .sidebar-label {
-    display: block;
-  }
+  .app-sidebar:not(.is-collapsed) .sidebar-label,
   .app-sidebar:not(.is-collapsed) .shell-user-copy {
-    display: flex;
+    visibility: visible;
+    opacity: 1;
   }
   .app-sidebar.is-collapsed .sidebar-label,
   .app-sidebar.is-collapsed .shell-user-copy {
-    display: none;
+    visibility: hidden;
+    opacity: 0;
   }
 }
 
@@ -229,4 +261,18 @@
   width: 24px;
   height: 24px;
   flex-shrink: 0;
+}
+
+/* Width and content offset share a duration; reduced-motion users switch immediately. */
+@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+  .app-sidebar {
+    transition: width 200ms ease-out;
+  }
+  .app-shell-sidebar {
+    transition: padding-left 200ms ease-out;
+  }
+  .app-sidebar .sidebar-label,
+  .app-sidebar .shell-user-copy {
+    transition: opacity 140ms ease-out;
+  }
 }

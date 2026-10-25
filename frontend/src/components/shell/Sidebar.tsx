@@ -53,28 +53,30 @@ export default function Sidebar({
           <img src={logoUrl} alt="StatO" />
           <strong className="sidebar-label">StatO</strong>
         </div>
-        <Button
-          variant="ghost"
-          type="button"
-          size="icon-touch"
-          className="sidebar-toggle sidebar-toggle-wide"
-          onClick={onToggle}
-          aria-label={t(collapsed ? 'shell.expand' : 'shell.collapse')}
-          aria-expanded={!collapsed}
-        >
-          {collapsed ? <ChevronRight aria-hidden="true" /> : <ChevronLeft aria-hidden="true" />}
-        </Button>
-        <Button
-          variant="ghost"
-          type="button"
-          size="icon-touch"
-          className="sidebar-toggle sidebar-toggle-narrow"
-          onClick={() => setExpanded(!expanded)}
-          aria-label={t(expanded ? 'shell.collapse' : 'shell.expand')}
-          aria-expanded={expanded}
-        >
-          {expanded ? <ChevronLeft aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
-        </Button>
+        <div className="sidebar-toggle-row">
+          <Button
+            variant="ghost"
+            type="button"
+            size="icon-touch"
+            className="sidebar-toggle sidebar-toggle-wide"
+            onClick={onToggle}
+            aria-label={t(collapsed ? 'shell.expand' : 'shell.collapse')}
+            aria-expanded={!collapsed}
+          >
+            {collapsed ? <ChevronRight aria-hidden="true" /> : <ChevronLeft aria-hidden="true" />}
+          </Button>
+          <Button
+            variant="ghost"
+            type="button"
+            size="icon-touch"
+            className="sidebar-toggle sidebar-toggle-narrow"
+            onClick={() => setExpanded(!expanded)}
+            aria-label={t(expanded ? 'shell.collapse' : 'shell.expand')}
+            aria-expanded={expanded}
+          >
+            {expanded ? <ChevronLeft aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+          </Button>
+        </div>
         <div className="sidebar-scroll">
           <nav aria-label={t('shell.navigation')}>
             <NavigationLinks

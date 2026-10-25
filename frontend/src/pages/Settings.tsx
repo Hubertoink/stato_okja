@@ -8,7 +8,6 @@ import {
   getSettingsTabs,
   getSettingsSection,
 } from '@/components/settings/settingsSections';
-import '@/components/settings/settings-sections.css';
 
 export default function Settings() {
   const { t } = useTranslation('settings');
@@ -32,19 +31,17 @@ export default function Settings() {
       <h2 className="text-3xl font-bold text-viridian mb-2">{t(`sections.${section}.title`)}</h2>
       <p className="mb-6 text-[var(--text-secondary)]">{t(`sections.${section}.description`)}</p>
       {tabs.length > 1 && (
-        <nav className="configuration-tabs" aria-label={t(`sections.${section}.title`)}>
+        <nav className="mb-6 flex flex-wrap gap-2 border-b border-[var(--border-subtle)] pb-3" aria-label={t(`sections.${section}.title`)}>
           {tabs.map((tab) => {
             const query = new URLSearchParams(params);
             query.set('tab', tab.id);
-            const Icon = tab.icon;
             return (
               <Link
                 key={tab.id}
                 to={{ pathname: location.pathname, search: `?${query}` }}
-                className="configuration-tab"
+                className={`max-w-full rounded-xl px-4 py-2 text-sm font-medium break-words focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${tab.id === active.id ? 'bg-viridian text-white' : 'text-[var(--text-secondary)] hover:bg-[var(--surface-2)]'}`}
                 aria-current={tab.id === active.id ? 'page' : undefined}
               >
-                <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
                 <span>{t(`tabs.${tab.id}`)}</span>
               </Link>
             );

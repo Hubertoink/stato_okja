@@ -1,0 +1,36 @@
+.sidebar-role {
+  flex-shrink: 0;
+}
+.shell-user .sidebar-role-trigger {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  height: 32px;
+  min-height: 32px;
+  padding: 2px 0;
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 12px;
+}
+.sidebar-role-trigger > span {
+  display: block;
+  width: 44px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.sidebar-role-panel {
+  position: fixed;
+  z-index: 65;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  border-radius: 16px;
+  padding: 16px;
+  outline: none;
+}
+.sidebar-role-panel:focus-visible {
+  outline: 2px solid var(--focus-ring);
+}
+
+.shell-user-header .sidebar-role-trigger {
+  justify-content: flex-end;
+}

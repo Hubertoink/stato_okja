@@ -399,6 +399,8 @@ function AuthedRoutes() {
               </RouteBoundary>
             }
           />
+          <Route path="master-data" element={<RouteBoundary label={t('navigation.masterData')}><Settings /></RouteBoundary>} />
+          <Route path="operations" element={<RouteBoundary label={t('navigation.operations')}><Settings /></RouteBoundary>} />
           {/* Admin routes */}
           {(user.role === 'org_admin' || user.role === 'superadmin') && (
             <Route

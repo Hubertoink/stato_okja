@@ -12,7 +12,7 @@ export default function NavigationLinks({
   onNavigate?: () => void;
 }) {
   return (
-    <ul className={sidebar ? 'sidebar-links' : 'flex space-x-1'}>
+    <ul className={sidebar ? 'sidebar-links' : 'flex flex-wrap gap-x-1'}>
       {items.map(({ to, label, icon: Icon }) => (
         <li key={to}>
           <SidebarTooltip text={label} suppress={!sidebar}>

@@ -1,3 +1,7 @@
+/* The top navigation can wrap; keep content below its measured height at every width. */
+.app-shell > main {
+  padding-top: calc(var(--app-header-height, 68px) + 20px);
+}
 .app-sidebar {
   display: none;
 }

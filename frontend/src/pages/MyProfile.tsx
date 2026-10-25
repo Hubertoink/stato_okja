@@ -60,6 +60,8 @@ function MobileNavigationSettings({ userId }: { userId?: string }) {
     processes: t('navigation.processes'),
     surveys: t('navigation.surveys'),
     statistics: t('navigation.statistics'),
+    masterData: t('navigation.masterData'),
+    operations: t('navigation.operations'),
     settings: t('navigation.settings'),
   };
   const [bottom, setBottom] = useState<MobileNavItemId[]>(() => getMobileNavLayout(userId, availableItemIds).bottom);

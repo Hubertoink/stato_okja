@@ -86,7 +86,9 @@ export default function Sidebar({
           <nav aria-label={t('shell.navigation')}>
             <NavigationLinks
               sidebar
-              items={items.filter((item) => item.to !== '/settings')}
+              items={items.filter(
+                (item) => !['/settings', '/master-data', '/operations'].includes(item.to),
+              )}
               onNavigate={() => setExpanded(false)}
             />
           </nav>
@@ -94,6 +96,13 @@ export default function Sidebar({
             activeOrgName={userMenu.activeOrgName}
             canSwitch={userMenu.canSwitchOrganization}
           />
+          <nav className="sidebar-admin" aria-label={t('navigation.masterData')}>
+            <NavigationLinks
+              sidebar
+              items={items.filter((item) => ['/master-data', '/operations'].includes(item.to))}
+              onNavigate={() => setExpanded(false)}
+            />
+          </nav>
           {admins.length > 0 && (
             <nav className="sidebar-admin" aria-label={t('shell.administration')}>
               <p className="sidebar-label">{t('shell.administration')}</p>

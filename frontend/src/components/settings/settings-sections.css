@@ -1,0 +1,42 @@
+.configuration-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.configuration-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+.configuration-tab[aria-current='page'] {
+  background: var(--interactive-soft-strong);
+  color: var(--viridian);
+  border-color: var(--interactive-soft-border);
+  font-weight: 600;
+}
+.configuration-tab:hover {
+  background: var(--interactive-soft);
+}
+.configuration-tab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.configuration-tab > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 767px) {
+  .configuration-tab {
+    flex: 1 1 calc(50% - 8px);
+  }
+}

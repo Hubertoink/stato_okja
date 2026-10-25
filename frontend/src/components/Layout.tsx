@@ -13,6 +13,8 @@ import {
   BookOpen,
   ClipboardList,
   Menu,
+  Database,
+  Clock,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import logoUrl from '../../assets/Stato_Logo.png';
@@ -231,6 +233,8 @@ export default function Layout() {
       processes: { to: '/processes', label: t('navigation.processes'), icon: GitBranch },
       surveys: { to: '/surveys', label: t('navigation.surveys'), icon: ClipboardList },
       statistics: { to: '/statistics', label: t('navigation.statistics'), icon: BarChart3 },
+      masterData: { to: '/master-data', label: t('navigation.masterData'), icon: Database },
+      operations: { to: '/operations', label: t('navigation.operations'), icon: Clock },
       settings: { to: '/settings', label: t('navigation.settings'), icon: Settings },
     };
   const mobileBottomItems = mobileNavLayout.bottom.map((id) => mobileNavItems[id]);
@@ -537,7 +541,7 @@ export default function Layout() {
       <main
         className={`container mx-auto min-w-0 w-full flex-1 overflow-x-clip px-2 sm:px-3 md:px-4 py-8 pt-[4.25rem] md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-24'} md:pb-8`}
       >
-        {!restrictToPasswordChange && isSuperadmin && !scope && /^\/(dashboard|activities|projects|calendar|logbook|statistics|surveys|settings)(\/|$)/.test(location.pathname) ? (
+        {!restrictToPasswordChange && isSuperadmin && !scope && /^\/(dashboard|activities|projects|calendar|logbook|statistics|surveys|master-data|operations)(\/|$)/.test(location.pathname) ? (
           <section className="mx-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-6 md:mx-2">
             <h2 className="text-xl font-semibold">{t('workflow.noOrganization')}</h2>
             <p className="my-3">{t('workflow.contextHelp')}</p>
@@ -587,7 +591,7 @@ export default function Layout() {
             </li>
           </ul>
           {mobileMoreOpen && (
-            <div className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+3.9rem)] right-2 w-52 rounded-2xl border border-gray-100 bg-white p-2 shadow-xl">
+            <div className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+3.9rem)] right-2 w-52 max-h-[calc(100dvh-10rem)] overflow-y-auto rounded-2xl border border-gray-100 bg-white p-2 shadow-xl">
               {mobileMoreItems.map((item) => {
                 const Icon = item.icon;
                 return (

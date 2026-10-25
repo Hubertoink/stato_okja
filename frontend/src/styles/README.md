@@ -19,6 +19,7 @@ Die Aufteilung ist zunächst verhaltensneutral aus dem früheren `index.css` üb
 
 ## Regeln für neue Styles
 
+- Desktop-Dichte: `document.css` setzt ab 1024 px bei Mausbedienung die Schriftbasis auf 80 %. Schrift, Abstände und Controls deshalb in `rem` halten; kein zusätzliches `zoom`/`transform` auf die App anwenden. Touch-Geräte und Druck behalten die normale Skala. Die Navigation zeigt bei kompakter Desktop-Dichte ab 1280 px ihre Beschriftungen.
 - Dark-Mode-Regeln verwenden `:root[data-color-mode='dark']`, nicht einzelne Theme-Namen.
 - `!important` ist grundsätzlich eine Ausnahme. Es ist für die zentralen Tailwind-Kompatibilitätsadapter sowie isolierte Export-Styles zulässig; jede neue Verwendung braucht eine kurze Begründung.
 - Eine Regel erhält genau ein zuständiges Modul. Gemeinsame UI-Regeln gehören nach `common.css`, seitenbezogene Regeln in ihr Feature-Modul.

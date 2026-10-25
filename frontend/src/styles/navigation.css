@@ -73,6 +73,31 @@
   }
 }
 
+/* The compact desktop scale fits the labels earlier. Keep the ordinary
+   breakpoint for touch devices and the narrower icon navigation below 1280px. */
+@media screen and (min-width: 1280px) and (max-width: 1399px) and (hover: hover) and (pointer: fine) {
+  .nav-label {
+    position: relative;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+  }
+
+  .nav-label::after {
+    display: block;
+  }
+
+  .nav-item-tooltip > svg {
+    margin-right: 0.5rem;
+  }
+
+  .nav-item-tooltip::after {
+    display: none;
+  }
+}
+
 /* Utility helpers for mobile safe areas and tooltips */
 .pb-safe {
   padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);

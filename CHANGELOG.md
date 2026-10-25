@@ -7,6 +7,12 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ---
 
+## [Unreleased]
+
+### Changed
+- Kompaktere Desktop-Darstellung ab 1024 px bei Mausbedienung: Schrift, Bedienelemente und Abstände orientieren sich an einer 80-%-Ansicht. Touch-Ansichten und Druck behalten die bisherige Größe; Browser-Zoom bleibt nutzbar.
+- Die kompakte Desktop-Navigation zeigt ihre Beschriftungen bereits ab 1280 px.
+
 ## [1.18.5] - 2026-10-24
 
 ### Fixed

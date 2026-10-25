@@ -1,5 +1,15 @@
 /* Default Theme (modern blue/purple) - duplicate selector removed, see top */
 
+/* Match the denser desktop layout of an 80% browser view using the shared
+ * rem scale. Percentage sizing still respects the user's default font size
+ * and browser zoom. Touch layouts and printed documents keep their scale.
+ * No transform/zoom: sticky headers and portal coordinates stay in CSS pixels. */
+@media screen and (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  html {
+    font-size: 80%;
+  }
+}
+
 @supports (scrollbar-gutter: stable) {
   html {
   /* Reserve the page scrollbar space before it is needed. This keeps the

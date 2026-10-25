@@ -1,5 +1,27 @@
 # StatO – Architektur-Dokumentation
 
+## Backend-Werkzeuge und NestJS 12
+
+Das Backend nutzt NestJS 12.2 auf Node.js 24 (mindestens 24.15 gemäß Root-Package).
+Der Anwendungscode bleibt CommonJS; Node lädt die ESM-Pakete des Frameworks über
+`require(esm)`. Der Nest-CLI-Builder ist explizit `tsc`. TypeScript 6 ist im
+Backend-Workspace installiert, während das Frontend seine TypeScript-5-Version
+behält. Jest 30 und ts-jest ab 29.4.15 prüfen weiterhin die bestehenden Tests.
+Alle Jest-Einstiege (Tests, Watch, Coverage und Debug) aktivieren
+`--experimental-vm-modules`, damit die ESM-Pakete auch im Testrunner laden.
+
+Nest-Framework, Express-Adapter, Testing und Begleitpakete müssen gemeinsam
+aktualisiert werden. Die Root-Pins und Overrides für `@nestjs/common` und
+`@nestjs/core` gehören dazu. Der `ioredis`-Override hält npm bei der Auflösung
+optionaler Peers auf der von TypeORM unterstützten Hauptversion 5; StatO
+benötigt dadurch keinen Redis-Dienst. Sicherheits-Overrides bleiben erhalten.
+
+Die bestehenden `class-validator`-DTOs und `ValidationPipe` werden weiter
+verwendet. Ein Wechsel auf ESM, einen anderen Testrunner oder Standard Schema
+ist keine Voraussetzung für die Migration. Bei weiteren Framework-Upgrades
+insbesondere die Start-/Stop-Hooks von Auth, Umfragen und Upload-Wartung sowie
+den PostgreSQL-Bootstrap und den produktiven Containerstart prüfen.
+
 ## 📐 Systemarchitektur
 
 ### Übersicht

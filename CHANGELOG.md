@@ -10,6 +10,9 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 ## [Unreleased]
 
 ### Changed
+- Backend auf NestJS 12.2 mit abgestimmten Adaptern, Auth-, Konfigurations-, Swagger- und Testpaketen aktualisiert. Backend-Compiler und CLI verwenden TypeScript 6; CommonJS und bestehende DTO-Validierung bleiben erhalten.
+- Backend-Tests laden die ESM-Pakete auch im Watch-, Coverage- und Debug-Modus.
+- Dependabot fasst NestJS-Pakete einschließlich CLI und Tests in einer gemeinsamen Update-Gruppe zusammen.
 - Kompaktere Desktop-Darstellung ab 1024 px bei Mausbedienung: Schrift, Bedienelemente und Abstände orientieren sich an einer 80-%-Ansicht. Touch-Ansichten und Druck behalten die bisherige Größe; Browser-Zoom bleibt nutzbar.
 - Die kompakte Desktop-Navigation zeigt ihre Beschriftungen bereits ab 1280 px.
 

@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/Button';
 import { useEffect, useState } from 'react';
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth';
 import logoUrl from '../../../assets/Stato_Logo.png';
@@ -62,7 +62,7 @@ export default function Sidebar({
           aria-label={t(collapsed ? 'shell.expand' : 'shell.collapse')}
           aria-expanded={!collapsed}
         >
-          {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
+          {collapsed ? <ChevronRight aria-hidden="true" /> : <ChevronLeft aria-hidden="true" />}
         </Button>
         <Button
           variant="ghost"
@@ -73,7 +73,7 @@ export default function Sidebar({
           aria-label={t(expanded ? 'shell.collapse' : 'shell.expand')}
           aria-expanded={expanded}
         >
-          {expanded ? <PanelLeftClose /> : <PanelLeftOpen />}
+          {expanded ? <ChevronLeft aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
         </Button>
         <div className="sidebar-scroll">
           <nav aria-label={t('shell.navigation')}>

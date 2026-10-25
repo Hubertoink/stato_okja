@@ -1,3 +1,4 @@
+import NavigationSettings from '@/components/settings/NavigationSettings';
 import { useEffect, useState } from 'react';
 import { Folder, Tag as TagIcon, Users as UsersIcon, Calendar, MapPin, Sun, LayoutTemplate, Clock, Menu, X, Monitor } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
@@ -161,7 +162,7 @@ export default function Settings() {
         description={t(`descriptions.${activeTab}`)}
         placement="bottom"
       >
-        {activeTab === 'appearance' && <ViewDensitySettings />}
+        {activeTab === 'appearance' && <div className="space-y-6"><NavigationSettings /><ViewDensitySettings /></div>}
 
         {activeTab === 'categories' && <SettingsCategories />}
 

@@ -63,6 +63,27 @@ describe('AuthService invitations', () => {
     await expect(pipe.transform({ viewDensity: 'normal' }, metadata)).resolves.toEqual(expect.objectContaining({ viewDensity: 'normal' }));
   });
 
+  it('saves and returns the account navigation layout without changing other profile fields', async () => {
+    const { service, users } = createService({ existingUser: {
+      id: 'user-1', name: 'Existing name', email: 'user@example.org', role: 'user', navigationLayout: 'sidebar',
+    } });
+    expect(await service.updateProfile('user-1', { navigationLayout: 'top' })).toEqual(
+      expect.objectContaining({ id: 'user-1', name: 'Existing name', navigationLayout: 'top' }),
+    );
+    expect(users.save).toHaveBeenCalledWith(expect.objectContaining({ navigationLayout: 'top' }));
+    expect(await service.getProfile('user-1')).toEqual(expect.objectContaining({ navigationLayout: 'top' }));
+    expect(await service.updateProfile('user-1', { navigationLayout: 'sidebar' })).toEqual(
+      expect.objectContaining({ navigationLayout: 'sidebar' }),
+    );
+  });
+
+  it('rejects unsupported navigation layout values at the profile API boundary', async () => {
+    const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
+    const metadata = { type: 'body' as const, metatype: UpdateMeDto };
+    await expect(pipe.transform({ navigationLayout: 'tiny' }, metadata)).rejects.toThrow();
+    await expect(pipe.transform({ navigationLayout: 'top' }, metadata)).resolves.toEqual(expect.objectContaining({ navigationLayout: 'top' }));
+  });
+
   it('does not return an invite token and binds it to the pending invite version', async () => {
     const { service, jwt, email } = createService();
 

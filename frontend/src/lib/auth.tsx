@@ -30,7 +30,7 @@ export type OrganizationMembership = {
   role: Exclude<Role, 'superadmin'>;
 };
 
-export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; memberships?: OrganizationMembership[]; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; viewDensity?: ViewDensity; locale?: AppLocale; mustChangePassword?: boolean; termsAcceptanceRequired?: boolean }
+export interface AuthUser { id: string; email: string; name: string; role: Role; orgId?: string | null; orgName?: string | null; memberships?: OrganizationMembership[]; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; viewDensity?: ViewDensity; navigationLayout?: 'sidebar' | 'top'; locale?: AppLocale; mustChangePassword?: boolean; termsAcceptanceRequired?: boolean }
 
 type TwoFactorChallenge = {
   requiresTwoFactor: true;

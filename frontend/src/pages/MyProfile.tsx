@@ -1,3 +1,4 @@
+import NavigationSettings from '@/components/settings/NavigationSettings';
 import { useOrganizationModules } from '@/lib/organizationModules';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth, type AuthSessionPayload } from '@/lib/auth';
@@ -33,7 +34,7 @@ export default function MyProfile() {
         {!mustChangePassword && (
           <ProfileCard userName={user?.name || ''} avatarUrl={user?.avatarUrl || null} onUpdated={refresh} email={user?.email || ''} theme={user?.theme || DEFAULT_LIGHT_THEME} themeMode={user?.themeMode || 'system'} locale={user?.locale || 'de'} />
         )}
-        {!mustChangePassword && <ViewDensitySettings />}
+        {!mustChangePassword && <div className="space-y-6"><NavigationSettings /><ViewDensitySettings /></div>}
         {!mustChangePassword && <MobileNavigationSettings userId={user?.id} />}
         <PasswordSection mustChangePassword={mustChangePassword} onPasswordChanged={replaceSession} />
         {!mustChangePassword && <SessionsSection />}

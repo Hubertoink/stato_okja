@@ -4,6 +4,7 @@ export const resources = {
   de: {
     auto: autoResources.de,
     common: {
+      shell: { navigation: 'Navigation', administration: 'Verwaltung', legal: 'Rechtstexte', expand: 'Seitenleiste ausklappen', collapse: 'Seitenleiste einklappen' },
       chartExport: {
         name: 'Bezeichnung', share: 'Anteil', noData: 'Keine Daten', bar: 'Balken',
         offers: 'Ø Angebote parallel', participants: 'Ø Besucher:innen',
@@ -814,6 +815,14 @@ export const resources = {
     },
     settings: {
       title: 'Einstellungen',
+      navigationLayout: {
+        title: 'Navigation', description: 'Wähle die Navigation für Desktop und Tablet.',
+        sidebar: 'Seitenleiste', top: 'Obere Navigation',
+        sidebarDescription: 'Mehr Platz für Menüpunkte, mit einklappbarer Seitenleiste. Standard auf breiten Bildschirmen.',
+        topDescription: 'Die gewohnte horizontale Navigation oberhalb des Inhalts.',
+        deviceHint: 'Wird in deinem Profil gespeichert. Mobil bleibt das Bottom-Menü erhalten.',
+        saving: 'Wird gespeichert …', saved: 'Gespeichert', error: 'Speichern fehlgeschlagen. Bitte erneut versuchen.',
+      },
       viewDensity: {
         title: 'Ansichtsmodus',
         description: 'Wähle, wie groß Schrift und Bedienelemente auf deinem Desktop dargestellt werden.',
@@ -1133,6 +1142,7 @@ export const resources = {
   en: {
     auto: autoResources.en,
     common: {
+      shell: { navigation: 'Navigation', administration: 'Administration', legal: 'Legal texts', expand: 'Expand sidebar', collapse: 'Collapse sidebar' },
       chartExport: {
         name: 'Label', share: 'Share', noData: 'No data', bar: 'Bar',
         offers: 'Average concurrent activities', participants: 'Average visitors',
@@ -1916,6 +1926,14 @@ export const resources = {
     },
     settings: {
       title: 'Settings',
+      navigationLayout: {
+        title: 'Navigation', description: 'Choose your desktop and tablet navigation.',
+        sidebar: 'Sidebar', top: 'Top navigation',
+        sidebarDescription: 'More room for menu items, with a collapsible sidebar. Default on wide screens.',
+        topDescription: 'The familiar horizontal navigation above the content.',
+        deviceHint: 'Saved to your profile. Mobile keeps the bottom navigation.',
+        saving: 'Saving …', saved: 'Saved', error: 'Could not save. Please try again.',
+      },
       viewDensity: {
         title: 'View mode',
         description: 'Choose the size of text and controls on your desktop.',

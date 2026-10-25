@@ -10,6 +10,7 @@ import NavigationLinks from './NavigationLinks';
 import SidebarOrganization from './SidebarOrganization';
 import UserMenu, { type UserMenuProps } from './UserMenu';
 import { administrationItems, type NavigationItem } from './navigationItems';
+import './sidebar-scrollbar.css';
 
 export default function Sidebar({
   items,

@@ -17,12 +17,15 @@ export function useAnchoredPopoverPosition(
     if (!panel || !anchor) return;
     const dock = anchor.closest('.page-actions-dock');
     const header = document.querySelector('.header-navigation-shell');
+    const sidebar = anchor.closest('.app-sidebar') ? null : document.querySelector('.app-sidebar');
     const updatePosition = () => {
       const rect = anchor.getBoundingClientRect();
       const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
       const viewportHeight = window.innerHeight;
       const topEdge = Math.max(16, (header?.getBoundingClientRect().bottom ?? 0) + 8);
-      const width = Math.min(panel.getBoundingClientRect().width, viewportWidth - 32);
+      const leftEdge = Math.max(16, (sidebar?.getBoundingClientRect().right ?? 0) + 16);
+      const maxWidth = Math.max(0, viewportWidth - leftEdge - 16);
+      const width = Math.min(panel.getBoundingClientRect().width, maxWidth);
       const dockTop = anchor.closest('.page-actions-dock')?.getBoundingClientRect().top;
       const aboveEnd = Math.min(dockTop ?? rect.top, viewportHeight - 8) - 8;
       const belowStart = Math.max(topEdge, rect.bottom + 8);
@@ -31,14 +34,15 @@ export function useAnchoredPopoverPosition(
       const opensAbove = dockTop !== undefined || (below < Math.min(panel.scrollHeight, 320) && above > below);
       setStyle({
         position: 'fixed',
-        left: Math.max(16, Math.min(rect.right - width, viewportWidth - width - 16)),
+        left: Math.max(leftEdge, Math.min(rect.right - width, viewportWidth - width - 16)),
         right: 'auto',
         top: opensAbove ? 'auto' : belowStart,
         bottom: opensAbove ? viewportHeight - Math.max(topEdge, aboveEnd) : 'auto',
-        maxWidth: viewportWidth - 32,
+        maxWidth,
         maxHeight: opensAbove ? above : below,
         margin: 0,
         overflowY: 'auto',
+        overscrollBehavior: 'contain',
       });
     };
     updatePosition();
@@ -47,6 +51,7 @@ export function useAnchoredPopoverPosition(
     observer?.observe(panel);
     if (dock) observer?.observe(dock);
     if (header) observer?.observe(header);
+    if (sidebar) observer?.observe(sidebar);
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
     window.addEventListener(PAGE_ACTIONS_POSITION_EVENT, updatePosition);

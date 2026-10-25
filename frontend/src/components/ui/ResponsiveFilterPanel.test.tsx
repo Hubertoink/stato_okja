@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResponsiveFilterPanel } from './ResponsiveFilterPanel';
 import { Button } from './Button';
@@ -34,6 +34,8 @@ beforeEach(() => {
   dockTop = 600;
   vi.stubGlobal('innerWidth', 1024);
   vi.stubGlobal('innerHeight', 768);
+  vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 0);
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
     if (this.classList.contains('header-navigation-shell')) return rect(0, 0, 1024, 100);
     if (this.classList.contains('page-actions-dock')) return rect(250, dockTop, 500, 140);
@@ -43,11 +45,44 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
 describe('responsive filter positioning', () => {
+  it('keeps a wide dock dropdown beside the sidebar', () => {
+    const sidebar = document.createElement('aside');
+    sidebar.className = 'app-sidebar';
+    sidebar.getBoundingClientRect = () => rect(0, 0, 240, 768);
+    document.body.append(sidebar);
+    try {
+      render(<Example />);
+      expect(screen.getByRole('dialog')).toHaveStyle({ left: '256px', maxWidth: '752px' });
+    } finally {
+      sidebar.remove();
+    }
+  });
+
+  it.each(['escape', 'outside', 'trigger', 'close', 'unmount'])('locks the page until dismissal via %s and restores the scroll position', method => {
+    vi.stubGlobal('scrollY', 600);
+    const { unmount } = render(<Example />);
+    expect(document.body.style.position).toBe('fixed');
+    expect(document.body.style.top).toBe('-600px');
+    expect(document.documentElement.style.overflow).toBe('hidden');
+    expect(screen.getByRole('dialog')).toHaveStyle({ overflowY: 'auto', overscrollBehavior: 'contain' });
+
+    if (method === 'escape') fireEvent.keyDown(document, { key: 'Escape' });
+    else if (method === 'outside') fireEvent.pointerDown(screen.getByRole('button', { name: 'Außerhalb' }));
+    else if (method === 'trigger') fireEvent.click(screen.getByRole('button', { name: 'Öffnen' }));
+    else if (method === 'close') fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
+    else unmount();
+
+    expect(document.body).not.toHaveAttribute('data-scroll-locked');
+    expect(document.body.style.position).toBe('');
+    expect(window.scrollTo).toHaveBeenCalledWith({ top: 600, left: 0, behavior: 'auto' });
+  });
+
   it.each([false, true])('keeps a wide flyout above the dock and below the header (explicit anchor: %s)', explicitAnchor => {
     render(<Example explicitAnchor={explicitAnchor} />);
     expect(screen.getByRole('dialog')).toHaveStyle({ position: 'fixed', left: '16px', bottom: '176px', maxHeight: '484px', margin: '0px' });

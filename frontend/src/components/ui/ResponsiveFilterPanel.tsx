@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import Modal from '@/components/Modal';
 import { CloseButton } from './Button';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +27,8 @@ export function ResponsiveFilterPanel({
   const isMobile = useIsMobile(mobileBreakpoint, { touchIsMobile: false });
   const { t } = useTranslation('common');
   const panelRef = useRef<HTMLElement | null>(null);
+  // The mobile Modal owns its lock; desktop keeps the existing anchored dropdown.
+  useBodyScrollLock(open && !isMobile);
   const anchorStyle = useAnchoredPopoverPosition(open && !isMobile, panelRef, anchorRef);
 
   useEffect(() => {

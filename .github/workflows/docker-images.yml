@@ -22,6 +22,8 @@ permissions:
   actions: read
 
 env:
+  # Avoid the pull-through mirror: missing cached layers return 404 without fallback.
+  TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2,public.ecr.aws/aquasecurity/trivy-db:2
   REGISTRY: ghcr.io
   IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/stato-backend
   IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/stato-frontend

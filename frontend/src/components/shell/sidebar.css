@@ -276,3 +276,15 @@
     transition: opacity 140ms ease-out;
   }
 }
+
+/* Tooltip anchors must preserve full-width rows and their existing icon positions. */
+.app-sidebar .sidebar-links > li > .app-tooltip-trigger,
+.app-sidebar .sidebar-org-anchor > .app-tooltip-trigger,
+.app-sidebar .sidebar-organization-section > .app-tooltip-trigger,
+.app-sidebar .shell-user > .app-tooltip-trigger {
+  display: flex;
+  width: 100%;
+}
+.app-sidebar .sidebar-links .app-tooltip-trigger > a {
+  width: 100%;
+}

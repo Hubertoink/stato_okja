@@ -1,3 +1,4 @@
+import SidebarTooltip from './SidebarTooltip';
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Building2, Check, ChevronDown } from 'lucide-react';
@@ -46,27 +47,28 @@ export default function OrganizationDropdown({
   return (
     <>
       <div ref={anchor} className="sidebar-org-anchor">
-        <Button
-          variant="ghost"
-          className="sidebar-org-trigger"
-          disabled={disabled}
-          aria-label={label}
-          title={currentName}
-          aria-haspopup="menu"
-          aria-expanded={open}
-          aria-controls={open ? id : undefined}
-          onClick={() => setOpen(!open)}
-          onKeyDown={(event) => {
-            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-              event.preventDefault();
-              setOpen(true);
-            }
-          }}
-        >
-          <Building2 aria-hidden="true" />
-          <span className="sidebar-label">{currentName}</span>
-          <ChevronDown aria-hidden="true" className="sidebar-label sidebar-org-chevron" />
-        </Button>
+        <SidebarTooltip text={`${label}: ${currentName}`} suppress={open}>
+          <Button
+            variant="ghost"
+            className="sidebar-org-trigger"
+            disabled={disabled}
+            aria-label={label}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            aria-controls={open ? id : undefined}
+            onClick={() => setOpen(!open)}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                setOpen(true);
+              }
+            }}
+          >
+            <Building2 aria-hidden="true" />
+            <span className="sidebar-label">{currentName}</span>
+            <ChevronDown aria-hidden="true" className="sidebar-label sidebar-org-chevron" />
+          </Button>
+        </SidebarTooltip>
       </div>
       {open &&
         createPortal(

@@ -1,3 +1,4 @@
+import SidebarTooltip from './SidebarTooltip';
 import { Building2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -47,10 +48,12 @@ export default function SidebarOrganization({
           ]}
         />
       ) : (
-        <div className="sidebar-org-control" title={currentName}>
-          <Building2 aria-hidden="true" className="h-5 w-5 shrink-0" />
-          <span className="sidebar-label">{currentName}</span>
-        </div>
+        <SidebarTooltip text={currentName}>
+          <div className="sidebar-org-control" aria-label={currentName}>
+            <Building2 aria-hidden="true" className="h-5 w-5 shrink-0" />
+            <span className="sidebar-label">{currentName}</span>
+          </div>
+        </SidebarTooltip>
       )}
       {organizations.isError && (
         <Button

@@ -2,6 +2,8 @@ import { Button } from '@/components/ui/Button';
 import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useIsMobile } from '@/lib/useIsMobile';
+import { SidebarIconOnlyContext } from './SidebarTooltip';
 import { useAuth } from '@/lib/auth';
 import logoUrl from '../../../assets/Stato_Logo.png';
 import NavigationLinks from './NavigationLinks';
@@ -23,6 +25,8 @@ export default function Sidebar({
   const { t } = useTranslation('common');
   const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
+  const narrow = useIsMobile(1280, { touchIsMobile: false });
+  const iconOnly = narrow ? !expanded : collapsed;
   const admins = administrationItems(user?.role, t);
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
@@ -32,7 +36,7 @@ export default function Sidebar({
     return () => window.removeEventListener('keydown', close);
   }, []);
   return (
-    <>
+    <SidebarIconOnlyContext.Provider value={iconOnly}>
       {expanded && (
         <Button
           variant="ghost"
@@ -105,6 +109,6 @@ export default function Sidebar({
         </nav>
         <UserMenu {...userMenu} sidebar />
       </aside>
-    </>
+    </SidebarIconOnlyContext.Provider>
   );
 }

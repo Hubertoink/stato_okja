@@ -14,10 +14,14 @@ export function Tooltip({
   text,
   children,
   disabled = false,
+  placement = 'top',
+  enabled = true,
 }: {
   text: string;
   children: ReactElement<{ 'aria-describedby'?: string; title?: string }>;
   disabled?: boolean;
+  placement?: 'top' | 'right';
+  enabled?: boolean;
 }) {
   const id = useId();
   const anchor = useRef<HTMLSpanElement>(null);
@@ -28,19 +32,40 @@ export function Tooltip({
     setVisible(false);
     setPosition(null);
   };
+  const shown = enabled && visible;
+  useEffect(() => {
+    if (!enabled) {
+      setVisible(false);
+      setPosition(null);
+    }
+  }, [enabled]);
 
   useLayoutEffect(() => {
     if (!visible || !anchor.current || !bubble.current) return;
     const rect = anchor.current.getBoundingClientRect();
     const box = bubble.current.getBoundingClientRect();
+    if (placement === 'right') {
+      const preferredLeft = rect.right + 8;
+      setPosition({
+        left: Math.max(8, Math.min(preferredLeft, window.innerWidth - box.width - 8)),
+        top: Math.max(
+          8,
+          Math.min(rect.top + (rect.height - box.height) / 2, window.innerHeight - box.height - 8),
+        ),
+      });
+      return;
+    }
     setPosition({
-      left: Math.max(8, Math.min(rect.left + (rect.width - box.width) / 2, window.innerWidth - box.width - 8)),
+      left: Math.max(
+        8,
+        Math.min(rect.left + (rect.width - box.width) / 2, window.innerWidth - box.width - 8),
+      ),
       top:
         rect.top - box.height - 6 >= 8
           ? rect.top - box.height - 6
           : Math.min(window.innerHeight - box.height - 8, rect.bottom + 6),
     });
-  }, [visible, text]);
+  }, [visible, text, placement]);
   useEffect(() => {
     if (!visible) return;
     const dismiss = () => {
@@ -61,16 +86,20 @@ export function Tooltip({
       className="app-tooltip-trigger"
       tabIndex={disabled ? 0 : undefined}
       aria-label={disabled ? text : undefined}
-      aria-describedby={disabled && visible ? id : undefined}
-      onMouseEnter={() => setVisible(true)}
+      aria-describedby={disabled && shown ? id : undefined}
+      onMouseEnter={() => {
+        if (enabled) setVisible(true);
+      }}
       onMouseLeave={() => {
         if (!anchor.current?.contains(document.activeElement)) hide();
       }}
-      onFocus={() => setVisible(true)}
+      onFocus={() => {
+        if (enabled) setVisible(true);
+      }}
       onBlur={hide}
       onClick={hide}
       onKeyDown={(event) => {
-        if (visible && event.key === 'Escape') {
+        if (shown && event.key === 'Escape') {
           event.preventDefault();
           event.stopPropagation();
           hide();
@@ -79,11 +108,11 @@ export function Tooltip({
     >
       {cloneElement(children, {
         title: undefined,
-        'aria-describedby': visible
+        'aria-describedby': shown
           ? [children.props['aria-describedby'], id].filter(Boolean).join(' ')
           : children.props['aria-describedby'],
       })}
-      {visible &&
+      {shown &&
         createPortal(
           <span
             ref={bubble}

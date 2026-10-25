@@ -1,3 +1,4 @@
+import SidebarTooltip from './SidebarTooltip';
 import { Button } from '@/components/ui/Button';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -63,33 +64,35 @@ export default function UserMenu({
       ref={root}
       className={`shell-user ${sidebar ? 'shell-user-sidebar' : 'shell-user-header mobile-header-user'}`}
     >
-      <Button
-        variant="ghost"
-        type="button"
-        className="shell-user-trigger theme-header-action"
-        aria-label={t('navigation.userMenu')}
-        aria-expanded={open}
-        aria-controls={id}
-        onClick={() => setOpen(!open)}
-      >
-        {user?.avatarUrl ? (
-          <ProtectedImage
-            src={user.avatarUrl}
-            alt=""
-            className="w-8 h-8 rounded-full object-cover shrink-0"
-          />
-        ) : (
-          <UserCircle2 className="w-8 h-8 shrink-0" aria-hidden="true" />
-        )}
-        <span className={`shell-user-copy ${sidebar ? '' : 'desktop-header-user-copy'}`}>
-          <strong>{user?.name || user?.email}</strong>
-          <small>
-            {t(`roles.${user?.role || 'user'}`)}
-            {!sidebar && activeOrgName ? ` · ${activeOrgName}` : ''}
-            {orgSwitching ? ' …' : ''}
-          </small>
-        </span>
-      </Button>
+      <SidebarTooltip text={t('navigation.userMenu')} suppress={!sidebar || open}>
+        <Button
+          variant="ghost"
+          type="button"
+          className="shell-user-trigger theme-header-action"
+          aria-label={t('navigation.userMenu')}
+          aria-expanded={open}
+          aria-controls={id}
+          onClick={() => setOpen(!open)}
+        >
+          {user?.avatarUrl ? (
+            <ProtectedImage
+              src={user.avatarUrl}
+              alt=""
+              className="w-8 h-8 rounded-full object-cover shrink-0"
+            />
+          ) : (
+            <UserCircle2 className="w-8 h-8 shrink-0" aria-hidden="true" />
+          )}
+          <span className={`shell-user-copy ${sidebar ? '' : 'desktop-header-user-copy'}`}>
+            <strong>{user?.name || user?.email}</strong>
+            <small>
+              {t(`roles.${user?.role || 'user'}`)}
+              {!sidebar && activeOrgName ? ` · ${activeOrgName}` : ''}
+              {orgSwitching ? ' …' : ''}
+            </small>
+          </span>
+        </Button>
+      </SidebarTooltip>
       {open && (
         <div id={id} className="shell-user-panel theme-menu-panel" onClick={() => setOpen(false)}>
           <div className="px-4 py-3 border-b theme-menu-section">

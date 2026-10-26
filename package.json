@@ -38,9 +38,9 @@
     "concurrently": "^10.0.6",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
-    "globals": "^17.11.0",
+    "globals": "^17.13.0",
     "typeorm": "1.1.0",
-    "typescript-eslint": "^8.68.0"
+    "typescript-eslint": "^8.72.0"
   },
   "overrides": {
     "proxy-addr": "2.0.8",

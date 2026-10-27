@@ -57,7 +57,8 @@ export function StatisticsPieChartCard({
       </div>
       <div className={bodyClassName} data-export-chart="pie">
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart margin={{ top: 12, right: 20, bottom: 30, left: 20 }}>
+          {/* Reserve headroom for the outer label lines and percentage text. */}
+          <PieChart margin={{ top: 40, right: 20, bottom: 30, left: 20 }}>
             <Pie
               dataKey="value"
               data={data}

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -79,7 +79,7 @@ describe('editing inside logbook details', () => {
     expect(screen.getByRole('heading', { name: 'Kommentare (0)' })).toBeInTheDocument();
     const title = screen.getByRole('textbox', { name: 'Titel' });
     await user.clear(title); await user.type(title, 'Neuer Kochabend');
-    fireEvent.submit(title.closest('form')!);
+    await user.click(within(dialog.querySelector('footer')!).getByRole('button', { name: 'Speichern' }));
     expect(await screen.findByRole('heading', { name: 'Neuer Kochabend' })).toBeInTheDocument();
     expect(mock.save).toHaveBeenCalledWith(expect.objectContaining({ id: 'entry', data: expect.objectContaining({ title: 'Neuer Kochabend' }) }));
     expect(close).not.toHaveBeenCalled();

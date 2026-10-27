@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Activity } from '@/lib/activities';
 import type { StaffMember } from '@/lib/staff';
 import ActivityQuickAdd from './CalendarQuickAddModal';
+import ActivityEditPage from './ActivityEditPage';
+import { MemoryRouter } from 'react-router-dom';
 
 const state = vi.hoisted(() => ({ activity: undefined as Activity | undefined, mutate: vi.fn(), empty: [], categoryMode: 'multiple', categories: [{ id: 'c1', name: 'Sport' }, { id: 'c2', name: 'Musik' }], staff: [] as StaffMember[] }));
 vi.mock('@/lib/activities', () => ({
@@ -41,6 +43,17 @@ function activity(version: number, youngWomen: number): Activity {
 beforeEach(() => { state.categoryMode = 'multiple'; state.activity = undefined; state.staff = []; state.mutate.mockReset(); });
 
 describe('activity editor refresh', () => {
+  it('opens the standalone editor when its activity arrives after the initial render', async () => {
+    const { rerender } = render(<MemoryRouter><ActivityEditPage /></MemoryRouter>);
+    expect(screen.queryByLabelText('Notizen')).not.toBeInTheDocument();
+
+    state.activity = { ...activity(1, 4), notes: 'Existing notes' };
+    rerender(<MemoryRouter><ActivityEditPage /></MemoryRouter>);
+
+    await waitFor(() => expect(screen.getByLabelText('Notizen')).toHaveValue('Existing notes'));
+    expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled();
+  });
+
   it.each(['single', 'multiple'])('saves the category selection in %s mode', (mode) => {
     state.categoryMode = mode;
     const initial = activity(1, 4);

@@ -9,6 +9,7 @@ import { useModalHistory } from '@/components/Modal';
 import { CloseButton, DeleteIconButton } from '@/components/ui/Button';
 import ConfirmModal from '@/components/ConfirmModal';
 import { Input } from '@/components/ui/Field';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { autoT } from '@/i18n/auto';
 
 function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Location>; onClose: () => void; onSaved: () => void }) {
@@ -64,7 +65,7 @@ function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Locatio
           {/* Locations are always active; no UI toggle */}
         </div>
         {saveError && <p role="alert" className="text-[var(--status-danger-text)]">{saveError}</p>}
-        <div className="settings-modal-actions roomy-settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
+        <div data-scroll-footer className="settings-modal-actions roomy-settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
           <CloseButton onClick={dismiss} aria-label={t('common:actions.cancel')} />
           <button type="button" disabled={saving} className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:opacity-50" onClick={save} aria-label={t('common:actions.save')}><SaveIcon className="w-5 h-5"/></button>
         </div>
@@ -106,15 +107,21 @@ export default function SettingsLocations() {
           <h3 className="text-xl font-semibold text-viridian">{t('locations.title')}</h3>
           <p className="text-gray-600">{t('locations.subtitle')}</p>
         </div>
-        <span className="tooltip-wrapper shrink-0"><button
-          className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow disabled:cursor-not-allowed disabled:opacity-50"
-          onClick={()=> canManageLocations && setModal({ mode: 'create' })}
-          aria-label={t('locations.create')}
-          title={canManageLocations ? t('locations.create') : 'Nur Editor oder Organisationsadmin dürfen Einrichtungen verwalten'}
-          disabled={!canManageLocations}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path fillRule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clipRule="evenodd" /></svg>
-        </button><span className="tooltip-bubble">{t('locations.create')}</span></span>
+        <span className="shrink-0">
+          <Tooltip
+            text={canManageLocations ? t('locations.create') : 'Nur Editor oder Organisationsadmin dürfen Einrichtungen verwalten'}
+            disabled={!canManageLocations}
+          >
+            <button
+              className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={()=> canManageLocations && setModal({ mode: 'create' })}
+              aria-label={t('locations.create')}
+              disabled={!canManageLocations}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path fillRule="evenodd" d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z" clipRule="evenodd" /></svg>
+            </button>
+          </Tooltip>
+        </span>
       </div>
       <div className="min-w-0 divide-y">
         {locations.map((l) => (

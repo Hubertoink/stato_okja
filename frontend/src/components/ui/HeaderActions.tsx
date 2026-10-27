@@ -3,6 +3,7 @@ import { Search, SlidersHorizontal, XCircle } from 'lucide-react';
 import { IconButton } from './Button';
 import { Input } from './Field';
 import { useAnchoredPopoverPosition } from './useAnchoredPopoverPosition';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 
 /** Standard search trigger and popover for list page headers. */
 export function HeaderSearchAction({
@@ -28,6 +29,7 @@ export function HeaderSearchAction({
 }) {
   const anchorRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  useBodyScrollLock(open);
   const popoverStyle = useAnchoredPopoverPosition(open, popoverRef, anchorRef);
 
   useEffect(() => {

@@ -1,16 +1,13 @@
-import { useOrganizationModules } from '@/lib/organizationModules';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useAuth, type AuthSessionPayload } from '@/lib/auth';
+import RoleInfo from '@/components/profile/RoleInfo';
+import { useEffect, useRef, useState } from 'react';
+import { useAuth, type AuthSessionPayload, type Role } from '@/lib/auth';
 import { api } from '@/lib/api';
-import { applyTheme, DEFAULT_DARK_THEME, DEFAULT_LIGHT_THEME, normalizeThemeMode, THEME_DEFINITIONS, type ThemeMode } from '@/lib/theme';
 import Modal from '@/components/Modal';
 import ProtectedImage from '@/components/ProtectedImage';
 import PasswordRequirementsHint from '@/components/PasswordRequirementsHint';
-import { Camera, ChevronDown, ChevronUp, Eye, EyeOff, GripVertical, RotateCcw, ShieldCheck, Trash2 } from 'lucide-react';
+import { Camera, ChevronDown, ChevronUp, Eye, EyeOff, ShieldCheck, Trash2 } from 'lucide-react';
 import { normalizeUploadPath } from '@/lib/uploadPaths';
 import { getPasswordValidationMessage } from '@/lib/passwordPolicy';
-import { getMobileNavLayout, MOBILE_NAV_ITEM_IDS, resetMobileNavLayout, saveMobileNavLayout, type MobileNavItemId } from '@/lib/mobileNavigation';
-import { useProcessOAccess } from '@/lib/processes';
 import { useTranslation } from 'react-i18next';
 import { setPreferredLocale } from '@/i18n';
 import { APP_LOCALES, type AppLocale } from '@/i18n/locales';
@@ -30,88 +27,13 @@ export default function MyProfile() {
       )}
       <div className="grid grid-cols-1 gap-6">
         {!mustChangePassword && (
-          <ProfileCard userName={user?.name || ''} avatarUrl={user?.avatarUrl || null} onUpdated={refresh} email={user?.email || ''} theme={user?.theme || DEFAULT_LIGHT_THEME} themeMode={user?.themeMode || 'system'} locale={user?.locale || 'de'} />
+          <ProfileCard userName={user?.name || ''} avatarUrl={user?.avatarUrl || null} onUpdated={refresh} email={user?.email || ''} role={user?.role || 'user'} locale={user?.locale || 'de'} />
         )}
-        {!mustChangePassword && <MobileNavigationSettings userId={user?.id} />}
         <PasswordSection mustChangePassword={mustChangePassword} onPasswordChanged={replaceSession} />
         {!mustChangePassword && <SessionsSection />}
       </div>
     </div>
   );
-}
-
-function MobileNavigationSettings({ userId }: { userId?: string }) {
-  const { t } = useTranslation('common');
-  const modules = useOrganizationModules();
-  const processOAccess = useProcessOAccess();
-  const availableItemIds = useMemo(
-    () => MOBILE_NAV_ITEM_IDS.filter((id) => (id !== 'processes' || processOAccess.data?.enabled) && (id !== 'logbook' || modules.data?.logbook) && (id !== 'surveys' || modules.data?.surveys)),
-    [processOAccess.data?.enabled, modules.data?.logbook, modules.data?.surveys],
-  );
-  const mobileNavLabels: Record<MobileNavItemId, string> = {
-    dashboard: t('navigation.dashboard'),
-    activities: t('navigation.activities'),
-    logbook: t('navigation.logbook'),
-    calendar: t('navigation.calendar'),
-    projects: t('navigation.projects'),
-    processes: t('navigation.processes'),
-    surveys: t('navigation.surveys'),
-    statistics: t('navigation.statistics'),
-    settings: t('navigation.settings'),
-  };
-  const [bottom, setBottom] = useState<MobileNavItemId[]>(() => getMobileNavLayout(userId, availableItemIds).bottom);
-  const [dragged, setDragged] = useState<MobileNavItemId | null>(null);
-  useEffect(() => setBottom(getMobileNavLayout(userId, availableItemIds).bottom), [availableItemIds, userId]);
-  const more = availableItemIds.filter((id) => !bottom.includes(id));
-  const persist = (next: MobileNavItemId[]) => {
-    setBottom(next);
-    saveMobileNavLayout({ bottom: next }, userId, availableItemIds);
-  };
-  const swapWithBottom = (id: MobileNavItemId, target: MobileNavItemId) => {
-    if (id === target) return;
-    const sourceIsBottom = bottom.includes(id);
-    const targetIsBottom = bottom.includes(target);
-    if (sourceIsBottom && targetIsBottom) {
-      const next = [...bottom];
-      const from = next.indexOf(id);
-      const to = next.indexOf(target);
-      next.splice(from, 1);
-      next.splice(to, 0, id);
-      persist(next);
-      return;
-    }
-    if (sourceIsBottom) persist(bottom.map((item) => item === id ? target : item));
-    else if (targetIsBottom) persist(bottom.map((item) => item === target ? id : item));
-  };
-  return (
-    <div className="settings-profile-card bg-white rounded-lg shadow p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-lg font-semibold text-viridian">{autoT('ui_23f0292a1de9')}</h3>
-          <p className="mt-1 text-sm text-gray-600">{autoT('ui_393e7b57db57')}</p>
-        </div>
-        <button type="button" onClick={() => { resetMobileNavLayout(userId, availableItemIds); setBottom(getMobileNavLayout(userId, availableItemIds).bottom); }} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium text-gray-600 hover:bg-gray-100">
-          <RotateCcw className="h-4 w-4" />{autoT('ui_a4565af537e2')}</button>
-      </div>
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
-        <MobileNavigationList labels={mobileNavLabels} title={autoT('ui_71156a85ad75')} ids={bottom} dragged={dragged} setDragged={setDragged} onDrop={swapWithBottom} onMove={(id) => {
-          const replacement = more[0];
-          if (replacement) persist(bottom.map((item) => item === id ? replacement : item));
-        }} actionLabel={autoT('ui_30ef5576c197')} emphasis />
-        <MobileNavigationList labels={mobileNavLabels} title={autoT('ui_3b1556f1c066')} ids={more} dragged={dragged} setDragged={setDragged} onDrop={swapWithBottom} onMove={(id) => persist([...bottom.slice(0, 3), id])} actionLabel={autoT('ui_006cca9235b0')} />
-      </div>
-      <p className="mt-3 text-xs text-gray-500">{autoT('ui_dafbef2f8f5e')}</p>
-    </div>
-  );
-}
-
-function MobileNavigationList({ labels, title, ids, dragged, setDragged, onDrop, onMove, actionLabel, emphasis = false }: {
-  labels: Record<MobileNavItemId, string>;
-  title: string; ids: MobileNavItemId[]; dragged: MobileNavItemId | null; setDragged: (id: MobileNavItemId | null) => void;
-  onDrop: (source: MobileNavItemId, target: MobileNavItemId) => void; onMove: (id: MobileNavItemId) => void;
-  actionLabel: string; emphasis?: boolean;
-}) {
-  return <section><h4 className="mb-2 text-sm font-semibold text-[var(--text-primary)]">{title}</h4><div className={`settings-mobile-list space-y-2 rounded-xl border p-2 ${emphasis ? "settings-mobile-list-emphasis" : ""}`}>{ids.map((id) => <div key={id} draggable onDragStart={() => setDragged(id)} onDragEnd={() => setDragged(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (dragged) onDrop(dragged, id); setDragged(null); }} className="settings-mobile-item flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium"><GripVertical className="h-4 w-4 text-[var(--text-muted)]" /><span className="min-w-0 flex-1">{labels[id]}</span><button type="button" onClick={() => onMove(id)} className={`min-h-11 shrink-0 px-2 text-xs font-semibold ${emphasis ? "text-[var(--text-secondary)] hover:text-viridian" : "text-viridian"}`}>{actionLabel}</button></div>)}</div></section>;
 }
 
 type AuthSession = {
@@ -238,27 +160,21 @@ function SessionsSection() {
   );
 }
 
-function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, themeMode, locale }: { userName: string; avatarUrl: string | null; email: string; theme: string; themeMode: ThemeMode; locale: AppLocale; onUpdated: ()=>Promise<void>|void }) {
+function ProfileCard({ userName, avatarUrl, onUpdated, email, role, locale }: { userName: string; avatarUrl: string | null; email: string; role: Role; locale: AppLocale; onUpdated: ()=>Promise<void>|void }) {
   const { t } = useTranslation('common');
   const { showToast } = useToast();
   const [name, setName] = useState(userName);
   const [image, setImage] = useState<string | null>(normalizeUploadPath(avatarUrl) || null);
   const [savingName, setSavingName] = useState(false);
-  const [savingAppearance, setSavingAppearance] = useState(false);
   const [savingAvatar, setSavingAvatar] = useState(false);
   const [savingLocale, setSavingLocale] = useState(false);
-  const [selectedTheme, setSelectedTheme] = useState<string>(theme);
-  const [selectedThemeMode, setSelectedThemeMode] = useState<ThemeMode>(normalizeThemeMode(themeMode));
   const [selectedLocale, setSelectedLocale] = useState<AppLocale>(locale);
-  const [appearanceExpanded, setAppearanceExpanded] = useState(false);
   const [avatarActionOpen, setAvatarActionOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const nameChanged = name.trim() !== userName.trim();
 
   useEffect(() => setName(userName), [userName]);
   useEffect(() => setImage(normalizeUploadPath(avatarUrl) || null), [avatarUrl]);
-  useEffect(() => setSelectedTheme(theme), [theme]);
-  useEffect(() => setSelectedThemeMode(normalizeThemeMode(themeMode)), [themeMode]);
   useEffect(() => setSelectedLocale(locale), [locale]);
 
   function errorMessage(error: unknown) {
@@ -266,7 +182,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, themeMode, 
     return Array.isArray(message as string[]) ? (message as string[]).join(', ') : String(message);
   }
 
-  async function persistProfile(patch: { name?: string; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; locale?: AppLocale }, successMessage: string) {
+  async function persistProfile(patch: { name?: string; avatarUrl?: string | null; locale?: AppLocale }, successMessage: string) {
     try {
       await api.patch('/auth/me', patch);
       showToast(successMessage);
@@ -336,6 +252,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, themeMode, 
               </span>
             </button>
           </div>
+          <RoleInfo role={role} />
           <div className="text-xs text-gray-500">{autoT('ui_055ae355b1aa')}</div>
         </div>
         <div className="w-full flex-1 space-y-3">
@@ -390,79 +307,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, theme, themeMode, 
             </select>
             <p className="mt-1 text-xs text-gray-500">{savingLocale ? t('language.saving') : t('language.help')}</p>
           </div>
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3">
-            <button
-              type="button"
-              className="flex w-full items-start justify-between gap-3 text-left"
-              onClick={() => setAppearanceExpanded((current) => !current)}
-              aria-expanded={appearanceExpanded}
-            >
-              <div>
-                <div className="text-sm font-medium">{autoT('ui_76a523492a64')}</div>
-                <div className="mt-1 text-xs text-gray-500">{autoT('ui_0485a0265960')}{' '}{selectedThemeMode === 'system' ? 'System' : selectedThemeMode === 'light' ? 'Hell' : selectedThemeMode === 'dark' ? 'Dunkel' : selectedTheme}</div>
-              </div>
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--surface-2)] text-[var(--text-secondary)]">
-                {appearanceExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </span>
-            </button>
 
-            {appearanceExpanded && (
-              <div className="mt-4 space-y-4 border-t border-[var(--border-subtle)] pt-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1" htmlFor="profile-theme-mode">Helligkeit</label>
-                  <select
-                    id="profile-theme-mode"
-                    className="mt-1 w-full rounded border px-3 py-2"
-                    value={selectedThemeMode}
-                    disabled={savingAppearance}
-                    onChange={(event) => {
-                      const nextMode = normalizeThemeMode(event.target.value);
-                      const previousMode = selectedThemeMode;
-                      setSelectedThemeMode(nextMode);
-                      applyTheme(selectedTheme, nextMode);
-                      setSavingAppearance(true);
-                      void persistProfile({ themeMode: nextMode }, 'Darstellung aktualisiert').then((saved) => {
-                        if (!saved) {
-                          setSelectedThemeMode(previousMode);
-                          applyTheme(selectedTheme, previousMode);
-                        }
-                        setSavingAppearance(false);
-                      });
-                    }}
-                  >
-                    <option value="system">System (empfohlen)</option>
-                    <option value="light">Hell · {DEFAULT_LIGHT_THEME}</option>
-                    <option value="dark">Dunkel · {DEFAULT_DARK_THEME}</option>
-                    <option value="custom">Individuelles Design-Theme</option>
-                  </select>
-                  <p className="mt-1 text-xs text-gray-500">System nutzt hell das Standard-Theme und dunkel Catppuccin Mocha.</p>
-                </div>
-                {selectedThemeMode === 'custom' && <div>
-                  <label className="block text-sm font-medium mb-1">{autoT('ui_b1f7fecaf7ce')}</label>
-                  <ThemePicker
-                    value={selectedTheme}
-                    onChange={(nextTheme) => {
-                      const previousTheme = selectedTheme;
-                      setSelectedTheme(nextTheme);
-                      const previousMode = selectedThemeMode;
-                      setSelectedThemeMode('custom');
-                      applyTheme(nextTheme, 'custom');
-                      setSavingAppearance(true);
-                      void persistProfile({ theme: nextTheme, themeMode: 'custom' }, 'Darstellung aktualisiert').then((saved) => {
-                        if (!saved) {
-                          setSelectedTheme(previousTheme);
-                          setSelectedThemeMode(previousMode);
-                          applyTheme(previousTheme, previousMode);
-                        }
-                        setSavingAppearance(false);
-                      });
-                    }}
-                  />
-                  {savingAppearance && <div className="mt-2 text-xs text-gray-500">{autoT('ui_ec67d4590e12')}</div>}
-                </div>}
-              </div>
-            )}
-          </div>
         </div>
       </div>
       </div>
@@ -668,30 +513,6 @@ function PasswordInput({
       >
         {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
       </button>
-    </div>
-  );
-}
-
-function ThemePicker({ value, onChange }: { value: string; onChange: (t: string)=>void }) {
-  return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {THEME_DEFINITIONS.map(t => (
-          <button
-            key={t.name}
-            type="button"
-            onClick={()=> onChange(t.name)}
-            className={`border rounded p-2 text-left ${value===t.name ? "ring-2 ring-viridian" : ''}`}
-          >
-            <div className="font-medium text-sm">{t.name}</div>
-            <div className="text-xs text-gray-500 mb-2">{t.description}</div>
-            <div className="flex -space-x-1">
-              {t.colors.map((c,i)=> (<span key={i} className="inline-block w-6 h-6 rounded border" style={{ backgroundColor: c }} />))}
-            </div>
-          </button>
-        ))}
-      </div>
-      <div className="text-xs text-gray-500">{autoT('ui_f39141ec73c7')}</div>
     </div>
   );
 }

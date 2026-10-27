@@ -73,6 +73,31 @@
   }
 }
 
+/* The compact desktop scale fits the labels earlier. Keep the ordinary
+   breakpoint for touch devices and the narrower icon navigation below 1280px. */
+@media screen and (min-width: 1280px) and (max-width: 1399px) and (hover: hover) and (pointer: fine) {
+  html[data-view-density='compact'] .nav-label {
+    position: relative;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+  }
+
+  html[data-view-density='compact'] .nav-label::after {
+    display: block;
+  }
+
+  html[data-view-density='compact'] .nav-item-tooltip > svg {
+    margin-right: 0.5rem;
+  }
+
+  html[data-view-density='compact'] .nav-item-tooltip::after {
+    display: none;
+  }
+}
+
 /* Utility helpers for mobile safe areas and tooltips */
 .pb-safe {
   padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
@@ -108,17 +133,20 @@
   display: inline-flex;
   z-index: 1;
 }
-.tooltip-bubble {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
+.tooltip-bubble,
+.app-action-tooltip {
   background: rgba(17, 24, 39, 0.95);
   color: #fff;
   font-size: 12px;
   line-height: 1;
   padding: 6px 8px;
   border-radius: 6px;
+}
+.tooltip-bubble {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;

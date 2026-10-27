@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getKeyboardViewport } from './keyboardViewport';
 
 const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"]';
 let viewportBaseline = { width: 0, height: 0 };
@@ -20,27 +21,28 @@ export function useKeyboardOpen(threshold = 120): boolean {
 
     const compute = () => {
       try {
-        const height = vv?.height ?? window.innerHeight;
-        const offsetTop = vv?.offsetTop ?? 0;
+        const viewport = getKeyboardViewport();
+        const { height, offsetTop } = viewport;
         const layoutHeight = Math.max(window.innerHeight, document.documentElement.clientHeight, height + offsetTop);
         if (Math.abs(viewportBaseline.width - window.innerWidth) > 40) {
           viewportBaseline = { width: window.innerWidth, height: layoutHeight };
         } else {
           viewportBaseline.height = Math.max(viewportBaseline.height, layoutHeight);
         }
+        // Panning to a focused field changes offsetTop, not the keyboard height.
+        // Subtracting that offset can incorrectly report a closed keyboard.
         const hiddenHeight = Math.max(
           0,
-          layoutHeight - height - offsetTop,
-          viewportBaseline.height - height - offsetTop,
+          layoutHeight - height,
+          viewportBaseline.height - height,
         );
         const nextOpen = isEditableElement(document.activeElement) && hiddenHeight > threshold;
         const root = document.documentElement;
-        const layoutViewportResized =
-          viewportBaseline.height > 0 && layoutHeight < viewportBaseline.height - threshold;
-        const fixedHeight = nextOpen && !layoutViewportResized ? height : layoutHeight;
 
         root.style.setProperty('--visual-viewport-height', `${height}px`);
-        root.style.setProperty('--visual-viewport-fixed-height', `${Math.max(height, fixedHeight)}px`);
+        // Keep overlays inside the visible area even while focus changes or the
+        // keyboard animates. The document itself retains its layout viewport.
+        root.style.setProperty('--visual-viewport-fixed-height', `${height}px`);
         root.style.setProperty('--visual-viewport-offset-top', `${offsetTop}px`);
         root.style.setProperty('--keyboard-inset-height', `${nextOpen ? hiddenHeight : 0}px`);
         root.dataset.keyboardOpen = String(nextOpen);

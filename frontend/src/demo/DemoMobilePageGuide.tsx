@@ -88,15 +88,22 @@ const PAGE_GUIDES: Record<string, DemoMobilePageGuide> = {
     tryThis: 'Öffne eine Demo-Umfrage und wechsle zwischen den Fragen und den Ergebnissen.',
   },
   settings: {
-    key: 'settings',
-    title: autoT('ui_2a46ce33e667'),
-    scenario: autoT('ui_a557b6939cf6'),
-    options: [
-      autoT('ui_0ccb5e76d724'),
-      autoT('ui_ae4f326932e0'),
-      autoT('ui_f730941728ed'),
-    ],
-    tryThis: 'Wechsle zwischen Kategorien und Einrichtungen und vergleiche, wie die Stammdaten aufgebaut sind.',
+    key: 'settings', title: 'Persönliche Einstellungen',
+    scenario: 'Passe StatO an deine Arbeitsweise an.',
+    options: ['Zwischen oberer Navigation und Seitenleiste wählen', 'Die Ansichtsgröße einstellen', 'Profil, Sprache und Design anpassen'],
+    tryThis: 'Vergleiche die normale und die kompakte Ansicht.',
+  },
+  'master-data': {
+    key: 'master-data', title: 'Stammdaten: Die gemeinsame Grundlage',
+    scenario: 'Pflege die Begriffe und Grundlagen für eure Dokumentation.',
+    options: ['Kategorien, Tags und Altersgruppen ansehen', 'Team und Einrichtungen pflegen', 'Angebotsvorlagen verwalten'],
+    tryThis: 'Wechsle zwischen Kategorien und Altersgruppen.',
+  },
+  operations: {
+    key: 'operations', title: 'Betrieb: Öffnungs- und Schließzeiten',
+    scenario: 'Organisiere die zeitlichen Rahmenbedingungen eurer Einrichtung.',
+    options: ['Öffnungszeiten pflegen', 'Ferien und Feiertage berücksichtigen'],
+    tryThis: 'Schau dir die Öffnungszeiten deiner Organisation an.',
   },
 };
 

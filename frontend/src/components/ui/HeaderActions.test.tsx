@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HeaderSearchAction } from './HeaderActions';
 
 function SearchExample() {
@@ -15,16 +15,27 @@ function SearchExample() {
 }
 
 describe('header search dismissal', () => {
+  beforeEach(() => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 0);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
   it('toggles with the trigger and stays open during interaction inside', async () => {
     const user = userEvent.setup();
     render(<SearchExample />);
     await user.click(screen.getByRole('button', { name: 'Suche öffnen' }));
+    expect(document.body).toHaveAttribute('data-scroll-locked', 'true');
     await user.click(screen.getByRole('searchbox'));
     expect(screen.getByRole('search')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Löschen' }));
     expect(screen.getByRole('searchbox')).toHaveValue('');
     await user.click(screen.getByRole('button', { name: 'Suche schließen' }));
     expect(screen.queryByRole('search')).not.toBeInTheDocument();
+    expect(document.body).not.toHaveAttribute('data-scroll-locked');
   });
 
   it('closes on an outside pointer without discarding the search', async () => {

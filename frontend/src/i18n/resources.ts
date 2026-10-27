@@ -4,6 +4,7 @@ export const resources = {
   de: {
     auto: autoResources.de,
     common: {
+      shell: { globalOrganization: 'Superadmin-Bereich', retryOrganizations: 'Organisationen erneut laden', navigation: 'Navigation', administration: 'Verwaltung', legal: 'Rechtstexte', expand: 'Seitenleiste ausklappen', collapse: 'Seitenleiste einklappen' },
       chartExport: {
         name: 'Bezeichnung', share: 'Anteil', noData: 'Keine Daten', bar: 'Balken',
         offers: 'Ø Angebote parallel', participants: 'Ø Besucher:innen',
@@ -54,11 +55,22 @@ export const resources = {
         surveys: 'Umfragen',
         statistics: 'Statistiken',
         processes: 'ProzessO',
+        masterData: 'Stammdaten',
+        operations: 'Betrieb',
         settings: 'Einstellungen',
         more: 'Mehr',
         userMenu: 'Benutzermenü öffnen',
         user: 'Benutzer',
         demoHints: 'Demo-Hinweise wieder einblenden',
+      },
+      roleInfo: {
+        shortOrgAdmin: 'Org-Admin',
+        label: 'Berechtigungen: {{role}}', close: 'Rolleninformation schließen',
+        user: 'Arbeitet mit Aktivitäten und Auswertungen der zugewiesenen Organisation. Die Verwaltung von Benutzern und Taxonomien gehört nicht zu dieser Rolle.',
+        editor: 'Hat die Benutzerrechte und kann zusätzlich Kategorien, Tags und Altersgruppen anlegen, bearbeiten, archivieren und löschen.',
+        org_admin: 'Hat die Editorrechte und verwaltet zusätzlich Benutzer, die Organisation und organisationsweite Vorgaben.',
+        superadmin: 'Verwaltet alle Organisationen, Benutzer sowie systemweite Einstellungen und Verwaltungsfunktionen.',
+        scope: 'Die Rolle gilt im aktuellen Organisationskontext. Freigeschaltete Module und Organisationsvorgaben können einzelne Funktionen einschränken.',
       },
       roles: {
         superadmin: 'Superadmin',
@@ -70,7 +82,7 @@ export const resources = {
           title: 'Rollen im Überblick',
           user: 'Kann mit den Daten der eigenen Organisation arbeiten.',
           editor:
-            'Hat alle Benutzerrechte und kann Inhalte in den Einstellungen archivieren oder löschen.',
+            'Hat alle Benutzerrechte und kann Kategorien, Tags und Altersgruppen verwalten.',
           org_admin:
             'Verwaltet zusätzlich Organisation, Benutzer und organisationsweite Einstellungen.',
         },
@@ -814,6 +826,32 @@ export const resources = {
     },
     settings: {
       title: 'Einstellungen',
+      sections: {
+        personal: { title: 'Persönliche Einstellungen', description: 'Passe Darstellung und Navigation für dein Benutzerkonto an.' },
+        masterData: { title: 'Stammdaten', description: 'Pflege die gemeinsamen Begriffe, Altersgruppen, das Team, Orte und Vorlagen deiner Organisation.' },
+        operations: { title: 'Betrieb', description: 'Verwalte Öffnungszeiten und wähle aus, welche Ferien und Feiertage im Kalender angezeigt werden.' },
+        profileLink: 'Profil und Sprache anpassen',
+      },
+      navigationLayout: {
+        title: 'Navigation', description: 'Wähle die Navigation für Desktop und Tablet.',
+        sidebar: 'Seitenleiste', top: 'Obere Navigation',
+        sidebarDescription: 'Mehr Platz für Menüpunkte, mit einklappbarer Seitenleiste. Standard auf breiten Bildschirmen.',
+        topDescription: 'Die gewohnte horizontale Navigation oberhalb des Inhalts.',
+        deviceHint: 'Wird in deinem Profil gespeichert. Mobil bleibt das Bottom-Menü erhalten.',
+        saving: 'Wird gespeichert …', saved: 'Gespeichert', error: 'Speichern fehlgeschlagen. Bitte erneut versuchen.',
+      },
+      viewDensity: {
+        title: 'Ansichtsmodus',
+        description: 'Wähle, wie groß Schrift und Bedienelemente auf deinem Desktop dargestellt werden.',
+        normal: 'Normal',
+        normalDescription: 'Größere Schrift und großzügige Abstände für entspanntes Lesen.',
+        compact: 'Kompakt',
+        compactDescription: 'Kleinere Schrift und Abstände für mehr Inhalt auf einen Blick.',
+        deviceHint: 'Gilt für dein Benutzerkonto auf Desktop-Geräten mit Maus oder Trackpad. Touch-Ansichten und Ausdrucke bleiben unverändert.',
+        saving: 'Ansichtsmodus wird gespeichert…',
+        saved: 'Ansichtsmodus gespeichert.',
+        error: 'Der Ansichtsmodus konnte nicht gespeichert werden. Deine bisherige Auswahl bleibt erhalten. Bitte versuche es erneut.',
+      },
       areas: 'Einstellungsbereiche',
       areasDescription:
         'Die Einstellungsbereiche sind die gemeinsame Stammdatenbasis des Dokumentationstools. Hier werden Begriffe, Orte, Gruppen und Zeitregeln gepflegt, auf die Erfassung, Kalender und Auswertungen zurückgreifen.',
@@ -821,16 +859,18 @@ export const resources = {
       menu: 'Menü',
       closeMenu: 'Menü schließen',
       tabs: {
+        appearance: 'Darstellung',
         categories: 'Kategorien',
         templates: 'Vorlagen',
         tags: 'Tags',
-        cohorts: 'Kohorten',
+        cohorts: 'Altersgruppen',
         team: 'Team',
         locations: 'Einrichtungen',
         holidays: 'Feiertage',
         openingHours: 'Öffnungszeiten',
       },
       descriptions: {
+        appearance: 'Passe die Ansichtsgröße an deine Arbeitsweise an. Die Auswahl gilt für dein Benutzerkonto.',
         categories:
           'Kategorien geben der Dokumentation eine feste fachliche Struktur. Sie machen sichtbar, welche Schwerpunkte eine Aktivität abdeckt, und halten Erfassung und Auswertung vergleichbar.',
         templates:
@@ -1119,6 +1159,7 @@ export const resources = {
   en: {
     auto: autoResources.en,
     common: {
+      shell: { globalOrganization: 'Superadmin area', retryOrganizations: 'Reload organizations', navigation: 'Navigation', administration: 'Administration', legal: 'Legal texts', expand: 'Expand sidebar', collapse: 'Collapse sidebar' },
       chartExport: {
         name: 'Label', share: 'Share', noData: 'No data', bar: 'Bar',
         offers: 'Average concurrent activities', participants: 'Average visitors',
@@ -1169,11 +1210,22 @@ export const resources = {
         surveys: 'Surveys',
         statistics: 'Statistics',
         processes: 'ProcessO',
+        masterData: 'Master data',
+        operations: 'Operations',
         settings: 'Settings',
         more: 'More',
         userMenu: 'Open user menu',
         user: 'User',
         demoHints: 'Show demo hints again',
+      },
+      roleInfo: {
+        shortOrgAdmin: 'Org-Admin',
+        label: 'Permissions: {{role}}', close: 'Close role information',
+        user: 'Works with activities and reports in the assigned organization. Managing users and taxonomies is not part of this role.',
+        editor: 'Has user permissions and can also create, edit, archive and delete categories, tags and age groups.',
+        org_admin: 'Has editor permissions and also manages users, the organization and organization-wide rules.',
+        superadmin: 'Manages all organizations, users, system-wide settings and administrative features.',
+        scope: 'This role applies in the current organization. Enabled modules and organization rules may restrict individual features.',
       },
       roles: {
         superadmin: 'Superadmin',
@@ -1184,7 +1236,7 @@ export const resources = {
           toggle: 'Show role descriptions',
           title: 'Role overview',
           user: 'Can work with data in their own organization.',
-          editor: 'Has all user permissions and can archive or delete content in settings.',
+          editor: 'Has all user permissions and can manage categories, tags and age groups.',
           org_admin: 'Also manages the organization, users, and organization-wide settings.',
         },
       },
@@ -1902,6 +1954,32 @@ export const resources = {
     },
     settings: {
       title: 'Settings',
+      sections: {
+        personal: { title: 'Personal settings', description: 'Choose appearance and navigation for your account.' },
+        masterData: { title: 'Master data', description: 'Manage the shared terms, age groups, team, locations and templates of your organization.' },
+        operations: { title: 'Operations', description: 'Manage opening hours and choose which vacations and public holidays appear in the calendar.' },
+        profileLink: 'Edit profile and language',
+      },
+      navigationLayout: {
+        title: 'Navigation', description: 'Choose your desktop and tablet navigation.',
+        sidebar: 'Sidebar', top: 'Top navigation',
+        sidebarDescription: 'More room for menu items, with a collapsible sidebar. Default on wide screens.',
+        topDescription: 'The familiar horizontal navigation above the content.',
+        deviceHint: 'Saved to your profile. Mobile keeps the bottom navigation.',
+        saving: 'Saving …', saved: 'Saved', error: 'Could not save. Please try again.',
+      },
+      viewDensity: {
+        title: 'View mode',
+        description: 'Choose the size of text and controls on your desktop.',
+        normal: 'Normal',
+        normalDescription: 'Larger text and generous spacing for comfortable reading.',
+        compact: 'Compact',
+        compactDescription: 'Smaller text and spacing to see more at a glance.',
+        deviceHint: 'Applies to your account on desktop devices with a mouse or trackpad. Touch layouts and printed pages stay unchanged.',
+        saving: 'Saving view mode…',
+        saved: 'View mode saved.',
+        error: 'Could not save your view mode. Your previous selection is unchanged. Please try again.',
+      },
       areas: 'Settings sections',
       areasDescription:
         'The settings sections contain the shared master data for the documentation system. Terms, locations, groups and time rules used by data entry, calendars and reports are maintained here.',
@@ -1909,16 +1987,18 @@ export const resources = {
       menu: 'Menu',
       closeMenu: 'Close menu',
       tabs: {
+        appearance: 'Appearance',
         categories: 'Categories',
         templates: 'Templates',
         tags: 'Tags',
-        cohorts: 'Cohorts',
+        cohorts: 'Age groups',
         team: 'Team',
         locations: 'Locations',
         holidays: 'Public holidays',
         openingHours: 'Opening hours',
       },
       descriptions: {
+        appearance: 'Choose the view size that suits you. Your selection applies to your account.',
         categories:
           'Categories give documentation a consistent professional structure. They show which topics an activity covers and keep data entry and reporting comparable.',
         templates:

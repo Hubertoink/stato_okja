@@ -1,4 +1,4 @@
-export const MOBILE_NAV_ITEM_IDS = ['dashboard', 'activities', 'logbook', 'calendar', 'projects', 'processes', 'surveys', 'statistics', 'settings'] as const;
+export const MOBILE_NAV_ITEM_IDS = ['dashboard', 'activities', 'logbook', 'calendar', 'projects', 'processes', 'surveys', 'statistics', 'masterData', 'operations', 'settings'] as const;
 export type MobileNavItemId = typeof MOBILE_NAV_ITEM_IDS[number];
 export type MobileNavLayout = { bottom: MobileNavItemId[] };
 
@@ -14,7 +14,8 @@ export function getMobileNavLayout(userId?: string | null, availableItemIds: rea
     const unique = Array.from(new Set(valid));
     if (unique.length === 4) return { bottom: unique };
   } catch { /* defaults */ }
-  return { ...DEFAULT_LAYOUT };
+  const fallback = [...DEFAULT_LAYOUT.bottom, ...availableItemIds].filter(id => availableItemIds.includes(id));
+  return { bottom: Array.from(new Set(fallback)).slice(0, 4) };
 }
 
 export function saveMobileNavLayout(layout: MobileNavLayout, userId?: string | null, availableItemIds: readonly MobileNavItemId[] = MOBILE_NAV_ITEM_IDS) {

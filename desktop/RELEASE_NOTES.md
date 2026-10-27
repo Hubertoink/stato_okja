@@ -2,12 +2,10 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Fensterknöpfe sitzen direkt in der oberen rechten Fensterecke, unabhängig von der Höhe des App-Headers.
-- Desktop-Updates öffnen als kompakter Dialog direkt in der App, ohne separates Fenster.
-- Der Dialog übernimmt das aktive App-Theme und zeigt nur Version, Status und die jeweils nötige Aktion.
-- Der Hinweis zum Speichern erscheint erst, wenn das Update zur Installation bereit ist.
-- Der Eintrag im Avatar-Menü ist linksbündig im Menüstil gestaltet; die Versionsanzeige bleibt erhalten.
-- Dialog und Menügestaltung funktionieren auch mit bestehenden Serveroberflächen ohne Server-Update.
+- Desktop-Version auf den gemeinsamen StatO-Stand 1.19.0 angehoben; der Installer und die In-App-Aktualisierung enthalten denselben Versionsstand.
+- Mit einem Server ab 1.19.0 stehen die neue einklappbare Seitenleiste, die Wahl zwischen normaler und kompakter Ansicht sowie getrennte Bereiche für Stammdaten und Betrieb zur Verfügung.
+- Die persönlichen Darstellungs- und Navigationseinstellungen werden im Benutzerkonto gespeichert.
+- Die neuen Webfunktionen benötigen das entsprechende Server-Update; der Desktop-Installer allein aktualisiert keinen Server.
 
 ### Installation und einmaliger Umstieg
 

@@ -1,0 +1,25 @@
+.profile-role {
+  display: flex;
+  justify-content: center;
+}
+.profile-role-trigger {
+  min-height: 44px;
+  color: var(--text-secondary);
+}
+@media (min-width: 768px) {
+  .profile-role {
+    width: 112px;
+  }
+}
+.profile-role-panel {
+  position: fixed;
+  z-index: 65;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  border-radius: 16px;
+  padding: 16px;
+  outline: none;
+}
+.profile-role-panel:focus-visible {
+  outline: 2px solid var(--focus-ring);
+}

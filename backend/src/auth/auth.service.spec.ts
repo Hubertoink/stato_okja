@@ -1,6 +1,8 @@
 import { ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
+import { ValidationPipe } from '@nestjs/common';
+import { UpdateMeDto } from './dto/auth.dto';
 
 describe('AuthService invitations', () => {
   function createService(options: {
@@ -39,6 +41,48 @@ describe('AuthService invitations', () => {
     );
     return { service, users, memberships, jwt, email, refreshSessions };
   }
+
+  it('saves and returns the account view density without changing other profile fields', async () => {
+    const { service, users } = createService({ existingUser: {
+      id: 'user-1', name: 'Existing name', email: 'user@example.org', role: 'user', viewDensity: 'compact',
+    } });
+    expect(await service.updateProfile('user-1', { viewDensity: 'normal' })).toEqual(
+      expect.objectContaining({ id: 'user-1', name: 'Existing name', viewDensity: 'normal' }),
+    );
+    expect(users.save).toHaveBeenCalledWith(expect.objectContaining({ viewDensity: 'normal' }));
+    expect(await service.getProfile('user-1')).toEqual(expect.objectContaining({ viewDensity: 'normal' }));
+    expect(await service.updateProfile('user-1', { viewDensity: 'compact' })).toEqual(
+      expect.objectContaining({ viewDensity: 'compact' }),
+    );
+  });
+
+  it('rejects unsupported view density values at the profile API boundary', async () => {
+    const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
+    const metadata = { type: 'body' as const, metatype: UpdateMeDto };
+    await expect(pipe.transform({ viewDensity: 'tiny' }, metadata)).rejects.toThrow();
+    await expect(pipe.transform({ viewDensity: 'normal' }, metadata)).resolves.toEqual(expect.objectContaining({ viewDensity: 'normal' }));
+  });
+
+  it('saves and returns the account navigation layout without changing other profile fields', async () => {
+    const { service, users } = createService({ existingUser: {
+      id: 'user-1', name: 'Existing name', email: 'user@example.org', role: 'user', navigationLayout: 'sidebar',
+    } });
+    expect(await service.updateProfile('user-1', { navigationLayout: 'top' })).toEqual(
+      expect.objectContaining({ id: 'user-1', name: 'Existing name', navigationLayout: 'top' }),
+    );
+    expect(users.save).toHaveBeenCalledWith(expect.objectContaining({ navigationLayout: 'top' }));
+    expect(await service.getProfile('user-1')).toEqual(expect.objectContaining({ navigationLayout: 'top' }));
+    expect(await service.updateProfile('user-1', { navigationLayout: 'sidebar' })).toEqual(
+      expect.objectContaining({ navigationLayout: 'sidebar' }),
+    );
+  });
+
+  it('rejects unsupported navigation layout values at the profile API boundary', async () => {
+    const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
+    const metadata = { type: 'body' as const, metatype: UpdateMeDto };
+    await expect(pipe.transform({ navigationLayout: 'tiny' }, metadata)).rejects.toThrow();
+    await expect(pipe.transform({ navigationLayout: 'top' }, metadata)).resolves.toEqual(expect.objectContaining({ navigationLayout: 'top' }));
+  });
 
   it('does not return an invite token and binds it to the pending invite version', async () => {
     const { service, jwt, email } = createService();

@@ -8,23 +8,22 @@ import {
   Settings,
   Calendar as CalendarIcon,
   Boxes,
-  UserCircle2,
   Building2,
   GitBranch,
-  Lightbulb,
   BookOpen,
   ClipboardList,
   Menu,
+  Database,
+  Clock,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import logoUrl from '../../assets/Stato_Logo.png';
-import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import { useShellHeaderHeight } from '@/lib/useShellHeaderHeight';
 import Modal from '@/components/Modal';
-import ProtectedImage, { useResolvedImageSrc } from '@/components/ProtectedImage';
+import { useResolvedImageSrc } from '@/components/ProtectedImage';
 import { listAccessibleOrgs, listOrgs, type OrgDto, createOrgApi } from '@/lib/orgs';
-import { canAccessDevTools } from '@/lib/devToolsConfig';
 import { useProcessOAccess } from '@/lib/processes';
 import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { useToast } from '@/components/Toast';
@@ -43,7 +42,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import { compareLocalized } from '@/i18n/formatters';
 import { autoT } from '@/i18n/auto';
-import { useDesktopUpdates } from '@/lib/desktopUpdates';
+import { useIsMobile } from '@/lib/useIsMobile';
+import Sidebar from '@/components/shell/Sidebar';
+import UserMenu from '@/components/shell/UserMenu';
+import NavigationLinks from '@/components/shell/NavigationLinks';
+import '@/components/shell/sidebar.css';
 
 type OrgScopeTreeNode = { org: OrgDto; children: OrgScopeTreeNode[] };
 
@@ -164,7 +167,6 @@ export default function Layout() {
   const { scope, setScope, switching: orgSwitching } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   const { showToast } = useToast(); // ensure toast provider is initialized; also used for feedback
-  const desktopUpdates = useDesktopUpdates();
   const demoGuidesMutedForPageLoad = useDemoMobileGuideMuted();
 
   const notifySession = useCallback(
@@ -204,13 +206,6 @@ export default function Layout() {
   const openQuickTally = () => setQuickTallyOpen(true);
   const minimizeQuickTally = () => setQuickTallyOpen(false);
 
-  const roleLabel: Record<string, string> = {
-    superadmin: t('roles.superadmin'),
-    org_admin: t('roles.org_admin'),
-    editor: t('roles.editor'),
-    user: t('roles.user'),
-  };
-  const [menuOpen, setMenuOpen] = useState(false);
   const [headerCompact, setHeaderCompact] = useState(false);
   useEffect(() => {
     const update = () => setHeaderCompact(window.scrollY > 64);
@@ -224,29 +219,6 @@ export default function Layout() {
     [processOEnabled, logbookEnabled, surveysEnabled],
   );
   const [mobileNavLayout, setMobileNavLayout] = useState(() => getMobileNavLayout(user?.id, availableMobileNavItemIds));
-  const closeTimer = useRef<number | null>(null);
-  const [hoverable, setHoverable] = useState(false);
-  useEffect(() => {
-    // Only enable hover open/close for precise pointers (desktop). On touch we rely on click toggle.
-    try {
-      const mq = window.matchMedia && window.matchMedia('(pointer: fine)');
-      setHoverable(!!mq?.matches);
-    } catch {
-      setHoverable(false);
-    }
-  }, []);
-  const openMenu = () => {
-    if (closeTimer.current) {
-      window.clearTimeout(closeTimer.current);
-      closeTimer.current = null;
-    }
-    setMenuOpen(true);
-  };
-  const scheduleClose = () => {
-    if (closeTimer.current) window.clearTimeout(closeTimer.current);
-    closeTimer.current = window.setTimeout(() => setMenuOpen(false), 300);
-  };
-
   const isActive = (path: string) => {
     return location.pathname.startsWith(path);
   };
@@ -261,19 +233,10 @@ export default function Layout() {
       processes: { to: '/processes', label: t('navigation.processes'), icon: GitBranch },
       surveys: { to: '/surveys', label: t('navigation.surveys'), icon: ClipboardList },
       statistics: { to: '/statistics', label: t('navigation.statistics'), icon: BarChart3 },
+      masterData: { to: '/master-data', label: t('navigation.masterData'), icon: Database },
+      operations: { to: '/operations', label: t('navigation.operations'), icon: Clock },
       settings: { to: '/settings', label: t('navigation.settings'), icon: Settings },
     };
-  const navLabels = {
-    dashboard: t('navigation.dashboard'),
-    activities: t('navigation.activities'),
-    logbook: t('navigation.logbook'),
-    calendar: t('navigation.calendar'),
-    projects: t('navigation.projects'),
-    processes: t('navigation.processes'),
-    surveys: t('navigation.surveys'),
-    statistics: t('navigation.statistics'),
-    settings: t('navigation.settings'),
-  };
   const mobileBottomItems = mobileNavLayout.bottom.map((id) => mobileNavItems[id]);
   const mobileMoreItems = [
     ...availableMobileNavItemIds.filter(
@@ -327,7 +290,6 @@ export default function Layout() {
     demoModeEnabled && demoGuidesMutedForPageLoad && hasDemoMobileGuideForPath(location.pathname);
   const restoreDemoGuides = () => {
     setDemoMobileGuideMuted(false);
-    setMenuOpen(false);
   };
   const activeBannerSrc = useResolvedImageSrc(activeOrgBranding?.bannerUrl);
 
@@ -482,15 +444,27 @@ export default function Layout() {
     };
   }, []);
 
+  const mobileViewport = useIsMobile(768, { touchIsMobile: false });
+  const sidebarActive = !restrictToPasswordChange && !mobileViewport && user?.navigationLayout !== 'top';
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const desktopItems = availableMobileNavItemIds.map(id => ({ ...mobileNavItems[id], label: t(`navigation.${id}`) }));
+  const userMenuProps = {
+    activeOrgName, orgSwitching, canSwitchOrganization,
+    onSwitchOrganization: () => setScopeModalOpen(true),
+    showDemoGuideRestore, onRestoreDemoGuides: restoreDemoGuides,
+  };
+
   // Keep the document canvas at layout-viewport height. Shrinking this wrapper to the
   // VisualViewport exposes a strip below the app when Android opens its keyboard UI.
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className={`min-h-screen flex flex-col app-shell ${sidebarActive ? 'app-shell-sidebar' : ''} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      {sidebarActive && <Sidebar items={desktopItems} userMenu={userMenuProps} collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(value => !value)} />}
       {/* Header and desktop navigation share the banner background. */}
       <div
         ref={headerRef}
         className={`header-navigation-shell fixed inset-x-0 top-0 z-40 ${headerCompact ? 'header-navigation-shell-compact' : ''} ${activeBannerSrc ? 'header-navigation-shell-with-banner' : ''}`}
         style={{
+          display: sidebarActive ? 'none' : undefined,
           '--organization-banner-position': `${activeOrgBranding?.bannerPosition ?? 50}%`,
         } as CSSProperties}
       >
@@ -549,408 +523,25 @@ export default function Layout() {
               <span className="truncate">{activeOrgName || user?.orgName || t('workflow.noOrganization')}</span>
             </span>
           )}
-          {/* Current user and org summary (moved next to avatar on desktop) */}
-          <div className="hidden"></div>
-          {/* User menu */}
-          <div
-            className="mobile-header-user relative flex items-center"
-            {...(hoverable ? { onMouseEnter: openMenu, onMouseLeave: scheduleClose } : {})}
-          >
-            {/* Summary on sm+ placed just left of the avatar */}
-            <div className="desktop-header-user-copy hidden md:flex flex-col items-end text-sm mr-3">
-              <div className="font-medium truncate max-w-[40vw]">{user?.name || user?.email}</div>
-              <div className="text-gray-600 truncate max-w-[40vw]">
-                {roleLabel[user?.role || 'user']}
-                {activeOrgName ? ` · ${activeOrgName}` : ''}
-                {orgSwitching ? autoT('ui_2e567c683582') : ''}
-              </div>
-            </div>
-            <button
-              aria-label={t('navigation.user')}
-              className="hidden md:flex items-center gap-2 rounded px-1 py-1 transition-colors theme-header-action"
-              onClick={() => setMenuOpen((v) => !v)}
-            >
-              {user?.avatarUrl ? (
-                <ProtectedImage
-                  src={user.avatarUrl}
-                  alt={autoT('ui_7631b26ea80b')}
-                  className="w-8 h-8 rounded-full object-cover"
-                />
-              ) : (
-                <UserCircle2 className="w-8 h-8" />
-              )}
-            </button>
-            {showDemoGuideRestore && (
-              <button
-                type="button"
-                aria-label={t('navigation.demoHints')}
-                title={t('navigation.demoHints')}
-                className="hidden md:inline-flex h-8 w-8 items-center justify-center rounded-full border border-indigo-200 bg-white/75 text-indigo-600 shadow-sm transition-colors hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                onClick={restoreDemoGuides}
-              >
-                <Lightbulb aria-hidden="true" className="h-4 w-4" />
-              </button>
-            )}
-            {/* Compact user/org on mobile - entire area clickable */}
-            <div className="flex md:hidden items-center gap-1">
-              <button
-                aria-label={t('navigation.userMenu')}
-                aria-expanded={menuOpen}
-                aria-controls="header-user-menu"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors theme-header-action"
-                onClick={() => setMenuOpen((v) => !v)}
-              >
-                {user?.avatarUrl ? (
-                  <ProtectedImage
-                    src={user.avatarUrl}
-                    alt={autoT('ui_7631b26ea80b')}
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <UserCircle2 className="w-8 h-8" />
-                )}
-              </button>
-            </div>
-            {menuOpen && (
-              <div
-                id="header-user-menu"
-                className="mobile-header-user-menu absolute right-0 top-full mt-2 w-56 z-50 rounded-xl theme-menu-panel"
-                {...(hoverable ? { onMouseEnter: openMenu, onMouseLeave: scheduleClose } : {})}
-              >
-                <div className="px-4 py-3 border-b theme-menu-section">
-                  <div className="font-semibold">{user?.name || user?.email}</div>
-                  <div className="text-xs text-gray-500">
-                    {roleLabel[user?.role || 'user']}
-                    {user?.orgName
-                      ? ` · ${user.orgName}`
-                      : user?.orgId
-                        ? ` · Org ${user.orgId}`
-                        : ''}
-                  </div>
-                </div>
-                <ul className="py-1 text-sm">
-                  {showDemoGuideRestore && (
-                    <li className="md:hidden">
-                      <Button variant="ghost" className="w-full justify-start px-4 py-2 theme-menu-item" onClick={restoreDemoGuides}>
-                        <Lightbulb className="h-4 w-4" aria-hidden="true" />
-                        {t('navigation.demoHints')}
-                      </Button>
-                    </li>
-                  )}
-                  <li>
-                    <button
-                      className="w-full px-4 py-2 text-left theme-menu-item"
-                      onClick={() => {
-                        navigate('/me');
-                        setMenuOpen(false);
-                      }}
-                    >
-                      {t('userMenu.profile')}
-                    </button>
-                  </li>
-                  {desktopUpdates.available && (
-                    <li>
-                      <Button variant="ghost" data-stato-desktop-updates className="desktop-update-menu-item w-full px-4 py-2 theme-menu-item"
-                        onClick={() => { setMenuOpen(false); desktopUpdates.open(); }}>
-                        <span className="text-left">
-                          <span className="block">Desktop-Updates</span>
-                          <span className="block text-xs text-gray-500">
-                            Version {desktopUpdates.state?.currentVersion ?? '…'}
-                          </span>
-                        </span>
-                      </Button>
-                    </li>
-                  )}
-                  {!restrictToPasswordChange &&
-                    canSwitchOrganization && (
-                      <li>
-                        <button
-                          className="w-full px-4 py-2 text-left theme-menu-item"
-                          onClick={() => {
-                            setScopeModalOpen(true);
-                            setMenuOpen(false);
-                          }}
-                        >
-                          {t('userMenu.switchOrganization')}
-                        </button>
-                      </li>
-                    )}
-                  {!restrictToPasswordChange &&
-                    (user?.role === 'org_admin' || user?.role === 'superadmin') && (
-                      <li>
-                        <button
-                          className="w-full px-4 py-2 text-left theme-menu-item"
-                          onClick={() => {
-                            navigate('/admin/orgs');
-                            setMenuOpen(false);
-                          }}
-                        >
-                          {t('userMenu.organizations')}
-                        </button>
-                      </li>
-                    )}
-                  {!restrictToPasswordChange && canAccessDevTools(user?.role) && (
-                    <li>
-                      <button
-                        className="w-full px-4 py-2 text-left theme-menu-item"
-                        onClick={() => {
-                          navigate('/admin/dev-tools');
-                          setMenuOpen(false);
-                        }}
-                      >
-                        {t('userMenu.devTools')}
-                      </button>
-                    </li>
-                  )}
-                  {!restrictToPasswordChange && user?.role === 'superadmin' && (
-                    <li>
-                      <button
-                        className="w-full px-4 py-2 text-left theme-menu-item"
-                        onClick={() => {
-                          navigate('/admin/legal');
-                          setMenuOpen(false);
-                        }}
-                      >
-                        Rechtstexte
-                      </button>
-                    </li>
-                  )}
-                  {!restrictToPasswordChange && user?.role === 'superadmin' && (
-                    <li>
-                      <button
-                        className="w-full px-4 py-2 text-left theme-menu-item"
-                        onClick={() => {
-                          navigate('/admin/audit');
-                          setMenuOpen(false);
-                        }}
-                      >
-                        {t('userMenu.audit')}
-                      </button>
-                    </li>
-                  )}
-                  {!restrictToPasswordChange && user?.role === 'superadmin' && (
-                    <li>
-                      <button
-                        className="w-full px-4 py-2 text-left theme-menu-item"
-                        onClick={() => {
-                          navigate('/admin/system-data');
-                          setMenuOpen(false);
-                        }}
-                      >
-                        {t('userMenu.dataManagement')}
-                      </button>
-                    </li>
-                  )}
-                  {!restrictToPasswordChange &&
-                    (user?.role === 'org_admin' || user?.role === 'superadmin') && (
-                      <li>
-                        <button
-                          className="w-full px-4 py-2 text-left theme-menu-item"
-                          onClick={() => {
-                            navigate('/admin/users');
-                            setMenuOpen(false);
-                          }}
-                        >
-                          {t('userMenu.users')}
-                        </button>
-                      </li>
-                    )}
-                  <li>
-                    <button
-                      className="w-full px-4 py-2 text-left theme-menu-item"
-                      onClick={() => {
-                        logout();
-                        setMenuOpen(false);
-                      }}
-                    >
-                      {t('userMenu.logout')}
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            )}
-          </div>
+          {!sidebarActive && <UserMenu {...userMenuProps} />}
         </div>
         </header>
 
-      {/* Navigation (desktop) */}
-      {!restrictToPasswordChange && (
+      {!restrictToPasswordChange && !sidebarActive && (
         <nav className={`nav-surface relative z-10 hidden md:block ${activeBannerSrc ? 'nav-surface-with-banner' : ''}`}>
-          <div className="container mx-auto px-4">
-            <ul className="flex space-x-1">
-              <li>
-                <Link
-                  to="/dashboard"
-                  data-tooltip={navLabels.dashboard}
-                  className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                    isActive('/dashboard') ? 'theme-nav-item-active' : ''
-                  }`}
-                >
-                  <Home className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
-                  <span
-                    className={`nav-label ${isActive('/dashboard') ? 'nav-label-active' : ''}`}
-                    data-text={navLabels.dashboard}
-                  >
-                    {navLabels.dashboard}
-                  </span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/activities"
-                  data-tooltip={navLabels.activities}
-                  className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                    isActive('/activities') ? 'theme-nav-item-active' : ''
-                  }`}
-                >
-                  <Activity className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
-                  <span
-                    className={`nav-label ${isActive('/activities') ? 'nav-label-active' : ''}`}
-                    data-text={navLabels.activities}
-                  >
-                    {navLabels.activities}
-                  </span>
-                </Link>
-              </li>
-              {logbookEnabled && (
-                <li>
-                  <Link
-                  to="/logbook"
-                  data-tooltip={navLabels.logbook}
-                  className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                    isActive('/logbook') ? 'theme-nav-item-active' : ''
-                  }`}
-                >
-                  <BookOpen className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
-                  <span
-                    className={`nav-label ${isActive('/logbook') ? 'nav-label-active' : ''}`}
-                    data-text={navLabels.logbook}
-                  >
-                    {navLabels.logbook}
-                  </span>
-                </Link>
-                </li>
-              )}
-              <li>
-                <Link
-                  to="/calendar"
-                  data-tooltip={navLabels.calendar}
-                  className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                    isActive('/calendar') ? 'theme-nav-item-active' : ''
-                  }`}
-                >
-                  <CalendarIcon className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
-                  <span
-                    className={`nav-label ${isActive('/calendar') ? 'nav-label-active' : ''}`}
-                    data-text={navLabels.calendar}
-                  >
-                    {navLabels.calendar}
-                  </span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/projects"
-                  data-tooltip={navLabels.projects}
-                  className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                    isActive('/projects') ? 'theme-nav-item-active' : ''
-                  }`}
-                >
-                  <Boxes className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
-                  <span
-                    className={`nav-label ${isActive('/projects') ? 'nav-label-active' : ''}`}
-                    data-text={navLabels.projects}
-                  >
-                    {navLabels.projects}
-                  </span>
-                </Link>
-              </li>
-              {processOEnabled && (
-                <li>
-                  <Link
-                    to="/processes"
-                    data-tooltip={navLabels.processes}
-                    className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                      isActive('/processes') ? 'theme-nav-item-active' : ''
-                    }`}
-                  >
-                    <GitBranch className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
-                    <span
-                      className={`nav-label ${isActive('/processes') ? 'nav-label-active' : ''}`}
-                      data-text={navLabels.processes}
-                    >
-                      {navLabels.processes}
-                    </span>
-                  </Link>
-                </li>
-              )}
-              {surveysEnabled && (
-                <li>
-                  <Link
-                  to="/surveys"
-                  data-tooltip={navLabels.surveys}
-                  className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                    isActive('/surveys') ? 'theme-nav-item-active' : ''
-                  }`}
-                >
-                  <ClipboardList className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
-                  <span
-                    className={`nav-label ${isActive('/surveys') ? 'nav-label-active' : ''}`}
-                    data-text={navLabels.surveys}
-                  >
-                    {navLabels.surveys}
-                  </span>
-                </Link>
-                </li>
-              )}
-              <li>
-                <Link
-                  to="/statistics"
-                  data-tooltip={navLabels.statistics}
-                  className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                    isActive('/statistics') ? 'theme-nav-item-active' : ''
-                  }`}
-                >
-                  <BarChart3 className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
-                  <span
-                    className={`nav-label ${isActive('/statistics') ? 'nav-label-active' : ''}`}
-                    data-text={navLabels.statistics}
-                  >
-                    {navLabels.statistics}
-                  </span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/settings"
-                  data-tooltip={navLabels.settings}
-                  className={`nav-item-tooltip theme-nav-item flex items-center px-4 py-3 rounded-t-xl transition-colors duration-200 ${
-                    isActive('/settings') ? 'theme-nav-item-active' : ''
-                  }`}
-                >
-                  <Settings className="w-5 h-5 min-[1400px]:mr-2 flex-shrink-0" />
-                  <span
-                    className={`nav-label ${isActive('/settings') ? 'nav-label-active' : ''}`}
-                    data-text={navLabels.settings}
-                  >
-                    {navLabels.settings}
-                  </span>
-                </Link>
-              </li>
-            </ul>
-          </div>
+          <div className="container mx-auto px-4"><NavigationLinks items={desktopItems} /></div>
         </nav>
       )}
       </div>
 
       {/* Tiny spacer below fixed desktop nav for visual breathing room */}
-      {!restrictToPasswordChange && <div className="hidden md:block h-[5px]" aria-hidden="true" />}
+      {!restrictToPasswordChange && !sidebarActive && <div className="hidden md:block h-[5px]" aria-hidden="true" />}
 
       {/* Main Content */}
       <main
         className={`container mx-auto min-w-0 w-full flex-1 overflow-x-clip px-2 sm:px-3 md:px-4 py-8 pt-[4.25rem] md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-24'} md:pb-8`}
       >
-        {!restrictToPasswordChange && isSuperadmin && !scope && /^\/(dashboard|activities|projects|calendar|logbook|statistics|surveys|settings)(\/|$)/.test(location.pathname) ? (
+        {!restrictToPasswordChange && isSuperadmin && !scope && /^\/(dashboard|activities|projects|calendar|logbook|statistics|surveys|master-data|operations)(\/|$)/.test(location.pathname) ? (
           <section className="mx-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-6 md:mx-2">
             <h2 className="text-xl font-semibold">{t('workflow.noOrganization')}</h2>
             <p className="my-3">{t('workflow.contextHelp')}</p>
@@ -1000,7 +591,7 @@ export default function Layout() {
             </li>
           </ul>
           {mobileMoreOpen && (
-            <div className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+3.9rem)] right-2 w-52 rounded-2xl border border-gray-100 bg-white p-2 shadow-xl">
+            <div className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+3.9rem)] right-2 w-52 max-h-[calc(100dvh-10rem)] overflow-y-auto rounded-2xl border border-gray-100 bg-white p-2 shadow-xl">
               {mobileMoreItems.map((item) => {
                 const Icon = item.icon;
                 return (

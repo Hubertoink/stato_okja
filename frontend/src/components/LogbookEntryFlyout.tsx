@@ -9,7 +9,6 @@ import {
   Edit3,
 
   MessageCircle,
-  MoreVertical,
   Send,
   Save,
   Trash2,
@@ -117,6 +116,7 @@ export default function LogbookEntryFlyout({
   const [draft, setDraft] = useState<LogbookDraft | null>(null);
   const [saving, setSaving] = useState(false);
   const editFormId = useId();
+  const titleId = useId();
   const initialEditRef = useRef<string | null>(null);
   const { requestDiscard, reset, discardDialog } = useUnsavedChangesGuard(draft, { enabled: !!draft });
   const archive = useArchiveLogbookEntry();
@@ -215,14 +215,14 @@ export default function LogbookEntryFlyout({
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label={autoT('ui_20cde07dafc6')}
+        aria-labelledby={titleId}
         data-mode={draft ? 'edit' : 'read'}
         className="logbook-detail-modal relative flex h-full w-full flex-col bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl md:h-auto md:max-h-[88vh] md:max-w-5xl md:rounded-2xl"
       >
         <header className="logbook-reading-toolbar flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] px-3 py-3 md:px-6">
           <div className="flex min-w-0 items-center gap-1">
             <IconButton className="md:hidden" variant="ghost" onClick={dismiss} aria-label={autoT('ui_44424b18700e')}><ArrowLeft /></IconButton>
-            <h2 className="truncate text-base font-bold text-[var(--text-primary)] md:text-lg">{autoT('ui_73d71268a537')}</h2>
+            <h2 id={titleId} title={entry?.title} className="truncate text-base font-bold text-[var(--text-primary)] md:text-lg">{entry?.title || autoT('ui_20cde07dafc6')}</h2>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {draft && <IconButton aria-label={autoT('ui_70b73bbc118d')} title={autoT('ui_70b73bbc118d')} type="submit" form={editFormId} disabled={saving}><Save /></IconButton>}
@@ -282,51 +282,6 @@ export default function LogbookEntryFlyout({
                 <Edit3 className="h-5 w-5" />
               </IconButton>
             )}
-            {canManage && !archived && !draft && <details className="relative md:hidden" onKeyDown={(event) => {
-              if (event.key === 'Escape' && event.currentTarget.open) {
-                event.stopPropagation();
-                event.currentTarget.open = false;
-                event.currentTarget.querySelector('summary')?.focus();
-              }
-            }}>
-              <summary className="logbook-more-trigger" aria-label={t('moreActions')}><MoreVertical aria-hidden="true" /></summary>
-              <Menu className="absolute right-0 top-full z-20 mt-2 min-w-48">
-                <MenuItem onClick={(event) => {
-                  const details = event.currentTarget.closest('details');
-                  if (details) details.open = false;
-                  setArchiveConfirmOpen(true);
-                }}><Archive className="h-4 w-4" />{autoT('ui_b81f3298d960')}</MenuItem>
-              </Menu>
-            </details>}
-            {canManage && !archived && !draft && (
-              <Button
-                className="hidden md:inline-flex"
-                variant="warning"
-                size="md"
-                onClick={() => setArchiveConfirmOpen(true)}
-              >
-                <Archive className="h-4 w-4" />
-                <span className="hidden sm:inline">{autoT('ui_b81f3298d960')}</span>
-              </Button>
-            )}
-            {canManage && archived && entry && (
-              <span className="tooltip-wrapper">
-                <ArchiveIconButton
-                  restore
-                  size="icon"
-                  title={t('restore')}
-                  aria-label={t('restore')}
-                  disabled={restore.isPending}
-                  onClick={() => {
-                    restore.mutate(entry.id, {
-                      onSuccess: () => showToast(t('restored'), { type: 'success' }),
-                      onError: (error) => showToast(getErrorMessage(error, t('restore')), { type: 'error' }),
-                    });
-                  }}
-                />
-                <span className="tooltip-bubble">{t('restore')}</span>
-              </span>
-            )}
             <CloseButton
               className="hidden md:inline-flex"
               onClick={dismiss}
@@ -353,12 +308,8 @@ export default function LogbookEntryFlyout({
                 }
               }}>
                 <fieldset disabled={saving} className="min-w-0">
-                  <LogbookDetailContent entry={entry} editor={draft ? { draft, onChange: setDraft } : undefined} />
+                  <LogbookDetailContent entry={entry} showTitle={false} editor={draft ? { draft, onChange: setDraft } : undefined} />
                 </fieldset>
-                {draft && <div className="logbook-inline-actions">
-                  <Button variant="secondary" disabled={saving} onClick={() => requestDiscard(() => { reset(null); setDraft(null); })}>{t('discardEdits')}</Button>
-                  <Button type="submit" disabled={saving}><Save className="h-4 w-4" />{saving ? autoT('ui_129ed064a520') : autoT('ui_70b73bbc118d')}</Button>
-                </div>}
               </form>
               <section className="logbook-detail-comments border-t border-gray-100 pt-5">
                 <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-800">
@@ -423,6 +374,35 @@ export default function LogbookEntryFlyout({
             </div>
           )}
         </div>
+        {draft && <footer className="logbook-inline-actions">
+          <Button variant="secondary" disabled={saving} onClick={() => requestDiscard(() => { reset(null); setDraft(null); })}>{t('discardEdits')}</Button>
+          <Button type="submit" form={editFormId} disabled={saving}><Save className="h-4 w-4" />{saving ? autoT('ui_129ed064a520') : autoT('ui_70b73bbc118d')}</Button>
+        </footer>}
+        {canManage && !draft && entry && (
+          <footer className="logbook-detail-footer flex shrink-0 items-center justify-start border-t border-[var(--border-subtle)] px-3 py-3 md:px-6">
+            {!archived && <Button variant="warning" disabled={archive.isPending} onClick={() => setArchiveConfirmOpen(true)}>
+              <Archive className="h-4 w-4" />{autoT('ui_b81f3298d960')}
+            </Button>}
+            {canManage && archived && entry && (
+              <span className="tooltip-wrapper">
+                <ArchiveIconButton
+                  restore
+                  size="icon"
+                  title={t('restore')}
+                  aria-label={t('restore')}
+                  disabled={restore.isPending}
+                  onClick={() => {
+                    restore.mutate(entry.id, {
+                      onSuccess: () => showToast(t('restored'), { type: 'success' }),
+                      onError: (error) => showToast(getErrorMessage(error, t('restore')), { type: 'error' }),
+                    });
+                  }}
+                />
+                <span className="tooltip-bubble">{t('restore')}</span>
+              </span>
+            )}
+          </footer>
+        )}
       </aside>
       {discardDialog}
       <ConfirmModal

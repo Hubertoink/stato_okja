@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, ConflictException, ForbiddenException,
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomBytes, randomInt } from 'crypto';
-import { SUPPORTED_LOCALES, type SupportedLocale, SUPPORTED_THEME_MODES, type ThemeMode, User } from '../users/entities/user.entity';
+import { SUPPORTED_LOCALES, type SupportedLocale, SUPPORTED_THEME_MODES, type ThemeMode, SUPPORTED_NAVIGATION_LAYOUTS, type NavigationLayout, SUPPORTED_VIEW_DENSITIES, type ViewDensity, User } from '../users/entities/user.entity';
 import { OrganizationMembership } from '../users/entities/organization-membership.entity';
 import { Organization } from '../orgs/entities/organization.entity';
 import { Location } from '../locations/entities/location.entity';
@@ -41,6 +41,8 @@ export type AuthUserResponse = {
   avatarUrl: string | null;
   theme: string;
   themeMode: ThemeMode;
+  viewDensity: ViewDensity;
+  navigationLayout: NavigationLayout;
   locale: SupportedLocale;
   mustChangePassword: boolean;
   termsAcceptanceRequired: boolean;
@@ -256,6 +258,8 @@ export class AuthService {
       avatarUrl,
       theme,
       themeMode,
+      navigationLayout: user.navigationLayout === 'top' ? 'top' : 'sidebar',
+      viewDensity: user.viewDensity === 'normal' ? 'normal' : 'compact',
       locale: resolveLocale(user.locale ?? org?.defaultLocale),
       mustChangePassword: user.mustChangePassword === true,
       termsAcceptanceRequired: user.termsAcceptedVersion !== (await this.legalContent.getTermsOfUseVersion()),
@@ -979,7 +983,7 @@ export class AuthService {
 
   async updateProfile(
     userId: string,
-    patch: { name?: string; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; locale?: SupportedLocale },
+    patch: { name?: string; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; viewDensity?: ViewDensity; navigationLayout?: NavigationLayout; locale?: SupportedLocale },
   ) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
@@ -996,6 +1000,12 @@ export class AuthService {
       (user as unknown as { themeMode?: ThemeMode }).themeMode = patch.themeMode;
     }
     if (typeof patch.locale === 'string') user.locale = resolveLocale(patch.locale);
+    if (patch.navigationLayout && SUPPORTED_NAVIGATION_LAYOUTS.includes(patch.navigationLayout)) {
+      user.navigationLayout = patch.navigationLayout;
+    }
+    if (patch.viewDensity && SUPPORTED_VIEW_DENSITIES.includes(patch.viewDensity)) {
+      user.viewDensity = patch.viewDensity;
+    }
     await this.users.save(user);
     return this.getProfile(user.id);
   }

@@ -57,7 +57,7 @@ function CohortForm({ initial, onSubmit, onCancel }: { initial?: Partial<Cohort>
           </div>
           {/* Kohorten werden immer aktiv angelegt; kein Toggle im UI */}
         </div>
-  <div className="settings-modal-actions -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6">
+  <div data-scroll-footer className="settings-modal-actions -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6">
           <div className="flex-1 flex items-center">
             <span className="tooltip-wrapper"><CloseButton onClick={dismiss} title={autoT('ui_07af7cb30fca')} aria-label={autoT('ui_07af7cb30fca')} /><span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span></span>
           </div>

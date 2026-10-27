@@ -33,7 +33,7 @@ import { useToast } from '@/components/Toast';
 import Toggle from '@/components/Toggle';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useActivityModalCountMode } from '@/lib/useActivityModalCountMode';
-import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
+import { useFocusedFieldVisibility } from '@/lib/useFocusedFieldVisibility';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { getTimeRangeValidationIssue } from '@/lib/timeRange';
@@ -88,7 +88,8 @@ export default function ActivityEditPage() {
   const [picker, setPicker] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const { isMobile, tapModeEnabled, setTapModePreferred } = useActivityModalCountMode();
-  const keyboardOpen = useKeyboardOpen();
+  const editorRef = useRef<HTMLDivElement>(null);
+  const handleFieldFocus = useFocusedFieldVisibility(editorRef, Boolean(activity), 'document');
 
   const returnTarget = getActivityEditorReturn(location.state as ActivityEditorNavigationState | null);
   const deletedReturnTarget = getActivityEditorReturn(location.state as ActivityEditorNavigationState | null, true);
@@ -156,8 +157,6 @@ export default function ActivityEditPage() {
   // Existing activities must keep their recorded tags and categories. Project
   // defaults are applied only when creating a new activity, never while editing.
 
-  if (!activity) return null;
-
   // Derive cohort-based totals
   const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
@@ -172,8 +171,7 @@ export default function ActivityEditPage() {
       )
     : undefined;
 
-  // Reduziere Container-Spacing bei Tastatur
-  const contentSpacing = keyboardOpen ? 'space-y-2' : 'space-y-3';
+  const contentSpacing = 'space-y-3';
 
   const handleClose = () => {
     if (picker) {
@@ -188,6 +186,7 @@ export default function ActivityEditPage() {
   };
 
   const handleSave = () => {
+    if (!activity) return;
     if (categoryMode === 'single' && (form.categoryIds?.length ?? 0) > 1 && selectedProject?.type !== 'open_door') {
       showToast(SINGLE_CATEGORY_MESSAGE, { type: 'error' });
       return;
@@ -239,13 +238,16 @@ export default function ActivityEditPage() {
   };
 
   useEditorShortcuts({
+    enabled: Boolean(activity),
     onClose: handleClose,
     onSave:
       update.isPending || picker || deleteOpen || Boolean(timeRangeError) ? undefined : handleSave,
   });
 
+  if (!activity) return null;
+
   return (
-    <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4">
+    <div ref={editorRef} onFocusCapture={handleFieldFocus} className="keyboard-aware-page max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4">
       <EditorSurface>
         <EditorHeader
           title={t('common:routes.editActivity')}

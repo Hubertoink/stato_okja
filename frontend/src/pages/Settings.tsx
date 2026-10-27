@@ -32,7 +32,7 @@ export default function Settings() {
   return (
     <div className="settings-page">
       {section === 'masterData' && params.get('viewportDebug') === '1' && (
-        <Suspense fallback={null}><ViewportDiagnostics /></Suspense>
+        <Suspense fallback={null}><ViewportDiagnostics nativeKeyboard={params.get('keyboardViewport') === 'native'} /></Suspense>
       )}
       <h2 className="text-3xl font-bold text-viridian mb-2">{t(`sections.${section}.title`)}</h2>
       <p className="mb-6 text-[var(--text-secondary)]">{t(`sections.${section}.description`)}</p>

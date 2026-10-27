@@ -10,6 +10,7 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 ## [Unreleased]
 
 ### Added
+- Stammdaten-Diagnose vergleicht zusätzlich die native Tastaturgeometrie. `?viewportDebug=1&keyboardViewport=native` aktiviert ausschließlich in Android Edge einen begrenzten Vergleichsmodus; beim Verlassen wird das Browser-Verhalten wiederhergestellt.
 - Optionaler lokaler Viewport-Messmodus für Stammdaten über `?viewportDebug=1`: vergleicht Browserhöhen, Modalgrenzen und verzögerte Tastaturereignisse; Messwerte lassen sich ohne Formularinhalte kopieren.
 
 ### Changed

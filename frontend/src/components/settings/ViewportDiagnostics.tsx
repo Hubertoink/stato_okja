@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/Button';
+import { enableNativeKeyboardViewport, getKeyboardViewport, getNativeKeyboard, KEYBOARD_VIEWPORT_EVENT, nativeKeyboardViewportActive } from '@/lib/keyboardViewport';
 
 const round = (value: number) => Math.round(value * 100) / 100;
 
@@ -18,6 +19,8 @@ function measure(fixedProbe: Element | null, dvhProbe: Element | null) {
   const root = document.documentElement;
   const style = getComputedStyle(root);
   const vv = window.visualViewport;
+  const keyboard = getNativeKeyboard();
+  const bounds = keyboard?.boundingRect;
   const dialog = [...document.querySelectorAll('.modal-overlay [role="dialog"]')].at(-1) ?? null;
   const shell = dialog?.closest('.modal-overlay') ?? null;
   const field = dialog?.contains(document.activeElement) ? document.activeElement : null;
@@ -26,6 +29,12 @@ function measure(fixedProbe: Element | null, dvhProbe: Element | null) {
     visualViewport: vv ? {
       height: round(vv.height), width: round(vv.width), offsetTop: round(vv.offsetTop),
       pageTop: round(vv.pageTop), scale: round(vv.scale),
+    } : null,
+    effectiveViewport: getKeyboardViewport(),
+    virtualKeyboard: keyboard && bounds ? {
+      enabled: nativeKeyboardViewportActive(), overlaysContent: keyboard.overlaysContent,
+      top: round(bounds.top), bottom: round(bounds.bottom), height: round(bounds.height),
+      left: round(bounds.left), width: round(bounds.width),
     } : null,
     css: {
       height: style.getPropertyValue('--visual-viewport-height').trim(),
@@ -49,13 +58,17 @@ type Measurement = ReturnType<typeof measure>;
 type Sample = { ms: number; event: string; data: Measurement };
 
 /** Opt-in, local-only capture for /master-data?viewportDebug=1. */
-export default function ViewportDiagnostics() {
+export default function ViewportDiagnostics({ nativeKeyboard = false }: { nativeKeyboard?: boolean }) {
   const fixedProbe = useRef<HTMLDivElement>(null);
   const dvhProbe = useRef<HTMLDivElement>(null);
   const samples = useRef<Sample[]>([]);
   const captureRef = useRef<(event: string) => void>(() => {});
   const [latest, setLatest] = useState<Measurement | null>(null);
   const [copyStatus, setCopyStatus] = useState('Messwerte kopieren');
+
+  useEffect(() => {
+    if (nativeKeyboard) return enableNativeKeyboardViewport();
+  }, [nativeKeyboard]);
 
   useEffect(() => {
     const start = performance.now();
@@ -75,7 +88,7 @@ export default function ViewportDiagnostics() {
     capture('start');
     const onWindow = (event: Event) => capture(`window.${event.type}`);
     const onViewport = (event: Event) => capture(`visualViewport.${event.type}`);
-    const windowEvents = ['resize', 'scroll', 'focusin', 'focusout', 'orientationchange'];
+    const windowEvents = ['resize', 'scroll', 'focusin', 'focusout', 'orientationchange', KEYBOARD_VIEWPORT_EVENT];
     windowEvents.forEach((event) => window.addEventListener(event, onWindow));
     const vv = window.visualViewport;
     vv?.addEventListener('resize', onViewport);
@@ -95,7 +108,7 @@ export default function ViewportDiagnostics() {
   const copy = async () => {
     captureRef.current('copy');
     const report = JSON.stringify({
-      diagnostic: 'master-data-viewport-v1', userAgent: navigator.userAgent,
+      diagnostic: 'master-data-viewport-v2', nativeKeyboardRequested: nativeKeyboard, userAgent: navigator.userAgent,
       samples: samples.current,
     });
     try {
@@ -116,9 +129,11 @@ export default function ViewportDiagnostics() {
         style={{ top: 'calc(var(--visual-viewport-offset-top, 0px) + 4px)', pointerEvents: 'none' }}
       >
         <div className="font-mono">
-          VV {latest?.visualViewport?.height ?? '–'} · CSS {latest?.css.fixedHeight || '–'} · Offset {latest?.visualViewport?.offsetTop ?? '–'}
+          VV {latest?.visualViewport?.height ?? '–'} · CSS {latest?.css.fixedHeight ? round(parseFloat(latest.css.fixedHeight)) : '–'} · Offset {latest?.visualViewport?.offsetTop ?? '–'}
           <br />
           Modal unten {latest?.shell?.bottom ?? '–'} · Fenster {latest?.window.height ?? '–'} · dvh {latest?.dvh?.height ?? '–'}
+          <br />
+          VK oben {latest?.virtualKeyboard?.top ?? '–'} · {nativeKeyboard ? latest?.virtualKeyboard?.enabled ? 'Nativ-Test aktiv' : 'Nativ-Test nicht verfügbar' : 'Standard'}
         </div>
         <Button
           size="sm" variant="secondary" className="mt-1" style={{ pointerEvents: 'auto' }}

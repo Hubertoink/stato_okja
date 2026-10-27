@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getKeyboardViewport, KEYBOARD_VIEWPORT_EVENT } from './keyboardViewport';
 
 const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"]';
 let viewportBaseline = { width: 0, height: 0 };
@@ -20,8 +21,7 @@ export function useKeyboardOpen(threshold = 120): boolean {
 
     const compute = () => {
       try {
-        const height = vv?.height ?? window.innerHeight;
-        const offsetTop = vv?.offsetTop ?? 0;
+        const { height, offsetTop } = getKeyboardViewport();
         const layoutHeight = Math.max(window.innerHeight, document.documentElement.clientHeight, height + offsetTop);
         if (Math.abs(viewportBaseline.width - window.innerWidth) > 40) {
           viewportBaseline = { width: window.innerWidth, height: layoutHeight };
@@ -64,6 +64,7 @@ export function useKeyboardOpen(threshold = 120): boolean {
     window.addEventListener('focusout', handleFocusChange);
     window.addEventListener('resize', compute);
     window.addEventListener('orientationchange', compute);
+    window.addEventListener(KEYBOARD_VIEWPORT_EVENT, compute);
     if (vv) {
       vv.addEventListener('resize', compute);
       vv.addEventListener('scroll', compute);
@@ -73,6 +74,7 @@ export function useKeyboardOpen(threshold = 120): boolean {
         window.removeEventListener('focusout', handleFocusChange);
         window.removeEventListener('resize', compute);
         window.removeEventListener('orientationchange', compute);
+        window.removeEventListener(KEYBOARD_VIEWPORT_EVENT, compute);
         vv.removeEventListener('resize', compute);
         vv.removeEventListener('scroll', compute);
       };
@@ -83,6 +85,7 @@ export function useKeyboardOpen(threshold = 120): boolean {
       window.removeEventListener('focusout', handleFocusChange);
       window.removeEventListener('resize', compute);
       window.removeEventListener('orientationchange', compute);
+      window.removeEventListener(KEYBOARD_VIEWPORT_EVENT, compute);
     };
   }, [threshold]);
 

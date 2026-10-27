@@ -33,7 +33,7 @@ it('records a silent viewport change separately from stale CSS without collectin
     // No resize/scroll event: this is the failure that ordinary viewport mocks miss.
     viewport.height = 520;
     act(() => vi.advanceTimersByTime(400));
-    expect(screen.getByLabelText('Viewport-Diagnose')).toHaveTextContent('VV 520 · CSS 438px');
+    expect(screen.getByLabelText('Viewport-Diagnose')).toHaveTextContent('VV 520 · CSS 438');
     expect(document.documentElement.style.getPropertyValue('--visual-viewport-fixed-height')).toBe('438px');
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Messwerte kopieren' })));
     const report = JSON.parse(writeText.mock.calls[0][0]);

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { FocusEventHandler, RefObject } from 'react';
+import { getKeyboardViewport, KEYBOARD_VIEWPORT_EVENT } from './keyboardViewport';
 
 const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"]';
 
@@ -39,9 +40,9 @@ export function useFocusedFieldVisibility<T extends HTMLElement>(
     const containerRect = container.getBoundingClientRect();
     const scrollerRect = scroller.getBoundingClientRect();
     const targetRect = target.getBoundingClientRect();
-    const viewport = window.visualViewport;
-    const viewportTop = viewport?.offsetTop ?? 0;
-    const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
+    const viewport = getKeyboardViewport();
+    const viewportTop = viewport.offsetTop;
+    const viewportBottom = viewportTop + viewport.height;
     const topEdge = Math.max(containerRect.top, scrollerRect.top, viewportTop) + 12;
     let bottomEdge = Math.min(containerRect.bottom, scrollerRect.bottom, viewportBottom) - 16;
     // Sticky actions occupy part of the scroller's visible area. A field is
@@ -97,6 +98,7 @@ export function useFocusedFieldVisibility<T extends HTMLElement>(
     viewport?.addEventListener('resize', scheduleReveal);
     viewport?.addEventListener('scroll', scheduleReveal);
     window.addEventListener('resize', scheduleReveal);
+    window.addEventListener(KEYBOARD_VIEWPORT_EVENT, scheduleReveal);
     // The dialog can finish laying out after the viewport event, for example
     // when keyboard detection switches the activity editor's scroll container.
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(scheduleReveal);
@@ -106,6 +108,7 @@ export function useFocusedFieldVisibility<T extends HTMLElement>(
       viewport?.removeEventListener('resize', scheduleReveal);
       viewport?.removeEventListener('scroll', scheduleReveal);
       window.removeEventListener('resize', scheduleReveal);
+      window.removeEventListener(KEYBOARD_VIEWPORT_EVENT, scheduleReveal);
       if (frame.current !== null) window.cancelAnimationFrame(frame.current);
       if (timeout.current !== null) window.clearTimeout(timeout.current);
     };

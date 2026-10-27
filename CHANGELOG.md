@@ -19,6 +19,7 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 - Die kompakte Desktop-Navigation zeigt ihre Beschriftungen bereits ab 1280 px.
 
 ### Fixed
+- Aktivitäten behalten beim Öffnen der Tastatur ihre Zeilenabstände. Kategorie-, Tag- und Team-Dialoge nutzen den gemeinsamen Modalrahmen mit sichtbarer Höhe und vollständiger Hintergrundabdeckung; fokussierte Felder werden im Formular nachgeführt.
 - Tastaturerkennung bleibt beim Verschieben des sichtbaren Bereichs zum Eingabefeld aktiv. Modals folgen auch beim Fokuswechsel und Schließen der Tastatur der tatsächlich sichtbaren Höhe.
 
 ## [1.18.5] - 2026-10-24

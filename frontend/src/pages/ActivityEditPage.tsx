@@ -33,7 +33,6 @@ import { useToast } from '@/components/Toast';
 import Toggle from '@/components/Toggle';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useActivityModalCountMode } from '@/lib/useActivityModalCountMode';
-import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { getTimeRangeValidationIssue } from '@/lib/timeRange';
@@ -88,7 +87,6 @@ export default function ActivityEditPage() {
   const [picker, setPicker] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const { isMobile, tapModeEnabled, setTapModePreferred } = useActivityModalCountMode();
-  const keyboardOpen = useKeyboardOpen();
 
   const returnTarget = getActivityEditorReturn(location.state as ActivityEditorNavigationState | null);
   const deletedReturnTarget = getActivityEditorReturn(location.state as ActivityEditorNavigationState | null, true);
@@ -172,8 +170,7 @@ export default function ActivityEditPage() {
       )
     : undefined;
 
-  // Reduziere Container-Spacing bei Tastatur
-  const contentSpacing = keyboardOpen ? 'space-y-2' : 'space-y-3';
+  const contentSpacing = 'space-y-3';
 
   const handleClose = () => {
     if (picker) {

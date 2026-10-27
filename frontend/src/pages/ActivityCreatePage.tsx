@@ -34,7 +34,6 @@ import Toggle from '@/components/Toggle';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useActivityModalCountMode } from '@/lib/useActivityModalCountMode';
-import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { useAuth } from '@/lib/auth';
 import { useActivityInlineCreation } from './useActivityInlineCreation';
@@ -87,7 +86,6 @@ export default function ActivityCreatePage() {
   const { showToast } = useToast();
   const { user } = useAuth();
   const { isMobile, tapModeEnabled, setTapModePreferred } = useActivityModalCountMode();
-  const keyboardOpen = useKeyboardOpen();
   const submitLockedRef = useRef(false);
 
   const [picker, setPicker] = useState(false);
@@ -300,8 +298,7 @@ export default function ActivityCreatePage() {
   });
 
   const containerPad = 'pb-[env(safe-area-inset-bottom,0px)]';
-  // Etwas kompakter, wenn die Tastatur offen ist
-  const formSpacing = keyboardOpen ? 'space-y-2' : 'space-y-4';
+  const formSpacing = 'space-y-4';
 
   return (
     <div className={`max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4 ${containerPad}`}>

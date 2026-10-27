@@ -472,7 +472,7 @@ export default function ActivityQuickAdd({
         <div
           className={
             keyboardOpen
-              ? 'flex-none overflow-visible pb-2 pt-2'
+              ? 'flex-none overflow-visible pb-4 pt-3 md:pb-6 md:pt-4'
               : 'activity-editor-scroll min-h-0 flex-1 overflow-y-auto pb-4 pt-3 md:pb-6 md:pt-4'
           }
         >

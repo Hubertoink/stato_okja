@@ -1,9 +1,16 @@
 import React, { useCallback, useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
+import { useFocusedFieldVisibility } from '@/lib/useFocusedFieldVisibility';
+import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
 import { useTranslation } from 'react-i18next';
 import { EditorHeader } from '@/components/ui/EditorFrame';
 import { CloseButton } from '@/components/ui/Button';
+
+function ModalViewportTracker() {
+  useKeyboardOpen();
+  return null;
+}
 
 /** Visual backdrop for custom dialogs that do not use the shared Modal shell. */
 export function ModalBackdrop({ className = '', onClick }: { className?: string; onClick?: () => void }) {
@@ -153,6 +160,7 @@ export default function Modal({
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
   const { dismiss } = useModalHistory(onClose, open);
+  const handleFieldFocus = useFocusedFieldVisibility(dialogRef, open);
   // Lock background scroll when modal is open
   useBodyScrollLock(open);
 
@@ -161,7 +169,7 @@ export default function Modal({
     returnFocusRef.current = document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null;
-    const frame = window.requestAnimationFrame(() => dialogRef.current?.focus());
+    const frame = window.requestAnimationFrame(() => dialogRef.current?.focus({ preventScroll: true }));
 
     return () => {
       window.cancelAnimationFrame(frame);
@@ -219,49 +227,54 @@ export default function Modal({
   const isStructuredModal = variant === 'information' || variant === 'form';
   const themeClassName = theme === 'public' ? 'public-survey public-survey-modal' : '';
   const content = (
-    <div
-      className={`visual-viewport-fixed z-[70] bg-black/40 flex ${fullScreen ? 'items-stretch' : mobilePlacement === 'top' ? 'items-start' : 'items-end'} md:items-center justify-center ${fullScreen ? 'p-0' : 'p-0 md:p-6'} modal-overlay ${themeClassName}`}
-      data-blur={blur}
-      onWheel={(e) => e.stopPropagation()}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) dismiss();
-      }}
-    >
+    <div className={`fixed inset-0 z-[70] ${themeClassName}`} onWheel={(e) => e.stopPropagation()}>
+      <ModalViewportTracker />
+      {/* Cover the whole layout viewport, including while the keyboard pans
+          or resizes the smaller visual viewport used by the dialog. */}
+      <div className="absolute inset-0 modal-overlay" data-blur={blur} aria-hidden="true" onClick={dismiss} />
       <div
-        ref={dialogRef}
-        aria-label={title ? undefined : t('dialog.ariaLabel')}
-        aria-labelledby={title ? titleId : undefined}
-        aria-modal="true"
-        className={`w-full ${fullScreen ? 'max-w-none max-h-none h-[100dvh] rounded-none border-0' : `${maxW} max-h-[85vh] ${mobilePlacement === 'top' ? 'rounded-b-3xl top-sheet-animate' : 'rounded-t-3xl bottom-sheet-animate'} border border-[var(--border-subtle)] md:rounded-2xl`} bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl modal-panel-roomy ${themeClassName} ${variant !== 'information' ? 'modal-editor-surface' : ''} ${isStructuredModal ? "flex flex-col overflow-hidden" : "overflow-x-hidden overflow-y-auto p-4 md:p-6"} ${blur ? "backdrop-blur-xl" : ''}`}
-        role="dialog"
-        tabIndex={-1}
-        onKeyDown={handleDialogKeyDown}
+        className={`visual-viewport-fixed flex ${fullScreen ? 'items-stretch' : mobilePlacement === 'top' ? 'items-start' : 'items-end'} md:items-center justify-center ${fullScreen ? 'p-0' : 'p-0 md:p-6'}`}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) dismiss();
+        }}
       >
-        {isStructuredModal ? (
-          <EditorHeader
-            title={title}
-            titleId={titleId}
-            actions={headerActions}
-            onClose={dismiss}
-            closeLabel={t('actions.close')}
-            showCloseButton={showCloseButton}
-          />
-        ) : (
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-bold gradient-text">{title}</h3>
-            {showCloseButton && (
-            <CloseButton
-              onClick={dismiss}
-              aria-label={t('actions.close')}
+        <div
+          ref={dialogRef}
+          aria-label={title ? undefined : t('dialog.ariaLabel')}
+          aria-labelledby={title ? titleId : undefined}
+          aria-modal="true"
+          className={`w-full ${fullScreen ? 'max-w-none max-h-none h-[100dvh] rounded-none border-0' : `${maxW} max-h-[85vh] ${mobilePlacement === 'top' ? 'rounded-b-3xl top-sheet-animate' : 'rounded-t-3xl bottom-sheet-animate'} border border-[var(--border-subtle)] md:rounded-2xl`} bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl modal-panel-roomy ${themeClassName} ${variant !== 'information' ? 'modal-editor-surface' : ''} ${isStructuredModal ? "flex flex-col overflow-hidden" : "overflow-x-hidden overflow-y-auto p-4 md:p-6"} ${blur ? "backdrop-blur-xl" : ''}`}
+          role="dialog"
+          tabIndex={-1}
+          onKeyDown={handleDialogKeyDown}
+          onFocusCapture={handleFieldFocus}
+        >
+          {isStructuredModal ? (
+            <EditorHeader
+              title={title}
+              titleId={titleId}
+              actions={headerActions}
+              onClose={dismiss}
+              closeLabel={t('actions.close')}
+              showCloseButton={showCloseButton}
             />
-            )}
-          </div>
-        )}
-        {variant === 'information' ? (
-          <div className={`min-h-0 flex-1 overflow-y-auto px-4 pb-4 md:px-6 md:pb-6 ${contentClassName}`}>
-            {children}
-          </div>
-        ) : children}
+          ) : (
+            <div className="mb-4 flex items-center justify-between">
+              <h3 id={titleId} className="text-lg font-bold gradient-text">{title}</h3>
+              {showCloseButton && (
+                <CloseButton
+                  onClick={dismiss}
+                  aria-label={t('actions.close')}
+                />
+              )}
+            </div>
+          )}
+          {variant === 'information' ? (
+            <div className={`min-h-0 flex-1 overflow-y-auto px-4 pb-4 md:px-6 md:pb-6 ${contentClassName}`}>
+              {children}
+            </div>
+          ) : children}
+        </div>
       </div>
     </div>
   );

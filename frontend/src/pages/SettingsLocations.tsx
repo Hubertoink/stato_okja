@@ -65,7 +65,7 @@ function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Locatio
           {/* Locations are always active; no UI toggle */}
         </div>
         {saveError && <p role="alert" className="text-[var(--status-danger-text)]">{saveError}</p>}
-        <div className="settings-modal-actions roomy-settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
+        <div data-scroll-footer className="settings-modal-actions roomy-settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
           <CloseButton onClick={dismiss} aria-label={t('common:actions.cancel')} />
           <button type="button" disabled={saving} className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:opacity-50" onClick={save} aria-label={t('common:actions.save')}><SaveIcon className="w-5 h-5"/></button>
         </div>

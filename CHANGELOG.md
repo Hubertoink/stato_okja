@@ -19,6 +19,8 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 - Die kompakte Desktop-Navigation zeigt ihre Beschriftungen bereits ab 1280 px.
 
 ### Fixed
+- Bestehende Aktivitäten lassen sich auch direkt ohne zuvor geladenen Cache bearbeiten; die Reihenfolge der React-Hooks bleibt während des Ladens stabil.
+- Mobile Tastatur: Stammdaten-Aktionsleisten bleiben im sichtbaren Dialog fixiert; Eingabefelder werden oberhalb der Leiste nachgeführt. Auch vollständige Aktivitätsseiten halten das Notizfeld beim ersten Fokus und bei späteren Viewport-Änderungen sichtbar.
 - Aktivitäten behalten beim Öffnen der Tastatur ihre Zeilenabstände. Kategorie-, Tag- und Team-Dialoge nutzen den gemeinsamen Modalrahmen mit sichtbarer Höhe und vollständiger Hintergrundabdeckung; fokussierte Felder werden im Formular nachgeführt.
 - Tastaturerkennung bleibt beim Verschieben des sichtbaren Bereichs zum Eingabefeld aktiv. Modals folgen auch beim Fokuswechsel und Schließen der Tastatur der tatsächlich sichtbaren Höhe.
 

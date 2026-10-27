@@ -92,7 +92,7 @@ export default function ActivityQuickAdd({
   const keyboardOpen = useKeyboardOpen();
   const panelRef = useRef<HTMLDivElement | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
-  const handlePanelFocus = useFocusedFieldVisibility(panelRef, keyboardOpen);
+  const handlePanelFocus = useFocusedFieldVisibility(panelRef, true);
   const submitLockedRef = useRef(false);
   const formVersionRef = useRef(activity?.version);
   const { data: projects } = useProjects({ archived: false });

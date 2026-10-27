@@ -6,6 +6,7 @@ const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"]';
 export function useFocusedFieldVisibility<T extends HTMLElement>(
   containerRef: RefObject<T>,
   enabled: boolean,
+  scrollMode: 'container' | 'document' = 'container',
 ): FocusEventHandler<T> {
   const frame = useRef<number | null>(null);
   const timeout = useRef<number | null>(null);
@@ -14,6 +15,7 @@ export function useFocusedFieldVisibility<T extends HTMLElement>(
     const active = document.activeElement;
     if (
       !container ||
+      (scrollMode === 'document' && document.body.hasAttribute('data-scroll-locked')) ||
       !(active instanceof HTMLElement) ||
       !active.matches(EDITABLE_SELECTOR) ||
       !container.contains(active)
@@ -22,8 +24,10 @@ export function useFocusedFieldVisibility<T extends HTMLElement>(
     }
 
     // Structured modals scroll their body; regular dialogs scroll the panel.
-    // Never scroll an ancestor outside the dialog (which would move the page).
-    let scroller: HTMLElement = container;
+    // Only standalone editors opt into scrolling the document itself.
+    let scroller = scrollMode === 'document'
+      ? (document.scrollingElement as HTMLElement | null) ?? document.documentElement
+      : container;
     for (let parent = active.parentElement; parent && parent !== container; parent = parent.parentElement) {
       if (parent.scrollHeight > parent.clientHeight && /auto|scroll/.test(getComputedStyle(parent).overflowY)) {
         scroller = parent;
@@ -39,19 +43,37 @@ export function useFocusedFieldVisibility<T extends HTMLElement>(
     const viewportTop = viewport?.offsetTop ?? 0;
     const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
     const topEdge = Math.max(containerRect.top, scrollerRect.top, viewportTop) + 12;
-    const bottomEdge = Math.min(containerRect.bottom, scrollerRect.bottom, viewportBottom) - 16;
+    let bottomEdge = Math.min(containerRect.bottom, scrollerRect.bottom, viewportBottom) - 16;
+    // Sticky actions occupy part of the scroller's visible area. A field is
+    // only visible when it clears the action bar as well as the keyboard.
+    for (const footer of container.querySelectorAll<HTMLElement>('[data-scroll-footer]')) {
+      if (footer.contains(active) || !/^(sticky|fixed)$/.test(getComputedStyle(footer).position)) continue;
+      const footerRect = footer.getBoundingClientRect();
+      if (footerRect.bottom > topEdge && footerRect.top < bottomEdge) {
+        bottomEdge = footerRect.top - 16;
+      }
+    }
+    if (bottomEdge <= topEdge) return;
     let top = 0;
 
-    if (targetRect.top < topEdge) {
+    if (targetRect.height > bottomEdge - topEdge) {
+      // A tall textarea cannot fit entirely. Keep its top visible instead of
+      // alternating between its two edges on successive viewport events.
+      top = targetRect.top - topEdge;
+    } else if (targetRect.top < topEdge) {
       top = targetRect.top - topEdge;
     } else if (targetRect.bottom > bottomEdge) {
       top = targetRect.bottom - bottomEdge;
     }
 
     if (top !== 0) {
-      scroller.scrollBy({ top, behavior: 'auto' });
+      if (scroller === document.scrollingElement || scroller === document.documentElement) {
+        window.scrollBy({ top, behavior: 'instant' });
+      } else {
+        scroller.scrollBy({ top, behavior: 'instant' });
+      }
     }
-  }, [containerRef]);
+  }, [containerRef, scrollMode]);
 
   const scheduleReveal = useCallback(() => {
     if (!enabled) return;
@@ -75,14 +97,19 @@ export function useFocusedFieldVisibility<T extends HTMLElement>(
     viewport?.addEventListener('resize', scheduleReveal);
     viewport?.addEventListener('scroll', scheduleReveal);
     window.addEventListener('resize', scheduleReveal);
+    // The dialog can finish laying out after the viewport event, for example
+    // when keyboard detection switches the activity editor's scroll container.
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(scheduleReveal);
+    if (containerRef.current) observer?.observe(containerRef.current);
     return () => {
+      observer?.disconnect();
       viewport?.removeEventListener('resize', scheduleReveal);
       viewport?.removeEventListener('scroll', scheduleReveal);
       window.removeEventListener('resize', scheduleReveal);
       if (frame.current !== null) window.cancelAnimationFrame(frame.current);
       if (timeout.current !== null) window.clearTimeout(timeout.current);
     };
-  }, [enabled, scheduleReveal]);
+  }, [containerRef, enabled, scheduleReveal]);
 
   return scheduleReveal;
 }

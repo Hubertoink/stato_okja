@@ -70,7 +70,7 @@ export function TagFormModal({
           />
         </div>
       </div>
-      <div className="settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
+      <div data-scroll-footer className="settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
         <div className="flex-1 flex items-center">
           <span className="tooltip-wrapper">
             <CloseButton
@@ -165,7 +165,7 @@ export function CategoryFormModal({
           </div>
         </div>
       </div>
-      <div className="settings-modal-actions roomy-settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
+      <div data-scroll-footer className="settings-modal-actions roomy-settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
         <div className="flex-1 flex items-center">
           <span className="tooltip-wrapper">
             <CloseButton
@@ -308,7 +308,7 @@ export function StaffFormModal({
         </div>
       </div>
       {saveError && <p role="alert" className="text-[var(--status-danger-text)]">{saveError}</p>}
-      <div className="settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
+      <div data-scroll-footer className="settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
         <span className="tooltip-wrapper">
           <CloseButton
             onClick={onCancel}

@@ -34,6 +34,7 @@ import Toggle from '@/components/Toggle';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useActivityModalCountMode } from '@/lib/useActivityModalCountMode';
+import { useFocusedFieldVisibility } from '@/lib/useFocusedFieldVisibility';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { useAuth } from '@/lib/auth';
 import { useActivityInlineCreation } from './useActivityInlineCreation';
@@ -87,6 +88,8 @@ export default function ActivityCreatePage() {
   const { user } = useAuth();
   const { isMobile, tapModeEnabled, setTapModePreferred } = useActivityModalCountMode();
   const submitLockedRef = useRef(false);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const handleFieldFocus = useFocusedFieldVisibility(editorRef, true, 'document');
 
   const [picker, setPicker] = useState(false);
   const [errorOpen, setErrorOpen] = useState<string | null>(null);
@@ -297,11 +300,10 @@ export default function ActivityCreatePage() {
         : handleSave,
   });
 
-  const containerPad = 'pb-[env(safe-area-inset-bottom,0px)]';
   const formSpacing = 'space-y-4';
 
   return (
-    <div className={`max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4 ${containerPad}`}>
+    <div ref={editorRef} onFocusCapture={handleFieldFocus} className="keyboard-aware-page max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4">
       <EditorSurface>
         <EditorHeader
           title={t('actions.new')}

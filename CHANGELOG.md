@@ -9,6 +9,9 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+### Added
+- Optionaler lokaler Viewport-Messmodus für Stammdaten über `?viewportDebug=1`: vergleicht Browserhöhen, Modalgrenzen und verzögerte Tastaturereignisse; Messwerte lassen sich ohne Formularinhalte kopieren.
+
 ### Changed
 - Mobile Viewport-Konfiguration für den Android-Edge-Vergleich auf Browser-Standard umgestellt, wie bei Kassiero; `viewport-fit=cover` und `interactive-widget=resizes-content` entfallen.
 - Ansichtsmodus pro Benutzerkonto: In Einstellungen → Darstellung und im Profil kann mit kleiner Vorschau zwischen normaler und kompakter Desktop-Ansicht gewechselt werden.

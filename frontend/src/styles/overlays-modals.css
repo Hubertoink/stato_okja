@@ -33,6 +33,32 @@
   height: var(--visual-viewport-fixed-height, var(--visual-viewport-height, 100vh));
 }
 
+/* Opt-in master-data comparison only. Let Chromium anchor the sheet to the
+ * bottom edge that moves with browser chrome, rather than reconstructing that
+ * edge from a top offset plus a possibly stale viewport height. */
+html[data-keyboard-viewport='native-bottom'] .visual-viewport-fixed.modal-overlay {
+  top: auto;
+  bottom: var(--native-keyboard-bottom, 0px);
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* A bottom-anchored sheet can shift independently of its full-screen backdrop.
+ * The shell must not have a filter/transform that contains this fixed layer. */
+html[data-keyboard-viewport='native-bottom'] .visual-viewport-fixed.modal-overlay::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--overlay-backdrop);
+}
+
+html[data-keyboard-viewport='native-bottom'] .visual-viewport-fixed.modal-overlay:not([data-blur='false'])::before {
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
 /* The picker keeps its visual padding for cards, while the scrollbar itself
  * belongs to the modal edge instead of stopping one padding-width early. */
 .project-picker-scroll {

@@ -8,7 +8,8 @@ afterEach(() => {
   releases.splice(0).forEach((release) => release());
   vi.unstubAllGlobals();
   document.documentElement.removeAttribute('data-keyboard-open');
-  for (const property of ['--visual-viewport-height', '--visual-viewport-fixed-height', '--visual-viewport-offset-top', '--keyboard-inset-height']) {
+  document.documentElement.removeAttribute('data-keyboard-viewport');
+  for (const property of ['--visual-viewport-height', '--visual-viewport-fixed-height', '--visual-viewport-offset-top', '--keyboard-inset-height', '--native-keyboard-bottom']) {
     document.documentElement.style.removeProperty(property);
   }
 });
@@ -44,6 +45,8 @@ it('uses native keyboard bounds on geometrychange and restores the default when 
       keyboard.dispatchEvent(new Event('geometrychange'));
     });
     expect(document.documentElement.style.getPropertyValue('--visual-viewport-fixed-height')).toBe('518px');
+    expect(document.documentElement.dataset.keyboardViewport).toBe('native-bottom');
+    expect(document.documentElement.style.getPropertyValue('--native-keyboard-bottom')).toBe('205px');
     expect(result.current).toBe(true);
     // Overlay mode normally leaves VV at full height; the modal must still clear the keyboard.
     act(() => {
@@ -57,6 +60,8 @@ it('uses native keyboard bounds on geometrychange and restores the default when 
     });
     expect(document.documentElement.style.getPropertyValue('--visual-viewport-fixed-height')).toBe('723px');
     expect(result.current).toBe(false);
+    expect(document.documentElement.dataset.keyboardViewport).toBeUndefined();
+    expect(document.documentElement.style.getPropertyValue('--native-keyboard-bottom')).toBe('');
     act(() => releases[0]());
     expect(keyboard.overlaysContent).toBe(false);
     expect(nativeKeyboardViewportActive()).toBe(false);

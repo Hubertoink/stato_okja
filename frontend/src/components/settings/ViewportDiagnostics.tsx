@@ -48,6 +48,10 @@ function measure(fixedProbe: Element | null, dvhProbe: Element | null) {
     // These probes measure CSS layout, not a ground truth for physical keyboard bounds.
     nativeFixed: geometry(fixedProbe), dvh: geometry(dvhProbe),
     shell: geometry(shell), dialog: geometry(dialog),
+    shellPosition: shell ? {
+      top: getComputedStyle(shell).top, bottom: getComputedStyle(shell).bottom,
+      anchor: root.dataset.keyboardViewport ?? 'top',
+    } : null,
     footer: geometry(dialog?.querySelector('[data-scroll-footer]') ?? null),
     // Deliberately omit values, text, IDs, URLs and user/account data.
     focus: { tag: field?.tagName ?? null, bounds: geometry(field) },
@@ -110,7 +114,7 @@ export default function ViewportDiagnostics({ nativeKeyboard = false }: { native
   const copy = async () => {
     captureRef.current('copy');
     const reportData = {
-      diagnostic: 'master-data-viewport-v3', nativeKeyboardRequested: nativeRequested, userAgent: navigator.userAgent,
+      diagnostic: 'master-data-viewport-v4', nativeKeyboardRequested: nativeRequested, userAgent: navigator.userAgent,
       omittedSamples: 0, samples: [...samples.current],
     };
     let report = JSON.stringify(reportData);
@@ -144,6 +148,7 @@ export default function ViewportDiagnostics({ nativeKeyboard = false }: { native
           Modal unten {latest?.shell?.bottom ?? '–'} · Fenster {latest?.window.height ?? '–'} · dvh {latest?.dvh?.height ?? '–'}
           <br />
           VK oben {latest?.virtualKeyboard?.top ?? '–'} · {nativeRequested ? latest?.virtualKeyboard?.enabled ? 'Nativ-Test aktiv' : 'Nativ-Test nicht verfügbar' : 'Standard'}
+          {latest?.shellPosition?.anchor === 'native-bottom' && ' · unten'}
         </div>
         <div className="mt-1 flex flex-wrap gap-1">
         <Button

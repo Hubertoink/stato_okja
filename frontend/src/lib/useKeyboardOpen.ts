@@ -21,7 +21,8 @@ export function useKeyboardOpen(threshold = 120): boolean {
 
     const compute = () => {
       try {
-        const { height, offsetTop } = getKeyboardViewport();
+        const viewport = getKeyboardViewport();
+        const { height, offsetTop } = viewport;
         const layoutHeight = Math.max(window.innerHeight, document.documentElement.clientHeight, height + offsetTop);
         if (Math.abs(viewportBaseline.width - window.innerWidth) > 40) {
           viewportBaseline = { width: window.innerWidth, height: layoutHeight };
@@ -44,6 +45,16 @@ export function useKeyboardOpen(threshold = 120): boolean {
         root.style.setProperty('--visual-viewport-fixed-height', `${height}px`);
         root.style.setProperty('--visual-viewport-offset-top', `${offsetTop}px`);
         root.style.setProperty('--keyboard-inset-height', `${nextOpen ? hiddenHeight : 0}px`);
+        // The native comparison also tests bottom anchoring. Chromium can move
+        // bottom-fixed layers with browser controls independently of JS heights.
+        // Keep this inset through blur until native geometry reports closure.
+        if (viewport.source === 'virtual-keyboard' && viewport.bottomInset !== undefined) {
+          root.dataset.keyboardViewport = 'native-bottom';
+          root.style.setProperty('--native-keyboard-bottom', `${viewport.bottomInset}px`);
+        } else {
+          delete root.dataset.keyboardViewport;
+          root.style.removeProperty('--native-keyboard-bottom');
+        }
         root.dataset.keyboardOpen = String(nextOpen);
         setOpen(nextOpen);
       } catch {

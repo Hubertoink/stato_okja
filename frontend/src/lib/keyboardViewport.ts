@@ -56,7 +56,7 @@ export function getKeyboardViewport() {
   // Keep the visual-viewport path for pinch zoom or unusable native geometry.
   if (rect && (vv?.scale ?? 1) === 1 && rect.height > 0 && rect.width > 0 &&
     Number.isFinite(rect.top) && rect.top > offsetTop && rect.top < layoutHeight) {
-    return { height: rect.top - offsetTop, offsetTop, source: 'virtual-keyboard' };
+    return { height: rect.top - offsetTop, offsetTop, source: 'virtual-keyboard', bottomInset: rect.height };
   }
   return { height, offsetTop, source: 'visual-viewport' };
 }

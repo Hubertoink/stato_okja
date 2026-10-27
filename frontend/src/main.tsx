@@ -32,6 +32,9 @@ import { applyStoredThemePreference, listenForSystemThemeChanges } from './lib/t
 import { applyStoredViewDensity } from './lib/viewDensity';
 import { attachQueryClientMetrics } from './lib/devMetrics';
 import { demoModeEnabled } from './demo/config';
+import { configureKeyboardViewport } from './lib/keyboardViewport';
+
+configureKeyboardViewport();
 
 const persister = createSyncStoragePersister({
   storage: window.sessionStorage,

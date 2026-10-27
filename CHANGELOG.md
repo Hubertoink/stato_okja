@@ -9,27 +9,34 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.19.0] - 2026-10-27
+
 ### Added
-- Der optionale native Stammdaten-Tastaturvergleich prüft eine Verankerung am unteren Fensterrand mit gemessener Tastaturhöhe und unabhängigem Hintergrund; der Bericht kennzeichnet diese Variante als `v4`.
-- Stammdaten-Diagnose vergleicht zusätzlich die native Tastaturgeometrie. `?viewportDebug=1&keyboardViewport=native` aktiviert ausschließlich in Android Edge einen begrenzten Vergleichsmodus; beim Verlassen wird das Browser-Verhalten wiederhergestellt.
-- Optionaler lokaler Viewport-Messmodus für Stammdaten über `?viewportDebug=1`: vergleicht Browserhöhen, Modalgrenzen und verzögerte Tastaturereignisse; Messwerte lassen sich ohne Formularinhalte kopieren.
+- Optionale Seitenleiste als Standardnavigation auf dem Desktop, mit Organisationswechsel, einklappbaren Beschriftungen und Tooltips für die Symbole.
+- Persönliche Wahl zwischen normaler und kompakter Desktop-Ansicht mit Vorschau; die Einstellung wird im Benutzerkonto gespeichert.
+- Eigene Bereiche für Stammdaten und Betrieb sowie verständliche Erläuterungen der Kontorollen im Profil.
 
 ### Changed
-- Mobile Viewport-Konfiguration für den Android-Edge-Vergleich auf Browser-Standard umgestellt, wie bei Kassiero; `viewport-fit=cover` und `interactive-widget=resizes-content` entfallen.
-- Ansichtsmodus pro Benutzerkonto: In Einstellungen → Darstellung und im Profil kann mit kleiner Vorschau zwischen normaler und kompakter Desktop-Ansicht gewechselt werden.
-- Backend auf NestJS 12.2 mit abgestimmten Adaptern, Auth-, Konfigurations-, Swagger- und Testpaketen aktualisiert. Backend-Compiler und CLI verwenden TypeScript 6; CommonJS und bestehende DTO-Validierung bleiben erhalten.
-- Backend-Tests laden die ESM-Pakete auch im Watch-, Coverage- und Debug-Modus.
-- Dependabot fasst NestJS-Pakete einschließlich CLI und Tests in einer gemeinsamen Update-Gruppe zusammen.
-- Kompaktere Desktop-Darstellung ab 1024 px bei Mausbedienung: Schrift, Bedienelemente und Abstände orientieren sich an einer 80-%-Ansicht. Touch-Ansichten und Druck behalten die bisherige Größe; Browser-Zoom bleibt nutzbar.
-- Die kompakte Desktop-Navigation zeigt ihre Beschriftungen bereits ab 1280 px.
+- Darstellung und Navigation sind in den persönlichen Einstellungen gebündelt; bestehende Einstellungslinks werden auf die passenden Bereiche weitergeleitet.
+- Die kompakte Ansicht reduziert Schrift, Abstände und Bedienelemente bei Mausbedienung. Touch-Ansichten, Druck und Browser-Zoom bleiben nutzbar.
+- Backend auf NestJS 12.2 mit abgestimmten Adaptern, Auth-, Konfigurations-, Swagger- und Testpaketen sowie TypeScript 6 aktualisiert.
+- Backend-Tests unterstützen ESM auch im Watch-, Coverage- und Debug-Modus; zusammengehörige NestJS-Pakete werden gemeinsam aktualisiert.
+- Android Edge verwendet automatisch die getestete Viewport-Einstellung `interactive-widget=resizes-content`. Temporäre Messanzeigen, Diagnose-URLs und der native Tastaturvergleich wurden entfernt.
+- Windows-Desktop und Server/Weboberfläche verwenden gemeinsam den Versionsstand 1.19.0. Die Desktop-Vorschau wird mit Installer und In-App-Update bereitgestellt.
 
 ### Fixed
-- Viewport-Testlinks akzeptieren Groß- und Kleinschreibung; der native Tastaturvergleich lässt sich direkt im Messfenster umschalten. Kopierte Messberichte bleiben unter dem beobachteten Einfügelimit vollständig lesbar.
-- Logbuch- und Stammdaten-Dialoge verwenden denselben einzelnen Viewport-Rahmen wie der Aktivitätsdialog; verschachtelte feste Ebenen und der zusätzliche Blur-Filter auf der Dialogfläche entfallen für die mobile Tastaturdarstellung in Edge.
-- Bestehende Aktivitäten lassen sich auch direkt ohne zuvor geladenen Cache bearbeiten; die Reihenfolge der React-Hooks bleibt während des Ladens stabil.
-- Mobile Tastatur: Stammdaten-Aktionsleisten bleiben im sichtbaren Dialog fixiert; Eingabefelder werden oberhalb der Leiste nachgeführt. Auch vollständige Aktivitätsseiten halten das Notizfeld beim ersten Fokus und bei späteren Viewport-Änderungen sichtbar.
-- Aktivitäten behalten beim Öffnen der Tastatur ihre Zeilenabstände. Kategorie-, Tag- und Team-Dialoge nutzen den gemeinsamen Modalrahmen mit sichtbarer Höhe und vollständiger Hintergrundabdeckung; fokussierte Felder werden im Formular nachgeführt.
-- Tastaturerkennung bleibt beim Verschieben des sichtbaren Bereichs zum Eingabefeld aktiv. Modals folgen auch beim Fokuswechsel und Schließen der Tastatur der tatsächlich sichtbaren Höhe.
+- Mobile Dialoge folgen der sichtbaren Höhe; fokussierte Eingabefelder und Notizen werden oberhalb von Tastatur und Aktionsleiste nachgeführt, auch beim ersten Fokus.
+- Aktivitäten behalten ihre Formularabstände beim Öffnen der Tastatur und lassen sich ohne zuvor geladenen Cache bearbeiten.
+- Logbuch- und Stammdaten-Dialoge nutzen einen gemeinsamen Viewport-Rahmen ohne verschachtelte feste Ebenen und zusätzlichen Blur-Filter auf der Dialogfläche.
+- Logbuch-Kommentare bleiben erreichbar; Tabellen zeigen die Anzahl der Kommentare. Bearbeitungsleisten und Tooltips sind konsistenter ausgerichtet.
+- Geöffnete Kopfzeilen-Menüs sperren das Scrollen der Hintergrundseite; Organisationswechsel und Seitenleistenanimationen sind stabiler.
+- Kreisdiagramme haben mehr Platz für Prozentbeschriftungen.
+- Sicherheitsaktualisierungen für DOMPurify, Nodemailer und Backend-Abhängigkeiten sind enthalten.
+
+### Upgrade-Hinweise
+- Vor dem Server-Update Datenbank und Uploads sichern. Die enthaltenen Migrationen ergänzen die persönlichen Einstellungen für Ansichtsdichte und Navigation.
+- In Edge auf Android kann bei geöffneter Tastatur weiterhin eine kleine Restlücke oberhalb der Browserleiste sichtbar sein. Die größere Lücke wird reduziert; das verbleibende Verhalten wurde auch in Edge Canary 158.0.4362.0 reproduziert.
+- Die Desktop-Oberfläche erhält die neuen Navigations- und Einstellungsfunktionen vom verbundenen Server; dafür muss auch dieser auf 1.19.0 aktualisiert werden.
 
 ## [1.18.5] - 2026-10-24
 

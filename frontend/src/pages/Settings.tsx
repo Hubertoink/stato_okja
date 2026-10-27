@@ -1,4 +1,3 @@
-import { lazy, Suspense } from 'react';
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth';
@@ -10,16 +9,12 @@ import {
   getSettingsSection,
 } from '@/components/settings/settingsSections';
 
-const ViewportDiagnostics = lazy(() => import('@/components/settings/ViewportDiagnostics'));
-
 export default function Settings() {
   const { t } = useTranslation('settings');
   const { user } = useAuth();
   const location = useLocation();
   const section = getSettingsSection(location.pathname);
   const [params] = useSearchParams();
-  // Diagnostic links are often copied/typed on phones; accept either casing.
-  const diagnosticParams = new URLSearchParams(location.search.toLowerCase());
   const tabs = getSettingsTabs(section, user?.role);
   const active = tabs.find((tab) => tab.id === params.get('tab')) || tabs[0];
   const legacyPath = section === 'personal' ? getLegacySettingsPath(params.get('tab')) : null;
@@ -33,9 +28,6 @@ export default function Settings() {
 
   return (
     <div className="settings-page">
-      {section === 'masterData' && diagnosticParams.get('viewportdebug') === '1' && (
-        <Suspense fallback={null}><ViewportDiagnostics nativeKeyboard={diagnosticParams.get('keyboardviewport') === 'native'} /></Suspense>
-      )}
       <h2 className="text-3xl font-bold text-viridian mb-2">{t(`sections.${section}.title`)}</h2>
       <p className="mb-6 text-[var(--text-secondary)]">{t(`sections.${section}.description`)}</p>
       {tabs.length > 1 && (

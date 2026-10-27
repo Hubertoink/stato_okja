@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getKeyboardViewport, KEYBOARD_VIEWPORT_EVENT } from './keyboardViewport';
+import { getKeyboardViewport } from './keyboardViewport';
 
 const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"]';
 let viewportBaseline = { width: 0, height: 0 };
@@ -45,16 +45,6 @@ export function useKeyboardOpen(threshold = 120): boolean {
         root.style.setProperty('--visual-viewport-fixed-height', `${height}px`);
         root.style.setProperty('--visual-viewport-offset-top', `${offsetTop}px`);
         root.style.setProperty('--keyboard-inset-height', `${nextOpen ? hiddenHeight : 0}px`);
-        // The native comparison also tests bottom anchoring. Chromium can move
-        // bottom-fixed layers with browser controls independently of JS heights.
-        // Keep this inset through blur until native geometry reports closure.
-        if (viewport.source === 'virtual-keyboard' && viewport.bottomInset !== undefined) {
-          root.dataset.keyboardViewport = 'native-bottom';
-          root.style.setProperty('--native-keyboard-bottom', `${viewport.bottomInset}px`);
-        } else {
-          delete root.dataset.keyboardViewport;
-          root.style.removeProperty('--native-keyboard-bottom');
-        }
         root.dataset.keyboardOpen = String(nextOpen);
         setOpen(nextOpen);
       } catch {
@@ -75,7 +65,6 @@ export function useKeyboardOpen(threshold = 120): boolean {
     window.addEventListener('focusout', handleFocusChange);
     window.addEventListener('resize', compute);
     window.addEventListener('orientationchange', compute);
-    window.addEventListener(KEYBOARD_VIEWPORT_EVENT, compute);
     if (vv) {
       vv.addEventListener('resize', compute);
       vv.addEventListener('scroll', compute);
@@ -85,7 +74,6 @@ export function useKeyboardOpen(threshold = 120): boolean {
         window.removeEventListener('focusout', handleFocusChange);
         window.removeEventListener('resize', compute);
         window.removeEventListener('orientationchange', compute);
-        window.removeEventListener(KEYBOARD_VIEWPORT_EVENT, compute);
         vv.removeEventListener('resize', compute);
         vv.removeEventListener('scroll', compute);
       };
@@ -96,7 +84,6 @@ export function useKeyboardOpen(threshold = 120): boolean {
       window.removeEventListener('focusout', handleFocusChange);
       window.removeEventListener('resize', compute);
       window.removeEventListener('orientationchange', compute);
-      window.removeEventListener(KEYBOARD_VIEWPORT_EVENT, compute);
     };
   }, [threshold]);
 

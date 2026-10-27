@@ -12,9 +12,6 @@ vi.mock('@/demo/DemoHoverHint', () => ({
 vi.mock('@/components/settings/SettingsContent', () => ({
   default: ({ tab }: { tab: string }) => <p data-testid="content">{tab}</p>,
 }));
-vi.mock('@/components/settings/ViewportDiagnostics', () => ({
-  default: ({ nativeKeyboard }: { nativeKeyboard: boolean }) => <aside aria-label="Viewport-Diagnose" data-native={nativeKeyboard} />,
-}));
 function Location() {
   const location = useLocation();
   return (
@@ -39,25 +36,6 @@ function show(path: string) {
 describe('separate configuration sections', () => {
   beforeEach(() => {
     auth.role = 'org_admin';
-  });
-  it('only enables viewport diagnostics explicitly in master data', async () => {
-    const { unmount } = show('/master-data?viewportDebug=1');
-    expect(await screen.findByLabelText('Viewport-Diagnose')).toBeInTheDocument();
-    unmount();
-    show('/settings?viewportDebug=1');
-    expect(screen.queryByLabelText('Viewport-Diagnose')).not.toBeInTheDocument();
-  });
-  it('keeps normal master data free of diagnostics', () => {
-    show('/master-data');
-    expect(screen.queryByLabelText('Viewport-Diagnose')).not.toBeInTheDocument();
-  });
-  it.each([
-    'viewportDebug=1&keyboardViewport=native',
-    'viewportDebug=1&keyboardviewport=native',
-    'viewportdebug=1&keyboardviewport=NATIVE',
-  ])('accepts native diagnostic links regardless of casing: %s', async (query) => {
-    show(`/master-data?${query}`);
-    expect(await screen.findByLabelText('Viewport-Diagnose')).toHaveAttribute('data-native', 'true');
   });
   it('keeps personal settings free of taxonomy and operations tabs', () => {
     show('/settings');

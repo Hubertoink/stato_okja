@@ -28,19 +28,20 @@ export function useKeyboardOpen(threshold = 120): boolean {
         } else {
           viewportBaseline.height = Math.max(viewportBaseline.height, layoutHeight);
         }
+        // Panning to a focused field changes offsetTop, not the keyboard height.
+        // Subtracting that offset can incorrectly report a closed keyboard.
         const hiddenHeight = Math.max(
           0,
-          layoutHeight - height - offsetTop,
-          viewportBaseline.height - height - offsetTop,
+          layoutHeight - height,
+          viewportBaseline.height - height,
         );
         const nextOpen = isEditableElement(document.activeElement) && hiddenHeight > threshold;
         const root = document.documentElement;
-        const layoutViewportResized =
-          viewportBaseline.height > 0 && layoutHeight < viewportBaseline.height - threshold;
-        const fixedHeight = nextOpen && !layoutViewportResized ? height : layoutHeight;
 
         root.style.setProperty('--visual-viewport-height', `${height}px`);
-        root.style.setProperty('--visual-viewport-fixed-height', `${Math.max(height, fixedHeight)}px`);
+        // Keep overlays inside the visible area even while focus changes or the
+        // keyboard animates. The document itself retains its layout viewport.
+        root.style.setProperty('--visual-viewport-fixed-height', `${height}px`);
         root.style.setProperty('--visual-viewport-offset-top', `${offsetTop}px`);
         root.style.setProperty('--keyboard-inset-height', `${nextOpen ? hiddenHeight : 0}px`);
         root.dataset.keyboardOpen = String(nextOpen);

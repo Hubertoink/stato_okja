@@ -58,6 +58,42 @@ it('handles browsers without VisualViewport or clipboard access', async () => {
   const { unmount } = render(<ViewportDiagnostics />);
   expect(screen.getByLabelText('Viewport-Diagnose')).toHaveTextContent('VV –');
   await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Messwerte kopieren' })));
-  expect(screen.getByRole('button')).toHaveTextContent('Kopieren fehlgeschlagen');
+  expect(screen.getByRole('button', { name: /Kopieren fehlgeschlagen/ })).toBeInTheDocument();
   unmount();
+});
+
+it('allows a native comparison directly from the standard diagnostic panel', async () => {
+  const keyboard = Object.assign(new EventTarget(), { overlaysContent: false, boundingRect: new DOMRect() });
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  vi.stubGlobal('navigator', { userAgent: 'Android EdgA/155', virtualKeyboard: keyboard, clipboard: { writeText } });
+  const { unmount } = render(<ViewportDiagnostics />);
+  try {
+    fireEvent.click(screen.getByRole('button', { name: 'Nativ-Test starten' }));
+    expect(keyboard.overlaysContent).toBe(true);
+    expect(screen.getByLabelText('Viewport-Diagnose')).toHaveTextContent('Nativ-Test aktiv');
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Messwerte kopieren' })));
+    expect(JSON.parse(writeText.mock.calls[0][0]).nativeKeyboardRequested).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Zurück zu Standard' }));
+    expect(keyboard.overlaysContent).toBe(false);
+  } finally {
+    unmount();
+  }
+});
+
+it('exports complete JSON below the paste limit even after a long event sequence', async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  vi.stubGlobal('navigator', { clipboard: { writeText }, userAgent: 'Test browser' });
+  const { unmount } = render(<ViewportDiagnostics />);
+  try {
+    for (let index = 0; index < 100; index++) fireEvent(window, new Event('resize'));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Messwerte kopieren' })));
+    const text = writeText.mock.calls[0][0];
+    expect(text.length).toBeLessThanOrEqual(48_000);
+    const report = JSON.parse(text);
+    expect(report.omittedSamples).toBeGreaterThan(0);
+    expect(report.samples[0].event).toBe('start');
+    expect(report.samples.at(-1).event).toBe('copy');
+  } finally {
+    unmount();
+  }
 });

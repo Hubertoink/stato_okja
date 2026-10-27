@@ -65,10 +65,12 @@ export default function ViewportDiagnostics({ nativeKeyboard = false }: { native
   const captureRef = useRef<(event: string) => void>(() => {});
   const [latest, setLatest] = useState<Measurement | null>(null);
   const [copyStatus, setCopyStatus] = useState('Messwerte kopieren');
+  const [nativeOverride, setNativeOverride] = useState<boolean | null>(null);
+  const nativeRequested = nativeOverride ?? nativeKeyboard;
 
   useEffect(() => {
-    if (nativeKeyboard) return enableNativeKeyboardViewport();
-  }, [nativeKeyboard]);
+    if (nativeRequested) return enableNativeKeyboardViewport();
+  }, [nativeRequested]);
 
   useEffect(() => {
     const start = performance.now();
@@ -82,7 +84,7 @@ export default function ViewportDiagnostics({ nativeKeyboard = false }: { native
       if (signature !== lastSignature) setLatest(data);
       lastSignature = signature;
       samples.current.push({ ms: round(performance.now() - start), event, data });
-      if (samples.current.length > 240) samples.current.shift();
+      if (samples.current.length > 240) samples.current.splice(1, 1);
     };
     captureRef.current = capture;
     capture('start');
@@ -107,10 +109,18 @@ export default function ViewportDiagnostics({ nativeKeyboard = false }: { native
 
   const copy = async () => {
     captureRef.current('copy');
-    const report = JSON.stringify({
-      diagnostic: 'master-data-viewport-v2', nativeKeyboardRequested: nativeKeyboard, userAgent: navigator.userAgent,
-      samples: samples.current,
-    });
+    const reportData = {
+      diagnostic: 'master-data-viewport-v3', nativeKeyboardRequested: nativeRequested, userAgent: navigator.userAgent,
+      omittedSamples: 0, samples: [...samples.current],
+    };
+    let report = JSON.stringify(reportData);
+    // Pasted phone reports can be cut off at 64 KiB. Keep complete JSON,
+    // the initial baseline and the latest samples comfortably below that limit.
+    while (report.length > 48_000 && reportData.samples.length > 2) {
+      reportData.samples.splice(1, 1);
+      reportData.omittedSamples++;
+      report = JSON.stringify(reportData);
+    }
     try {
       await navigator.clipboard.writeText(report);
       setCopyStatus('Kopiert');
@@ -133,16 +143,30 @@ export default function ViewportDiagnostics({ nativeKeyboard = false }: { native
           <br />
           Modal unten {latest?.shell?.bottom ?? '–'} · Fenster {latest?.window.height ?? '–'} · dvh {latest?.dvh?.height ?? '–'}
           <br />
-          VK oben {latest?.virtualKeyboard?.top ?? '–'} · {nativeKeyboard ? latest?.virtualKeyboard?.enabled ? 'Nativ-Test aktiv' : 'Nativ-Test nicht verfügbar' : 'Standard'}
+          VK oben {latest?.virtualKeyboard?.top ?? '–'} · {nativeRequested ? latest?.virtualKeyboard?.enabled ? 'Nativ-Test aktiv' : 'Nativ-Test nicht verfügbar' : 'Standard'}
         </div>
+        <div className="mt-1 flex flex-wrap gap-1">
         <Button
-          size="sm" variant="secondary" className="mt-1" style={{ pointerEvents: 'auto' }}
+          size="sm" variant="secondary" style={{ pointerEvents: 'auto', color: '#111827', backgroundColor: '#fff' }}
           // Retain the field focus and keyboard while capturing on a touch device.
           onPointerDown={(event) => event.preventDefault()}
           onClick={() => void copy()}
         >
           {copyStatus}
         </Button>
+        <Button
+          size="sm" variant="secondary" style={{ pointerEvents: 'auto', color: '#111827', backgroundColor: '#fff' }}
+          aria-pressed={nativeRequested}
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => {
+            setNativeOverride(!nativeRequested);
+            setCopyStatus('Messwerte kopieren');
+          }}
+        >
+          {nativeRequested ? 'Zurück zu Standard' : 'Nativ-Test starten'}
+        </Button>
+        </div>
+        {nativeOverride !== null && <div className="mt-1">Tastatur jetzt schließen und erneut öffnen.</div>}
       </aside>
     </>,
     document.body,

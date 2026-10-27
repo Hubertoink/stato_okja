@@ -23,6 +23,7 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 - Die kompakte Desktop-Navigation zeigt ihre Beschriftungen bereits ab 1280 px.
 
 ### Fixed
+- Viewport-Testlinks akzeptieren Groß- und Kleinschreibung; der native Tastaturvergleich lässt sich direkt im Messfenster umschalten. Kopierte Messberichte bleiben unter dem beobachteten Einfügelimit vollständig lesbar.
 - Logbuch- und Stammdaten-Dialoge verwenden denselben einzelnen Viewport-Rahmen wie der Aktivitätsdialog; verschachtelte feste Ebenen und der zusätzliche Blur-Filter auf der Dialogfläche entfallen für die mobile Tastaturdarstellung in Edge.
 - Bestehende Aktivitäten lassen sich auch direkt ohne zuvor geladenen Cache bearbeiten; die Reihenfolge der React-Hooks bleibt während des Ladens stabil.
 - Mobile Tastatur: Stammdaten-Aktionsleisten bleiben im sichtbaren Dialog fixiert; Eingabefelder werden oberhalb der Leiste nachgeführt. Auch vollständige Aktivitätsseiten halten das Notizfeld beim ersten Fokus und bei späteren Viewport-Änderungen sichtbar.

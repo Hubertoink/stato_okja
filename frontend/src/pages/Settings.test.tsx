@@ -13,7 +13,7 @@ vi.mock('@/components/settings/SettingsContent', () => ({
   default: ({ tab }: { tab: string }) => <p data-testid="content">{tab}</p>,
 }));
 vi.mock('@/components/settings/ViewportDiagnostics', () => ({
-  default: () => <aside aria-label="Viewport-Diagnose" />,
+  default: ({ nativeKeyboard }: { nativeKeyboard: boolean }) => <aside aria-label="Viewport-Diagnose" data-native={nativeKeyboard} />,
 }));
 function Location() {
   const location = useLocation();
@@ -50,6 +50,14 @@ describe('separate configuration sections', () => {
   it('keeps normal master data free of diagnostics', () => {
     show('/master-data');
     expect(screen.queryByLabelText('Viewport-Diagnose')).not.toBeInTheDocument();
+  });
+  it.each([
+    'viewportDebug=1&keyboardViewport=native',
+    'viewportDebug=1&keyboardviewport=native',
+    'viewportdebug=1&keyboardviewport=NATIVE',
+  ])('accepts native diagnostic links regardless of casing: %s', async (query) => {
+    show(`/master-data?${query}`);
+    expect(await screen.findByLabelText('Viewport-Diagnose')).toHaveAttribute('data-native', 'true');
   });
   it('keeps personal settings free of taxonomy and operations tabs', () => {
     show('/settings');

@@ -227,54 +227,54 @@ export default function Modal({
   const isStructuredModal = variant === 'information' || variant === 'form';
   const themeClassName = theme === 'public' ? 'public-survey public-survey-modal' : '';
   const content = (
-    <div className={`fixed inset-0 z-[70] ${themeClassName}`} onWheel={(e) => e.stopPropagation()}>
+    <div
+      className={`visual-viewport-fixed z-[70] modal-overlay flex ${fullScreen ? 'items-stretch' : mobilePlacement === 'top' ? 'items-start' : 'items-end'} md:items-center justify-center ${fullScreen ? 'p-0' : 'p-0 md:p-6'} ${themeClassName}`}
+      data-blur={blur}
+      onWheel={(e) => e.stopPropagation()}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) dismiss();
+      }}
+    >
       <ModalViewportTracker />
-      {/* Cover the whole layout viewport, including while the keyboard pans
-          or resizes the smaller visual viewport used by the dialog. */}
-      <div className="absolute inset-0 modal-overlay" data-blur={blur} aria-hidden="true" onClick={dismiss} />
+      {/* Match the activity editor: one fixed viewport shell owns both the
+          backdrop and the dialog. Nested fixed layers and panel backdrop blur
+          can be clipped separately while a mobile browser moves its keyboard. */}
       <div
-        className={`visual-viewport-fixed flex ${fullScreen ? 'items-stretch' : mobilePlacement === 'top' ? 'items-start' : 'items-end'} md:items-center justify-center ${fullScreen ? 'p-0' : 'p-0 md:p-6'}`}
-        onClick={(event) => {
-          if (event.target === event.currentTarget) dismiss();
-        }}
+        ref={dialogRef}
+        aria-label={title ? undefined : t('dialog.ariaLabel')}
+        aria-labelledby={title ? titleId : undefined}
+        aria-modal="true"
+        className={`w-full ${fullScreen ? 'max-w-none max-h-none h-[100dvh] rounded-none border-0' : `${maxW} max-h-[85vh] ${mobilePlacement === 'top' ? 'rounded-b-3xl top-sheet-animate' : 'rounded-t-3xl bottom-sheet-animate'} border border-[var(--border-subtle)] md:rounded-2xl`} bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl modal-panel-roomy ${themeClassName} ${variant !== 'information' ? 'modal-editor-surface' : ''} ${isStructuredModal ? "flex flex-col overflow-hidden" : "overflow-x-hidden overflow-y-auto p-4 md:p-6"}`}
+        role="dialog"
+        tabIndex={-1}
+        onKeyDown={handleDialogKeyDown}
+        onFocusCapture={handleFieldFocus}
       >
-        <div
-          ref={dialogRef}
-          aria-label={title ? undefined : t('dialog.ariaLabel')}
-          aria-labelledby={title ? titleId : undefined}
-          aria-modal="true"
-          className={`w-full ${fullScreen ? 'max-w-none max-h-none h-[100dvh] rounded-none border-0' : `${maxW} max-h-[85vh] ${mobilePlacement === 'top' ? 'rounded-b-3xl top-sheet-animate' : 'rounded-t-3xl bottom-sheet-animate'} border border-[var(--border-subtle)] md:rounded-2xl`} bg-[var(--surface-elevated)] text-[var(--text-primary)] shadow-2xl modal-panel-roomy ${themeClassName} ${variant !== 'information' ? 'modal-editor-surface' : ''} ${isStructuredModal ? "flex flex-col overflow-hidden" : "overflow-x-hidden overflow-y-auto p-4 md:p-6"} ${blur ? "backdrop-blur-xl" : ''}`}
-          role="dialog"
-          tabIndex={-1}
-          onKeyDown={handleDialogKeyDown}
-          onFocusCapture={handleFieldFocus}
-        >
-          {isStructuredModal ? (
-            <EditorHeader
-              title={title}
-              titleId={titleId}
-              actions={headerActions}
-              onClose={dismiss}
-              closeLabel={t('actions.close')}
-              showCloseButton={showCloseButton}
-            />
-          ) : (
-            <div className="mb-4 flex items-center justify-between">
-              <h3 id={titleId} className="text-lg font-bold gradient-text">{title}</h3>
-              {showCloseButton && (
-                <CloseButton
-                  onClick={dismiss}
-                  aria-label={t('actions.close')}
-                />
-              )}
-            </div>
-          )}
-          {variant === 'information' ? (
-            <div className={`min-h-0 flex-1 overflow-y-auto px-4 pb-4 md:px-6 md:pb-6 ${contentClassName}`}>
-              {children}
-            </div>
-          ) : children}
-        </div>
+        {isStructuredModal ? (
+          <EditorHeader
+            title={title}
+            titleId={titleId}
+            actions={headerActions}
+            onClose={dismiss}
+            closeLabel={t('actions.close')}
+            showCloseButton={showCloseButton}
+          />
+        ) : (
+          <div className="mb-4 flex items-center justify-between">
+            <h3 id={titleId} className="text-lg font-bold gradient-text">{title}</h3>
+            {showCloseButton && (
+              <CloseButton
+                onClick={dismiss}
+                aria-label={t('actions.close')}
+              />
+            )}
+          </div>
+        )}
+        {variant === 'information' ? (
+          <div className={`min-h-0 flex-1 overflow-y-auto px-4 pb-4 md:px-6 md:pb-6 ${contentClassName}`}>
+            {children}
+          </div>
+        ) : children}
       </div>
     </div>
   );

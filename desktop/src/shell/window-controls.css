@@ -72,24 +72,7 @@ html.stato-window-fallback { scroll-padding-top: 36px; }
 html.stato-window-fallback body { padding-top: 36px; box-sizing: border-box; }
 html.stato-window-fallback #setup, html.stato-window-fallback #splash { min-height: calc(100vh - 36px); }
 html.stato-window-fallback .app-shell-sidebar { min-height: calc(100dvh - 36px); }
-/* Portaled dialogs use viewport coordinates, so body padding cannot keep
-   their headers clear of the separate desktop title bar. */
-html.stato-window-fallback .visual-viewport-fixed.modal-overlay {
-  top: calc(var(--visual-viewport-offset-top, 0px) + 36px);
-  height: calc(var(--visual-viewport-fixed-height, var(--visual-viewport-height, 100dvh)) - 36px);
-}
-html.stato-window-fallback .modal-overlay .modal-panel-roomy {
-  max-height: calc(var(--visual-viewport-fixed-height, var(--visual-viewport-height, 100dvh)) - 36px - 0.75rem);
-}
-/* Only shorten the document scrollbar; dialog and sidebar scrollers retain
-   their own tracks. The window controls occupy the first 36 CSS pixels. */
-html:has(#stato-window-controls)::-webkit-scrollbar-track {
-  margin-top: 36px;
-}
 @media (min-width: 768px) {
-  html.stato-window-fallback .modal-overlay .modal-panel-roomy {
-    max-height: calc(var(--visual-viewport-fixed-height, var(--visual-viewport-height, 100dvh)) - 36px - 3rem);
-  }
   html.stato-window-fallback .app-shell-sidebar .app-sidebar {
     top: 36px;
     height: calc(100dvh - 36px);

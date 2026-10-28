@@ -9,6 +9,13 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.20.2] - 2026-10-28
+
+### Desktop
+- Die Desktop-Titelleiste liegt in einem eigenen Bereich außerhalb der Weboberfläche. Scrollleisten und Dialoge können die Fensterknöpfe nicht mehr überlagern.
+- Die Serverleiste schließt ohne zusätzliche Rahmenlinie direkt an den Webinhalt an. Fenstergrenzen werden auch bei Windows-Skalierung berücksichtigt.
+- Theme-Farben werden weiterhin übernommen. Kein Server-Update erforderlich.
+
 ## [1.20.1] - 2026-10-28
 
 ### Desktop

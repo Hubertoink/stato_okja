@@ -3,6 +3,12 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Only the packaged local shell receives this preload. No generic IPC API and
 // no Electron/Node objects are exposed to either renderer.
 contextBridge.exposeInMainWorld('statoDesktop', {
+  onContentBottom: (callback) => {
+    ipcRenderer.on('stato:content-bottom', (_event, bottom) => callback(bottom));
+  },
+  onChromeTheme: (callback) => {
+    ipcRenderer.on('stato:chrome-theme', (_event, theme) => callback(theme));
+  },
   getState: () => ipcRenderer.invoke('stato:state'),
   getUpdateState: () => ipcRenderer.invoke('stato:update-state'),
   openUpdates: () => ipcRenderer.invoke('stato:update-open'),

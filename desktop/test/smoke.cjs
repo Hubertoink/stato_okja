@@ -229,12 +229,13 @@ async function switchModal(application, local) {
     const assertRightAligned = async () => {
       await remote.waitForFunction(() => {
         const rect = document.getElementById('stato-window-controls').getBoundingClientRect();
-        return Math.abs(innerWidth - rect.right) < 1 && Math.abs(rect.top) < 1;
+        return Math.abs(document.documentElement.clientWidth - rect.right) < 1 && Math.abs(rect.top) < 1;
       });
       const geometry = await remote.evaluate(() => {
         const controls = document.getElementById('stato-window-controls').getBoundingClientRect();
         const avatar = document.getElementById('avatar').getBoundingClientRect();
-        return { gap: innerWidth - controls.right, left: controls.left, avatarRight: avatar.right,
+        // Fixed UI aligns with the usable viewport, excluding a native scrollbar.
+        return { gap: document.documentElement.clientWidth - controls.right, left: controls.left, avatarRight: avatar.right,
           top: controls.top };
       });
       assert.ok(Math.abs(geometry.gap) < 1, 'Controls must touch the right window edge');
@@ -258,9 +259,42 @@ async function switchModal(application, local) {
     assert.equal(await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isMinimized()), true);
     await application.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0].restore(); });
     await remote.screenshot({ path: join(artifacts, 'integrated-window-controls.png') });
+    // The sidebar leaves the original header mounted under display:none.
+    // Attribute-only navigation changes must move controls out of that subtree.
+    await remote.evaluate(() => {
+      const row = document.querySelector('.mobile-header-row');
+      const shell = document.createElement('div');
+      shell.id = 'test-header-shell';
+      row.before(shell);
+      shell.append(row);
+      shell.style.display = 'none';
+      const sidebar = document.createElement('div');
+      sidebar.className = 'app-shell-sidebar';
+      sidebar.innerHTML = '<aside class="app-sidebar">Seitenleiste</aside>';
+      document.body.append(sidebar);
+      const style = document.createElement('style');
+      style.textContent = '.app-sidebar { position:fixed; inset:0 auto 0 0; width:64px; height:100dvh; }';
+      document.head.append(style);
+    });
+    await remote.locator('#stato-window-titlebar #stato-window-controls').waitFor();
+    await assertRightAligned();
+    assert.equal(await remote.locator('.app-sidebar').evaluate((el) => el.getBoundingClientRect().top), 36);
+    await remote.getByRole('button', { name: 'Fenster maximieren', exact: true }).click();
+    await remote.getByRole('button', { name: 'Fenster wiederherstellen', exact: true }).waitFor();
+    assert.equal(await remote.evaluate(async () => (await window.statoWindow.getState()).maximized), true);
+    await remote.getByRole('button', { name: 'Fenster wiederherstellen', exact: true }).click();
+    await remote.getByRole('button', { name: 'Fenster maximieren', exact: true }).waitFor();
+    await remote.getByRole('button', { name: 'Fenster minimieren', exact: true }).click();
+    assert.equal(await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isMinimized()), true);
+    await application.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0].restore(); });
+    await remote.screenshot({ path: join(artifacts, 'sidebar-window-controls.png') });
+    await remote.evaluate(() => { document.getElementById('test-header-shell').style.display = ''; });
+    await remote.locator('.mobile-header-row #stato-window-controls').waitFor();
+    assert.equal(await remote.locator('#stato-window-titlebar').count(), 0);
+    await remote.evaluate(() => document.querySelector('.app-shell-sidebar').remove());
     await remote.evaluate(() => document.querySelector('.mobile-header-row').remove());
     await remote.locator('#stato-window-titlebar').waitFor();
-    console.log('PASS: integrated window controls, drag exclusions, maximize/restore/minimize and SPA fallback');
+    console.log('PASS: integrated and sidebar window controls, drag exclusions, maximize/restore/minimize and SPA fallback');
 
     const footer = await local.locator('#desktop-footer').boundingBox();
     const remoteBounds = await application.evaluate(({ BrowserWindow }, url) => {

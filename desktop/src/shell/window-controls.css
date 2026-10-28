@@ -71,6 +71,13 @@
 html.stato-window-fallback { scroll-padding-top: 36px; }
 html.stato-window-fallback body { padding-top: 36px; box-sizing: border-box; }
 html.stato-window-fallback #setup, html.stato-window-fallback #splash { min-height: calc(100vh - 36px); }
+html.stato-window-fallback .app-shell-sidebar { min-height: calc(100dvh - 36px); }
+@media (min-width: 768px) {
+  html.stato-window-fallback .app-shell-sidebar .app-sidebar {
+    top: 36px;
+    height: calc(100dvh - 36px);
+  }
+}
 @media (max-width: 1000px) {
   .stato-window-drag .desktop-header-user-copy { display: none; }
 }

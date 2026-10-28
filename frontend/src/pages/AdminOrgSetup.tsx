@@ -318,15 +318,14 @@ function MasterDataTransferModal({
             className="min-h-52 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--input-bg)] p-3 font-mono text-xs text-[var(--text-primary)] outline-none focus:border-viridian focus:ring-2 focus:ring-viridian/20"
             spellCheck={false}
           />
-          <button
+          <Button
             type="button"
             disabled={previewing || !content.trim()}
-            className="inline-flex items-center gap-2 rounded-lg bg-viridian px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => void inspect()}
           >
             <FileUp className="h-4 w-4" />{' '}
             {previewing ? t('masterData.inspecting') : t('masterData.preview')}
-          </button>
+          </Button>
         </div>
 
         {error && (
@@ -409,10 +408,9 @@ function MasterDataTransferModal({
               >
                 {t('actions.cancel')}
               </button>
-              <button
+              <Button
                 type="button"
                 disabled={!preview.valid || createdTotal === 0 || importing}
-                className="inline-flex items-center gap-2 rounded-lg bg-viridian px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={async () => {
                   if (!org) return;
                   try {
@@ -436,7 +434,7 @@ function MasterDataTransferModal({
                 {importing
                   ? t('masterData.importing')
                   : t('masterData.confirmImport', { count: createdTotal })}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -1960,14 +1958,13 @@ export default function AdminOrgSetup() {
 
           {/* Buttons */}
           <div className="flex items-center justify-end gap-3 pt-2 border-t">
-            <button
-              className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            <Button
+              variant="secondary"
               onClick={() => setCreateModalOpen(false)}
             >
               {autoT('ui_07af7cb30fca')}
-            </button>
-            <button
-              className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
+            </Button>
+            <Button
               disabled={
                 !orgName.trim() ||
                 (withAdmin &&
@@ -1985,7 +1982,7 @@ export default function AdminOrgSetup() {
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
               )}
               {withAdmin ? autoT('ui_6d62972efc1b') : autoT('ui_bf524c1f1672')}
-            </button>
+            </Button>
           </div>
         </div>
       </Modal>
@@ -2563,8 +2560,7 @@ function OrgRow({
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
             />
-            <button
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-viridian text-white disabled:opacity-60 text-sm"
+            <Button
               title={autoT('ui_18ababb1960c')}
               disabled={inviteBusy || !/[^\s@]+@[^\s@]+\.[^\s@]+/.test(inviteEmail)}
               onClick={async () => {
@@ -2590,7 +2586,7 @@ function OrgRow({
             >
               <Mail className="w-4 h-4" />
               <span className="hidden sm:inline">{autoT('ui_871d0f64660b')}</span>
-            </button>
+            </Button>
           </div>
           {copyMsg && <div className="text-xs text-viridian mt-1">{copyMsg}</div>}
         </div>
@@ -2639,14 +2635,13 @@ function OrgRow({
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-2 border-t">
-            <button
-              className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+            <Button
+              variant="secondary"
               onClick={() => setMovePicker({ open: false, targetParentId: defaultMoveTargetId })}
             >
               {autoT('ui_07af7cb30fca')}
-            </button>
-            <button
-              className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue"
+            </Button>
+            <Button
               disabled={!movePicker.targetParentId}
               onClick={async () => {
                 if (!movePicker.targetParentId) return;
@@ -2655,7 +2650,7 @@ function OrgRow({
               }}
             >
               {autoT('ui_44f6292fbe78')}
-            </button>
+            </Button>
           </div>
         </div>
       </Modal>
@@ -2751,8 +2746,8 @@ function OrgRow({
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2 border-t">
-              <button
-                className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+              <Button
+                variant="secondary"
                 onClick={() =>
                   setMoveDialog({
                     open: false,
@@ -2763,9 +2758,8 @@ function OrgRow({
                 }
               >
                 {autoT('ui_07af7cb30fca')}
-              </button>
-              <button
-                className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue"
+              </Button>
+              <Button
                 onClick={async () => {
                   try {
                     await moveOrgWithConfirmationApi(org.id, moveDialog.targetParentId, true);
@@ -2786,7 +2780,7 @@ function OrgRow({
                 }}
               >
                 {autoT('ui_7168eaa1dc95')}
-              </button>
+              </Button>
             </div>
           </div>
         )}

@@ -1,4 +1,13 @@
 const desktop = window.statoDesktop;
+desktop.onContentBottom((bottom) => {
+  document.getElementById('desktop-footer').style.top = `${bottom}px`;
+});
+desktop.onChromeTheme((theme) => {
+  for (const [name, value] of Object.entries(theme)) {
+    if (CSS.supports('color', value)) document.documentElement.style.setProperty(name, value);
+    else document.documentElement.style.removeProperty(name);
+  }
+});
 const form = document.getElementById('connection-form');
 const input = document.getElementById('server-url');
 const checkButton = document.getElementById('check');

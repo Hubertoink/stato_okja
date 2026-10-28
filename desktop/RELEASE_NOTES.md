@@ -2,9 +2,10 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Datenschutz und Nutzungsbedingungen werden vollständig unterhalb der Desktop-Titelleiste angezeigt, auch bei kleinen Fenstern.
-- Die äußere Scrollleiste beginnt unterhalb der Fensterknöpfe.
-- Desktop-Versionen werden ab jetzt als reguläre Releases veröffentlicht.
+- Die Desktop-Titelleiste liegt jetzt außerhalb des Webinhalts. Scrollleisten und Dialoge beginnen vollständig darunter; neben dem Schließen-Knopf bleibt kein Scrollbereich.
+- Die Titelleiste bleibt bei oberer Navigation und Seitenleiste sichtbar und übernimmt die Theme-Farben.
+- Die untere Serverleiste schließt ohne zusätzliche Rahmenlinie direkt an den Webinhalt an, auch bei Windows-Skalierung.
+- Kein Server-Update erforderlich.
 
 ### Installation und einmaliger Umstieg
 

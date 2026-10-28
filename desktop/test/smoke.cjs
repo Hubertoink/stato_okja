@@ -62,7 +62,8 @@ async function launch(userData) {
   delete env.ELECTRON_RUN_AS_NODE;
   return electron.launch({
     executablePath: require('electron'),
-    args: [directory, `--stato-user-data=${userData}`, '--stato-hidden'],
+    args: [directory, `--stato-user-data=${userData}`, '--stato-hidden',
+      ...(process.env.STATO_TEST_SCALE_FACTOR ? [`--force-device-scale-factor=${process.env.STATO_TEST_SCALE_FACTOR}`] : [])],
     env,
     timeout: 30000,
   });
@@ -80,7 +81,7 @@ async function capture(application, file) {
     const local = BrowserWindow.getAllWindows().find((win) =>
       win.webContents.getURL().startsWith('file:'),
     );
-    return (await local.webContents.capturePage(undefined, { stayHidden: true, stayAwake: true }))
+    return (await local.capturePage(undefined, { stayHidden: true, stayAwake: true }))
       .toPNG()
       .toString('base64');
   });
@@ -205,96 +206,48 @@ async function switchModal(application, local) {
     const remote = await remotePage(application, first.url);
     await remote.waitForSelector('h1');
     assert.equal(await remote.locator('h1').textContent(), 'Server A');
-    await remote.locator('#stato-window-titlebar').waitFor();
+    // Native view bounds keep every server scrollbar and fixed dialog below
+    // the title bar, including long pages and sidebar navigation.
+    assert.equal(await remote.locator('#stato-window-controls').count(), 0);
     await remote.evaluate(() => {
-      const header = document.createElement('header');
-      header.className = 'mobile-header-row container';
+      document.documentElement.style.setProperty('--surface-elevated', '#182030');
+      document.documentElement.style.setProperty('--text-primary', '#ffffff');
       const style = document.createElement('style');
-      style.textContent = `body { margin: 0; font-family: system-ui, sans-serif; }
-        .container { width: 84%; max-width: 1100px; margin: 0 auto; }
-        .mobile-header-row { display:flex; align-items:center; gap:12px; padding:16px; background:#eef0ff; }
-        .mobile-header-user { display:flex; align-items:center; }
-        @media(max-width:767px) {
-          .mobile-header-row { display:grid; grid-template-columns:1fr 1fr 44px; }
-          .mobile-header-user { grid-column:3; grid-row:1; }
-        }`;
+      style.textContent = 'html{scrollbar-gutter:stable}body{margin:0;background:#e4e6ef}::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:#8833ff}';
       document.head.append(style);
-      header.innerHTML = '<strong>StatO</strong><div class="mobile-header-user"><button id="avatar">Avatar</button></div>';
-      document.body.prepend(header);
+      const content = document.createElement('div');
+      content.id = 'scroll-fixture';
+      content.style.height = '2400px';
+      document.body.append(content);
     });
-    await remote.locator('.mobile-header-row #stato-window-controls').waitFor();
-    assert.equal(await remote.locator('#stato-window-titlebar').count(), 0);
-    assert.equal(await remote.locator('#avatar').evaluate((el) => getComputedStyle(el).webkitAppRegion), 'no-drag');
-    assert.equal(await remote.locator('.mobile-header-row').evaluate((el) => getComputedStyle(el).webkitAppRegion), 'drag');
-    const assertRightAligned = async () => {
-      await remote.waitForFunction(() => {
-        const rect = document.getElementById('stato-window-controls').getBoundingClientRect();
-        return Math.abs(document.documentElement.clientWidth - rect.right) < 1 && Math.abs(rect.top) < 1;
-      });
-      const geometry = await remote.evaluate(() => {
-        const controls = document.getElementById('stato-window-controls').getBoundingClientRect();
-        const avatar = document.getElementById('avatar').getBoundingClientRect();
-        // Fixed UI aligns with the usable viewport, excluding a native scrollbar.
-        return { gap: document.documentElement.clientWidth - controls.right, left: controls.left, avatarRight: avatar.right,
-          top: controls.top };
-      });
-      assert.ok(Math.abs(geometry.gap) < 1, 'Controls must touch the right window edge');
-      assert.ok(geometry.left >= geometry.avatarRight, 'Controls must not overlap the avatar');
-      assert.ok(Math.abs(geometry.top) < 1, 'Controls must touch the top window edge');
-    };
+    await local.waitForFunction(() => getComputedStyle(document.getElementById('stato-window-titlebar')).backgroundColor === 'rgb(24, 32, 48)');
     for (const width of [720, 900, 1200, 1600]) {
-      await application.evaluate(({ BrowserWindow }, width) => BrowserWindow.getAllWindows()[0].setSize(width, 850), width);
-      await remote.waitForFunction((width) => innerWidth === width, width);
-      await assertRightAligned();
+      const [contentWidth, contentHeight] = await application.evaluate(({ BrowserWindow }, width) => {
+        const win = BrowserWindow.getAllWindows()[0];
+        win.setSize(width, 850);
+        return win.getContentSize();
+      }, width);
+      await remote.waitForFunction((width) => Math.abs(innerWidth - width) <= 1, contentWidth);
+      await local.waitForFunction((width) => Math.abs(document.getElementById('stato-window-controls').getBoundingClientRect().right - width) <= 1, contentWidth);
+      assert.ok(await local.locator('#stato-window-controls').evaluate((el) => Math.abs(el.getBoundingClientRect().right - innerWidth) < 1));
+      const bounds = await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children[0].getBounds());
+      assert.equal(bounds.y, 36);
+      assert.equal(bounds.height, contentHeight - 72);
+      await remote.evaluate(() => scrollTo(0, document.body.scrollHeight));
+      assert.ok(await remote.evaluate(() => scrollY > 0));
     }
     await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1200, 850));
-    await remote.getByRole('button', { name: 'Fenster maximieren', exact: true }).click();
-    await remote.getByRole('button', { name: 'Fenster wiederherstellen', exact: true }).waitFor();
+    await local.getByRole('button', { name: 'Fenster maximieren', exact: true }).click();
+    await local.getByRole('button', { name: 'Fenster wiederherstellen', exact: true }).waitFor();
     assert.equal(await remote.evaluate(async () => (await window.statoWindow.getState()).maximized), true);
-    await assertRightAligned();
-    await remote.getByRole('button', { name: 'Fenster wiederherstellen', exact: true }).click();
-    await remote.getByRole('button', { name: 'Fenster maximieren', exact: true }).waitFor();
-    await assertRightAligned();
-    await remote.getByRole('button', { name: 'Fenster minimieren', exact: true }).click();
+    await local.getByRole('button', { name: 'Fenster wiederherstellen', exact: true }).click();
+    await local.getByRole('button', { name: 'Fenster maximieren', exact: true }).waitFor();
+    await local.getByRole('button', { name: 'Fenster minimieren', exact: true }).click();
     assert.equal(await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isMinimized()), true);
-    await application.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0].restore(); });
-    await remote.screenshot({ path: join(artifacts, 'integrated-window-controls.png') });
-    // The sidebar leaves the original header mounted under display:none.
-    // Attribute-only navigation changes must move controls out of that subtree.
-    await remote.evaluate(() => {
-      const row = document.querySelector('.mobile-header-row');
-      const shell = document.createElement('div');
-      shell.id = 'test-header-shell';
-      row.before(shell);
-      shell.append(row);
-      shell.style.display = 'none';
-      const sidebar = document.createElement('div');
-      sidebar.className = 'app-shell-sidebar';
-      sidebar.innerHTML = '<aside class="app-sidebar">Seitenleiste</aside>';
-      document.body.append(sidebar);
-      const style = document.createElement('style');
-      style.textContent = '.app-sidebar { position:fixed; inset:0 auto 0 0; width:64px; height:100dvh; }';
-      document.head.append(style);
-    });
-    await remote.locator('#stato-window-titlebar #stato-window-controls').waitFor();
-    await assertRightAligned();
-    assert.equal(await remote.locator('.app-sidebar').evaluate((el) => el.getBoundingClientRect().top), 36);
-    await remote.getByRole('button', { name: 'Fenster maximieren', exact: true }).click();
-    await remote.getByRole('button', { name: 'Fenster wiederherstellen', exact: true }).waitFor();
-    assert.equal(await remote.evaluate(async () => (await window.statoWindow.getState()).maximized), true);
-    await remote.getByRole('button', { name: 'Fenster wiederherstellen', exact: true }).click();
-    await remote.getByRole('button', { name: 'Fenster maximieren', exact: true }).waitFor();
-    await remote.getByRole('button', { name: 'Fenster minimieren', exact: true }).click();
-    assert.equal(await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isMinimized()), true);
-    await application.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0].restore(); });
-    await remote.screenshot({ path: join(artifacts, 'sidebar-window-controls.png') });
-    await remote.evaluate(() => { document.getElementById('test-header-shell').style.display = ''; });
-    await remote.locator('.mobile-header-row #stato-window-controls').waitFor();
-    assert.equal(await remote.locator('#stato-window-titlebar').count(), 0);
-    await remote.evaluate(() => document.querySelector('.app-shell-sidebar').remove());
-    await remote.evaluate(() => document.querySelector('.mobile-header-row').remove());
-    await remote.locator('#stato-window-titlebar').waitFor();
-    console.log('PASS: integrated and sidebar window controls, drag exclusions, maximize/restore/minimize and SPA fallback');
+    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].restore());
+    await capture(application, 'separate-titlebar-scrollbar.png');
+    await remote.evaluate(() => { document.getElementById('scroll-fixture').remove(); scrollTo(0, 0); });
+    console.log('PASS: separate titlebar, theme sync, full-width controls, bounded page scrolling and window actions');
 
     const footer = await local.locator('#desktop-footer').boundingBox();
     const remoteBounds = await application.evaluate(({ BrowserWindow }, url) => {
@@ -305,8 +258,9 @@ async function switchModal(application, local) {
         .find((view) => view.webContents?.getURL().startsWith(`${url}/`))
         .getBounds();
     }, first.url);
-    assert.equal(remoteBounds.y, 0);
-    assert.equal(remoteBounds.height, footer.y);
+    assert.equal(remoteBounds.y, 36);
+    assert.equal(remoteBounds.y + remoteBounds.height, footer.y);
+    assert.equal(await local.locator('#desktop-footer').evaluate((el) => getComputedStyle(el).borderTopWidth), '0px');
     assert.equal(
       (await local.getByRole('button', { name: 'Neu laden', exact: true }).textContent()).trim(),
       '',
@@ -355,10 +309,14 @@ async function switchModal(application, local) {
       assert.equal(await updatePanel.locator('#save-hint').isVisible(), status === 'downloaded');
       assert.equal(await updatePanel.locator('#check-update').isVisible(), status === 'current');
     }
-    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(900, 750));
-    await updatePanel.waitForFunction(() => innerWidth === 900 && innerHeight === 750);
+    const panelSize = await application.evaluate(({ BrowserWindow }) => {
+      const win = BrowserWindow.getAllWindows()[0];
+      win.setSize(900, 750);
+      return win.getContentSize();
+    });
+    await updatePanel.waitForFunction(([width, height]) => Math.abs(innerWidth - width) <= 1 && Math.abs(innerHeight - height) <= 1, panelSize);
     const dialogBox = await updatePanel.getByRole('dialog').boundingBox();
-    assert.ok(Math.abs(dialogBox.x + dialogBox.width / 2 - 450) < 1);
+    assert.ok(Math.abs(dialogBox.x + dialogBox.width / 2 - panelSize[0] / 2) < 1);
     await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1200, 850));
     const updatePng = await application.evaluate(async ({ webContents }) => {
       const contents = webContents.getAllWebContents().find((wc) => wc.getURL().endsWith('/updates.html'));

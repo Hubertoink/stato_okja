@@ -5,14 +5,15 @@ eines konfigurierten Servers. Frontend, Backend und Datenbank werden nicht kopie
 oder lokal gestartet. Für den Client brauchen Nutzende weder Node.js noch Docker.
 Die erste Distribution ist ein Windows-x64-Installer für das aktuelle Benutzerkonto.
 
-Download: [StatO Desktop 1.20.1 – Windows](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.20.1).
+Download: [StatO Desktop 1.20.2 – Windows](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.20.2).
 
-## Integrierte Fenstersteuerung (ab Version 1.18.2)
+## Desktop-Titelleiste
 
-Minimieren, Maximieren/Wiederherstellen und Schließen stehen direkt in der
-oberen rechten Fensterecke. Freie Header-Flächen verschieben das Fenster; interaktive Elemente bleiben
-anklickbar. Auf Seiten ohne App-Header erscheint eine kompakte Ersatzleiste.
-Die Integration wird vom Desktop-Client bereitgestellt und benötigt kein Server-Update.
+Minimieren, Maximieren/Wiederherstellen und Schließen befinden sich in einer eigenen
+Titelleiste oberhalb der Weboberfläche. Der Serverinhalt einschließlich Scrollleisten
+und Dialogen liegt vollständig zwischen Titelleiste und unterer Serverleiste.
+Die Titelleiste übernimmt die Farben des aktiven Themes und bleibt unabhängig von
+der gewählten Navigation sichtbar. Ein Server-Update ist dafür nicht erforderlich.
 
 ## Desktop-Updates (ab Version 1.17.0)
 
@@ -119,11 +120,11 @@ Installer, `.exe.blockmap`, `latest.yml` und `SHA256SUMS` als Workflow-Artefakt 
 
 Für ein verteilbares Desktop-Release `desktop/RELEASE_NOTES.md` und die Download-Links
 an die neue Version anpassen, die Änderungen auf `main` pushen und danach einen
-eigenen Desktop-Tag erstellen. Beispiel für Version 1.20.1:
+eigenen Desktop-Tag erstellen. Beispiel für Version 1.20.2:
 
 ```powershell
-git tag -a desktop-v1.20.1 -m "StatO Desktop 1.20.1 Windows release"
-git push origin desktop-v1.20.1
+git tag -a desktop-v1.20.2 -m "StatO Desktop 1.20.2 Windows release"
+git push origin desktop-v1.20.2
 ```
 
 Der Tag muss zur Version in `VERSION` passen und auf einem Commit aus `main` liegen.

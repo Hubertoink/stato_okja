@@ -36,6 +36,7 @@ const preferences = {
   allowRunningInsecureContent: false,
 };
 const footerHeight = 36;
+const titlebarHeight = 36;
 let window;
 let remoteView;
 let remoteSession;
@@ -84,13 +85,14 @@ function updateState(patch) {
 function layoutRemote() {
   if (!window || window.isDestroyed()) return;
   const [width, height] = window.getContentSize();
+  window.webContents.send('stato:content-bottom', Math.max(titlebarHeight, height - footerHeight));
   switchView?.setBounds({ x: 0, y: 0, width, height });
   updateView?.setBounds({ x: 0, y: 0, width, height });
   remoteView?.setBounds({
     x: 0,
-    y: 0,
+    y: titlebarHeight,
     width,
-    height: Math.max(0, height - footerHeight),
+    height: Math.max(0, height - footerHeight - titlebarHeight),
   });
 }
 
@@ -303,7 +305,6 @@ async function performConnection(url, open) {
     const view = new WebContentsView({
       webPreferences: { ...preferences, session: remoteSession, preload: join(__dirname, 'remote-preload.cjs') },
     });
-    attachWindowChrome(view.webContents);
     ownedView = view;
     remoteView = view;
     loginPromptDeclined = false;
@@ -442,6 +443,17 @@ async function finishServerSwitch() {
 }
 
 function registerIpc() {
+  ipcMain.on('stato:chrome-theme', (event, theme) => {
+    if (!window || window.isDestroyed() || closing || !remoteView) return;
+    if (event.sender !== remoteView.webContents || event.senderFrame !== remoteView.webContents.mainFrame ||
+      !isServerNavigation(event.senderFrame.url, state.serverUrl)) return;
+    // Only a bounded list of presentation colors crosses into the local shell.
+    const colors = {};
+    for (const name of ['--surface-elevated', '--text-primary', '--interactive-soft', '--focus-ring']) {
+      if (typeof theme?.[name] === 'string' && theme[name].length < 128) colors[name] = theme[name];
+    }
+    window.webContents.send('stato:chrome-theme', colors);
+  });
   const windowHandlers = {
     'stato:window-state': () => ({ maximized: window.isMaximized() }),
     'stato:window-minimize': () => window.minimize(),

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Save as SaveIcon } from 'lucide-react';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { type Category, type Tag } from '@/lib/taxonomy';
 import { type StaffMember, type StaffRole } from '@/lib/staff';
@@ -70,28 +71,24 @@ export function TagFormModal({
           />
         </div>
       </div>
-      <div data-scroll-footer className="settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
+      <div data-scroll-footer className="settings-modal-actions entity-form-actions -mx-4 md:-mx-6 px-4 md:px-6">
         <div className="flex-1 flex items-center">
-          <span className="tooltip-wrapper">
+          <Tooltip text={autoT('ui_07af7cb30fca')}>
             <CloseButton
               onClick={onCancel}
-              title={autoT('ui_07af7cb30fca')}
               aria-label={autoT('ui_07af7cb30fca')}
             />
-            <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
-          </span>
+          </Tooltip>
         </div>
         <div className="flex-1 flex items-center justify-end">
-          <span className="tooltip-wrapper">
+          <Tooltip text={autoT('ui_70b73bbc118d')}>
             <IconButton
               onClick={handleSave}
-              title={autoT('ui_70b73bbc118d')}
               aria-label={autoT('ui_70b73bbc118d')}
             >
               <SaveIcon className="w-5 h-5" />
             </IconButton>
-            <span className="tooltip-bubble">{autoT('ui_70b73bbc118d')}</span>
-          </span>
+          </Tooltip>
         </div>
       </div>
     </Modal>
@@ -165,28 +162,24 @@ export function CategoryFormModal({
           </div>
         </div>
       </div>
-      <div data-scroll-footer className="settings-modal-actions roomy-settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
+      <div data-scroll-footer className="settings-modal-actions entity-form-actions -mx-4 md:-mx-6 px-4 md:px-6">
         <div className="flex-1 flex items-center">
-          <span className="tooltip-wrapper">
+          <Tooltip text={autoT('ui_07af7cb30fca')}>
             <CloseButton
               onClick={onCancel}
-              title={autoT('ui_07af7cb30fca')}
               aria-label={autoT('ui_07af7cb30fca')}
             />
-            <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
-          </span>
+          </Tooltip>
         </div>
         <div className="flex-1 flex items-center justify-end">
-          <span className="tooltip-wrapper">
+          <Tooltip text={autoT('ui_70b73bbc118d')}>
             <IconButton
               onClick={handleSave}
-              title={autoT('ui_70b73bbc118d')}
               aria-label={autoT('ui_70b73bbc118d')}
             >
               <SaveIcon className="w-5 h-5" />
             </IconButton>
-            <span className="tooltip-bubble">{autoT('ui_70b73bbc118d')}</span>
-          </span>
+          </Tooltip>
         </div>
       </div>
     </Modal>
@@ -308,26 +301,22 @@ export function StaffFormModal({
         </div>
       </div>
       {saveError && <p role="alert" className="text-[var(--status-danger-text)]">{saveError}</p>}
-      <div data-scroll-footer className="settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
-        <span className="tooltip-wrapper">
+      <div data-scroll-footer className="settings-modal-actions entity-form-actions -mx-4 md:-mx-6 px-4 md:px-6">
+        <Tooltip text={autoT('ui_07af7cb30fca')}>
           <CloseButton
             onClick={onCancel}
-            title={autoT('ui_07af7cb30fca')}
             aria-label={autoT('ui_07af7cb30fca')}
           />
-          <span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span>
-        </span>
-        <span className="tooltip-wrapper">
+        </Tooltip>
+        <Tooltip text={autoT('ui_70b73bbc118d')} disabled={saving}>
           <IconButton
             onClick={handleSave}
             disabled={saving}
-            title={autoT('ui_70b73bbc118d')}
             aria-label={autoT('ui_70b73bbc118d')}
           >
             <SaveIcon className="w-5 h-5" />
           </IconButton>
-          <span className="tooltip-bubble">{autoT('ui_70b73bbc118d')}</span>
-        </span>
+        </Tooltip>
       </div>
     </Modal>
   );

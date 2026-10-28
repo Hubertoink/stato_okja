@@ -2,10 +2,10 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Desktop-Version auf den gemeinsamen StatO-Stand 1.19.0 angehoben; der Installer und die In-App-Aktualisierung enthalten denselben Versionsstand.
-- Mit einem Server ab 1.19.0 stehen die neue einklappbare Seitenleiste, die Wahl zwischen normaler und kompakter Ansicht sowie getrennte Bereiche für Stammdaten und Betrieb zur Verfügung.
-- Die persönlichen Darstellungs- und Navigationseinstellungen werden im Benutzerkonto gespeichert.
-- Die neuen Webfunktionen benötigen das entsprechende Server-Update; der Desktop-Installer allein aktualisiert keinen Server.
+- Desktop-Installer und In-App-Update auf den gemeinsamen StatO-Versionsstand __VERSION__ angehoben.
+- Mit einem Server ab 1.19.1 verwenden Vorlagen denselben Editor-Rahmen und dieselben Speichern-/Abbrechen-Buttons wie Aktivitäten.
+- Stammdaten-Dialoge haben kompaktere Fußleisten, einheitliche Rundungen und Tooltips, die über den Modalrand hinaus sichtbar bleiben.
+- Die Darstellungsverbesserungen benötigen das entsprechende Server-Update; der Desktop-Installer allein aktualisiert keinen Server.
 
 ### Installation und einmaliger Umstieg
 

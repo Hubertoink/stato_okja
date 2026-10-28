@@ -9,6 +9,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.19.1] - 2026-10-28
+
+### Fixed
+- Vorlagendialoge verwenden den gemeinsamen Editor-Rahmen und dieselben Abbrechen-/Speichern-Buttons mit Icon wie Aktivitäten; die Aktionsleiste bleibt beim Scrollen sichtbar.
+- Tooltips der Stammdaten-Dialogaktionen werden außerhalb des Modalrahmens angezeigt; doppelte Browser-Tooltips entfallen.
+- Kompaktere, gleichmäßig gepolsterte Fußleisten in Kategorie-, Tag-, Altersgruppen-, Team- und Einrichtungsdialogen.
+- Einrichtungs- und Altersgruppendialoge verwenden den gemeinsamen Modalrahmen mit einheitlichen Rundungen, Titel- und Aktionsklassen.
+
+### Upgrade-Hinweise
+- Die UI-Verbesserungen werden auch im Desktop-Client vom verbundenen Server bereitgestellt; dafür den Server ebenfalls auf 1.19.1 aktualisieren.
+- Für Mittwald steht das separate Frontend-Image `stack-1.19.1` bereit. Desktop-Installer und In-App-Update verwenden denselben Versionsstand 1.19.1.
+
 ## [1.19.0] - 2026-10-27
 
 ### Added

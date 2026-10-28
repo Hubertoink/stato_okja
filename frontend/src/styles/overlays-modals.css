@@ -300,8 +300,18 @@
   backdrop-filter: blur(14px);
 }
 
-.roomy-settings-modal-actions {
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), 1.25rem);
+/* Cancel the shared panel's bottom padding without lifting sticky actions
+ * above it. The action bar supplies its own balanced padding and safe area. */
+.entity-form-actions {
+  bottom: -1rem;
+  margin-bottom: -1rem;
+}
+
+@media (min-width: 768px) {
+  .entity-form-actions {
+    bottom: -1.5rem;
+    margin-bottom: -1.5rem;
+  }
 }
 
 @media (max-width: 767px) {

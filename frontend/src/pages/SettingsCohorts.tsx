@@ -5,17 +5,15 @@ import { Pencil, Save as SaveIcon } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
-import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { autoT } from '@/i18n/auto';
 import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
-import { useModalHistory } from '@/components/Modal';
-import { ArchiveIconButton, CloseButton, DeleteIconButton } from '@/components/ui/Button';
+import Modal from '@/components/Modal';
+import { Tooltip } from '@/components/ui/Tooltip';
+import { ArchiveIconButton, CloseButton, DeleteIconButton, IconButton } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
 
 function CohortForm({ initial, onSubmit, onCancel }: { initial?: Partial<Cohort>; onSubmit: (d: Partial<Cohort>) => void; onCancel: () => void }) {
   const [form, setForm] = useState<Partial<Cohort>>({ active: true, sortOrder: 0, ...initial });
-  useBodyScrollLock(true);
-  const { dismiss } = useModalHistory(onCancel);
   const update = <K extends keyof Cohort>(k: K, v: Cohort[K]) => setForm((f) => ({ ...f, [k]: v }));
   const handleSave = () => {
     const cleaned = Object.fromEntries(
@@ -30,51 +28,48 @@ function CohortForm({ initial, onSubmit, onCancel }: { initial?: Partial<Cohort>
   });
 
   return (
-  <div
-    className="modal-overlay fixed inset-0 z-[60] flex items-end justify-center overflow-x-hidden bg-black/30 p-0 md:items-center md:p-6"
-    onClick={(event) => { if (event.target === event.currentTarget) dismiss(); }}
-  >
-  <div className="bg-white w-full max-w-full md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-3 sm:px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto overflow-x-hidden bottom-sheet-animate">
-        <h3 className="text-xl font-semibold text-viridian mb-4">{initial?.id ? autoT('ui_310943ff21e8') : autoT('ui_3422b6e6c87f')}</h3>
-        <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">{autoT('ui_d145bb830936')}</label>
-            <Input value={form.name || ''} onChange={(e) => update('name', e.target.value)} />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">{autoT('ui_1306e176bc60')}</label>
-              <Input type="number" value={form.minAge ?? 0} onChange={(e) => update('minAge', Number(e.target.value))} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">{autoT('ui_bc2b4405f91d')}</label>
-              <Input type="number" value={form.maxAge ?? 0} onChange={(e) => update('maxAge', Number(e.target.value))} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">{autoT('ui_84beaa4a368a')}</label>
-              <Input type="number" value={form.sortOrder ?? 0} onChange={(e) => update('sortOrder', Number(e.target.value))} />
-            </div>
-          </div>
-          {/* Kohorten werden immer aktiv angelegt; kein Toggle im UI */}
+    <Modal
+      open
+      onClose={onCancel}
+      maxWidth="lg"
+      showCloseButton={false}
+      title={initial?.id ? autoT('ui_310943ff21e8') : autoT('ui_3422b6e6c87f')}
+    >
+      <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-medium mb-1">{autoT('ui_d145bb830936')}</label>
+          <Input value={form.name || ''} onChange={(e) => update('name', e.target.value)} />
         </div>
-  <div data-scroll-footer className="settings-modal-actions -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6">
-          <div className="flex-1 flex items-center">
-            <span className="tooltip-wrapper"><CloseButton onClick={dismiss} title={autoT('ui_07af7cb30fca')} aria-label={autoT('ui_07af7cb30fca')} /><span className="tooltip-bubble">{autoT('ui_07af7cb30fca')}</span></span>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">{autoT('ui_1306e176bc60')}</label>
+            <Input type="number" value={form.minAge ?? 0} onChange={(e) => update('minAge', Number(e.target.value))} />
           </div>
-          <div className="flex-1 flex items-center justify-end">
-            <span className="tooltip-wrapper"><button
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white"
-              onClick={handleSave}
-              title={autoT('ui_70b73bbc118d')}
-              aria-label={autoT('ui_70b73bbc118d')}
-            >
-              <SaveIcon className="w-5 h-5" />
-            </button><span className="tooltip-bubble">{autoT('ui_70b73bbc118d')}</span></span>
+          <div>
+            <label className="block text-sm font-medium mb-1">{autoT('ui_bc2b4405f91d')}</label>
+            <Input type="number" value={form.maxAge ?? 0} onChange={(e) => update('maxAge', Number(e.target.value))} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">{autoT('ui_84beaa4a368a')}</label>
+            <Input type="number" value={form.sortOrder ?? 0} onChange={(e) => update('sortOrder', Number(e.target.value))} />
           </div>
         </div>
       </div>
-    </div>
+      <div data-scroll-footer className="settings-modal-actions entity-form-actions -mx-4 md:-mx-6 px-4 md:px-6">
+        <div className="flex-1 flex items-center">
+          <Tooltip text={autoT('ui_07af7cb30fca')}>
+            <CloseButton onClick={onCancel} aria-label={autoT('ui_07af7cb30fca')} />
+          </Tooltip>
+        </div>
+        <div className="flex-1 flex items-center justify-end">
+          <Tooltip text={autoT('ui_70b73bbc118d')}>
+            <IconButton onClick={handleSave} aria-label={autoT('ui_70b73bbc118d')}>
+              <SaveIcon className="w-5 h-5" />
+            </IconButton>
+          </Tooltip>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

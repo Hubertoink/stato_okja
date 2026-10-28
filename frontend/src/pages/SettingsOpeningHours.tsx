@@ -4,6 +4,7 @@ import { getOpeningHours, updateOpeningHours, OpeningHours, DayOpeningHours, DEF
 import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
 import { useOrgScope } from '@/lib/orgScope';
 import { Save as SaveIcon, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 import { useTranslation } from 'react-i18next';
 
 const DAYS: Array<keyof OpeningHours> = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -79,15 +80,14 @@ export default function SettingsOpeningHours() {
           </h3>
           <p className="text-gray-600">{t('openingHours.subtitle')}</p>
         </div>
-        <button
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition disabled:opacity-50"
+        <Button
           disabled={!canManageOpeningHours || !dirty || mutation.isPending}
           onClick={() => mutation.mutate()}
           title={canManageOpeningHours ? undefined : 'Nur Editor oder Organisationsadmin dürfen Öffnungszeiten bearbeiten'}
         >
           <SaveIcon className="w-5 h-5" />
           {t('common:actions.save')}
-        </button>
+        </Button>
       </div>
       {!canManageOpeningHours && (
         <p className="mb-4 text-sm text-gray-500">

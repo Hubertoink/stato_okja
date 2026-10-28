@@ -9,6 +9,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.20.0] - 2026-10-28
+
+### Fixed
+- Die Desktop-Fenstersteuerung bleibt bei aktiver Seitenleiste sichtbar: ein ausgeblendeter Navigationsheader wird erkannt und durch eine kompakte, zum Theme passende Titelleiste mit Minimieren, Maximieren/Wiederherstellen und Schließen ergänzt.
+- Die Fenstersteuerung folgt auch reinen Sichtbarkeitsänderungen und dem Wechsel zurück zur oberen Navigation. Die Seitenleiste erhält unter der Titelleiste den passenden Abstand.
+- Öffnungszeiten, Organisationsanlage, Benutzereinladungen und Organisationswechsel verwenden die gemeinsamen primären und sekundären Buttons mit einheitlichen Rundungen. Zugehörige Organisationsaktionen sind ebenfalls angeglichen.
+
+### Upgrade-Hinweise
+- Für die Fensterknöpfe bei aktiver Seitenleiste den Desktop-Client auf 1.20.0 aktualisieren; die Korrektur funktioniert auch mit bestehenden Serveroberflächen.
+- Die einheitlichen Web-Buttons benötigen das Server-/Mittwald-Update auf 1.20.0. Dafür steht das Frontend-Image `stack-1.20.0` bereit.
+
+
 ## [1.19.1] - 2026-10-28
 
 ### Fixed

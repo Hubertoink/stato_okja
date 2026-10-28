@@ -2,10 +2,10 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Desktop-Installer und In-App-Update auf den gemeinsamen StatO-Versionsstand __VERSION__ angehoben.
-- Mit einem Server ab 1.19.1 verwenden Vorlagen denselben Editor-Rahmen und dieselben Speichern-/Abbrechen-Buttons wie Aktivitäten.
-- Stammdaten-Dialoge haben kompaktere Fußleisten, einheitliche Rundungen und Tooltips, die über den Modalrand hinaus sichtbar bleiben.
-- Die Darstellungsverbesserungen benötigen das entsprechende Server-Update; der Desktop-Installer allein aktualisiert keinen Server.
+- Minimieren, Maximieren/Wiederherstellen und Schließen bleiben auch bei aktiver Seitenleiste oben rechts sichtbar.
+- Bei ausgeblendeter oberer Navigation erscheint eine kompakte, themenangepasste Titelleiste. Die Seitenleiste sitzt darunter und wird nicht überdeckt.
+- Der Wechsel zwischen Seitenleiste und oberer Navigation verschiebt die Fensterknöpfe automatisch an die passende Stelle. Die Desktop-Korrektur funktioniert auch mit bestehenden Serveroberflächen.
+- Mit einem Server ab 1.20.0 verwenden Öffnungszeiten, Organisationsanlage, Benutzereinladungen und Organisationswechsel die einheitlichen App-Buttons.
 
 ### Installation und einmaliger Umstieg
 

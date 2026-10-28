@@ -41,7 +41,10 @@
     if (updateEntry && !updateEntry.hasAttribute('data-stato-desktop-updates')) {
       updateEntry.setAttribute('data-stato-desktop-updates', '');
     }
-    const target = document.querySelector('.mobile-header-row');
+    // Sidebar navigation keeps the top header mounted but hides its ancestor.
+    // Controls inside that header would inherit display:none as well.
+    const target = [...document.querySelectorAll('.mobile-header-row')]
+      .find((row) => row.getClientRects().length > 0 && getComputedStyle(row).visibility !== 'hidden');
     if (header !== target) {
       header?.classList.remove('stato-window-drag');
       header = target;
@@ -59,7 +62,15 @@
     }
   };
   place();
+  // Keep this independent of animation frames: they pause in hidden/minimized
+  // windows, where navigation can still finish rendering in the background.
   const observer = new MutationObserver(place);
-  observer.observe(document.body, { childList: true, subtree: true });
-  window.addEventListener('pagehide', () => { observer.disconnect(); unsubscribe(); }, { once: true });
+  observer.observe(document.body, {
+    childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'],
+  });
+  window.addEventListener('resize', place);
+  window.addEventListener('pagehide', () => {
+    observer.disconnect(); unsubscribe();
+    window.removeEventListener('resize', place);
+  }, { once: true });
 })();

@@ -714,17 +714,16 @@ export default function Layout() {
             )}
           </div>
           <div className="mt-3 flex items-center justify-end gap-2">
-            <button
-              className="px-3 py-1.5 rounded bg-gray-200 text-gray-700"
+            <Button
+              variant="secondary"
               onClick={() => {
                 setCreateModalOpen(false);
                 setNewOrgName('');
               }}
             >
               {autoT('ui_07af7cb30fca')}
-            </button>
-            <button
-              className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"
+            </Button>
+            <Button
               disabled={!newOrgName.trim() || (!isSuperadmin && !user?.orgId)}
               onClick={async () => {
                 try {
@@ -751,7 +750,7 @@ export default function Layout() {
               }}
             >
               {autoT('ui_bf524c1f1672')}
-            </button>
+            </Button>
           </div>
         </div>
       </Modal>
@@ -797,14 +796,13 @@ export default function Layout() {
             </ul>
           </div>
           <div className="mt-3 flex items-center justify-end gap-2">
-            <button
-              className="px-3 py-1.5 rounded bg-gray-200 text-gray-700"
+            <Button
+              variant="secondary"
               onClick={() => setScopeModalOpen(false)}
             >
               {autoT('ui_07af7cb30fca')}
-            </button>
-            <button
-              className="px-3 py-1.5 rounded bg-viridian text-white"
+            </Button>
+            <Button
               onClick={() => {
                 setScope(pendingScope);
                 setScopeModalOpen(false);
@@ -812,7 +810,7 @@ export default function Layout() {
               disabled={orgSwitching}
             >
               {orgSwitching ? autoT('ui_8877cfeced3f') : autoT('ui_594308426372')}
-            </button>
+            </Button>
           </div>
         </div>
       </Modal>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pencil } from 'lucide-react';
+import { Pencil, Save as SaveIcon } from 'lucide-react';
 import { api } from '@/lib/api';
-import Modal, { useModalHistory } from '@/components/Modal';
+import Modal from '@/components/Modal';
 import { MAX_IMAGE_BYTES, processImageForUpload } from '@/lib/imageProcessing';
 import { useToast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -27,7 +27,8 @@ import {
   useUpdateProjectTemplate,
 } from '@/lib/projectTemplatesApi';
 import { autoT } from '@/i18n/auto';
-import { CloseButton, DeleteIconButton } from '@/components/ui/Button';
+import { Button, DeleteIconButton } from '@/components/ui/Button';
+import { EditorActions } from '@/components/ui/EditorFrame';
 
 type TagWithColor = { name: string; color: string };
 
@@ -68,7 +69,7 @@ export default function SettingsProjectTemplates() {
   const del = useDeleteProjectTemplate();
 
   const [modalOpen, setModalOpen] = useState(false);
-  const { dismiss: dismissTemplateModal } = useModalHistory(() => setModalOpen(false), modalOpen);
+  const dismissTemplateModal = useCallback(() => setModalOpen(false), []);
   const [editing, setEditing] = useState<ProjectTemplateDto | null>(null);
   const [confirm, setConfirm] = useState<{ open: boolean; id?: string; title?: string }>({
     open: false,
@@ -391,315 +392,308 @@ export default function SettingsProjectTemplates() {
         </div>
       )}
 
-      {/* Template Edit/Create Modal - styled like project modal */}
       {modalOpen && (
-        <div
-          className="modal-overlay fixed inset-0 z-[60] flex items-end justify-center p-0 md:items-center md:p-6"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) dismissTemplateModal();
-          }}
+        <Modal
+          open
+          onClose={dismissTemplateModal}
+          title={editing ? autoT('ui_bd648e366f1c') : autoT('ui_ff11b97abdfe')}
+          maxWidth="2xl"
+          variant="form"
         >
           <div
-            className="bg-white w-full md:max-w-2xl rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[85vh] overflow-y-auto bottom-sheet-animate"
+            className="flex min-h-0 flex-1 flex-col"
             onDragOver={(e) => e.preventDefault()}
             onDrop={onDrop}
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-viridian">
-                {editing ? autoT('ui_bd648e366f1c') : autoT('ui_ff11b97abdfe')}
-              </h3>
-              <CloseButton
-                onClick={dismissTemplateModal}
-                aria-label={autoT('ui_07af7cb30fca')}
-                title={autoT('ui_07af7cb30fca')}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">{autoT('ui_a1710a47def7')}</label>
-                <input
-                  value={form.title || ''}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  className="editor-field w-full px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">{autoT('ui_79a5c2576972')}</label>
-                <select
-                  value={(form.type as string) || 'project_open'}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, type: e.target.value as ProjectTemplateDto['type'] }))
-                  }
-                  className="editor-field w-full px-3 py-2"
-                >
-                  <option value="open_door">{autoT('ui_a80778b6b148')}</option>
-                  <option value="project_open">{autoT('ui_00d882fbb5d4')}</option>
-                  <option value="project_closed">{autoT('ui_8f256393653e')}</option>
-                  <option value="event">{autoT('ui_e6fdb4cc8ce5')}</option>
-                  <option value="outreach">{autoT('ui_3c1538690eb7')}</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">{autoT('ui_10f540533857')}</label>
-                <input
-                  value={form.targetGroup || ''}
-                  onChange={(e) => setForm((f) => ({ ...f, targetGroup: e.target.value }))}
-                  className="editor-field w-full px-3 py-2"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium mb-1">{autoT('ui_d42485349869')}</label>
-                {form.imageUrl ? (
-                  <div className="space-y-2">
-                    <ProtectedImage
-                      src={form.imageUrl}
-                      alt={autoT('ui_eebe4ea94d11')}
-                      className="w-full h-40 object-cover rounded border"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setForm((f) => ({ ...f, imageUrl: '' }))}
-                        className="px-3 py-1 rounded bg-gray-200 text-gray-700"
-                      >
-                        {autoT('ui_f78b6376e028')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="px-3 py-1 rounded bg-viridian text-white"
-                      >
-                        {autoT('ui_2eed64bc2cdc')}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="border-2 border-dashed rounded p-3 text-sm text-gray-600 bg-azure-web/30">
-                    <div className="mb-2">{autoT('ui_5457c04aec2f')}</div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="px-3 py-1 rounded bg-white border"
-                      >
-                        {autoT('ui_95a5c1d24bec')}
-                      </button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) await uploadImage(file);
-                        }}
-                      />
-                    </div>
-                    <div className="text-xs text-gray-500 mt-2">{autoT('ui_e5a846f4d2de')}</div>
-                  </div>
-                )}
-
-                <Modal
-                  open={imageIssue.open}
-                  onClose={() => setImageIssue((s) => ({ ...s, open: false }))}
-                  title={imageIssue.title}
-                  maxWidth="sm"
-                >
-                  <div className="text-sm text-gray-700 space-y-4">
-                    <div>{imageIssue.message}</div>
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        className="px-3 py-2 rounded bg-viridian text-white"
-                        onClick={closeImageIssue}
-                      >
-                        {autoT('ui_b0a98216a324')}
-                      </button>
-                    </div>
-                  </div>
-                </Modal>
-                <div className="mt-3">
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="project-template-color"
-                  >
-                    {autoT('ui_89b7957dae43')}
-                  </label>
-                  <ColorPicker
-                    id="project-template-color"
-                    value={(form.color as string) || '#7aa39a'}
-                    onChange={(color) => setForm((current) => ({ ...current, color }))}
+            <div className="modal-editor-body min-h-0 flex-1 overflow-y-auto p-4 md:px-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">{autoT('ui_a1710a47def7')}</label>
+                  <input
+                    value={form.title || ''}
+                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                    className="editor-field w-full px-3 py-2"
                   />
                 </div>
-              </div>
-
-              {/* Tags Section */}
-              <div className="md:col-span-2">
-                <div className="mb-1 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <label className="block text-sm font-medium">{autoT('ui_482257533f55')}</label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewTagModal(true);
-                    }}
-                    className="text-xs text-viridian hover:underline"
+                <div>
+                  <label className="block text-sm font-medium mb-1">{autoT('ui_79a5c2576972')}</label>
+                  <select
+                    value={(form.type as string) || 'project_open'}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, type: e.target.value as ProjectTemplateDto['type'] }))
+                    }
+                    className="editor-field w-full px-3 py-2"
                   >
-                    {autoT('ui_05cfcf480f8a')}
-                  </button>
+                    <option value="open_door">{autoT('ui_a80778b6b148')}</option>
+                    <option value="project_open">{autoT('ui_00d882fbb5d4')}</option>
+                    <option value="project_closed">{autoT('ui_8f256393653e')}</option>
+                    <option value="event">{autoT('ui_e6fdb4cc8ce5')}</option>
+                    <option value="outreach">{autoT('ui_3c1538690eb7')}</option>
+                  </select>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {(tags || []).map((t) => {
-                    const selected = (form.selectedTags || []).some(
-                      (st) => st.name.toLowerCase() === t.name.toLowerCase(),
-                    );
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => {
-                          if (selected) {
-                            setForm((f) => ({
-                              ...f,
-                              selectedTags: (f.selectedTags || []).filter(
-                                (st) => st.name.toLowerCase() !== t.name.toLowerCase(),
-                              ),
-                            }));
-                          } else {
-                            setForm((f) => ({
-                              ...f,
-                              selectedTags: [
-                                ...(f.selectedTags || []),
-                                { name: t.name, color: t.color || '#7aa39a' },
-                              ],
-                            }));
-                          }
-                        }}
-                        className="px-2 py-1 rounded-full text-xs border"
-                        style={
-                          selected
-                            ? {
-                                backgroundColor: t.color || '#7aa39a',
-                                color: '#fff',
-                                borderColor: t.color || '#7aa39a',
-                              }
-                            : {
-                                backgroundColor: 'var(--surface-1)',
-                                color: 'var(--text-primary)',
-                                borderColor: t.color || '#7aa39a',
-                              }
-                        }
-                      >
-                        {t.name}
-                      </button>
-                    );
-                  })}
+                <div>
+                  <label className="block text-sm font-medium mb-1">{autoT('ui_10f540533857')}</label>
+                  <input
+                    value={form.targetGroup || ''}
+                    onChange={(e) => setForm((f) => ({ ...f, targetGroup: e.target.value }))}
+                    className="editor-field w-full px-3 py-2"
+                  />
                 </div>
-              </div>
 
-              {/* Category Section */}
-              {(form.type as string) !== 'open_door' && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1">{autoT('ui_d42485349869')}</label>
+                  {form.imageUrl ? (
+                    <div className="space-y-2">
+                      <ProtectedImage
+                        src={form.imageUrl}
+                        alt={autoT('ui_eebe4ea94d11')}
+                        className="w-full h-40 object-cover rounded border"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, imageUrl: '' }))}
+                          className="px-3 py-1 rounded bg-gray-200 text-gray-700"
+                        >
+                          {autoT('ui_f78b6376e028')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="px-3 py-1 rounded bg-viridian text-white"
+                        >
+                          {autoT('ui_2eed64bc2cdc')}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed rounded p-3 text-sm text-gray-600 bg-azure-web/30">
+                      <div className="mb-2">{autoT('ui_5457c04aec2f')}</div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="px-3 py-1 rounded bg-white border"
+                        >
+                          {autoT('ui_95a5c1d24bec')}
+                        </button>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) await uploadImage(file);
+                          }}
+                        />
+                      </div>
+                      <div className="text-xs text-gray-500 mt-2">{autoT('ui_e5a846f4d2de')}</div>
+                    </div>
+                  )}
+
+                  <Modal
+                    open={imageIssue.open}
+                    onClose={() => setImageIssue((s) => ({ ...s, open: false }))}
+                    title={imageIssue.title}
+                    maxWidth="sm"
+                  >
+                    <div className="text-sm text-gray-700 space-y-4">
+                      <div>{imageIssue.message}</div>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          className="px-3 py-2 rounded bg-viridian text-white"
+                          onClick={closeImageIssue}
+                        >
+                          {autoT('ui_b0a98216a324')}
+                        </button>
+                      </div>
+                    </div>
+                  </Modal>
+                  <div className="mt-3">
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      htmlFor="project-template-color"
+                    >
+                      {autoT('ui_89b7957dae43')}
+                    </label>
+                    <ColorPicker
+                      id="project-template-color"
+                      value={(form.color as string) || '#7aa39a'}
+                      onChange={(color) => setForm((current) => ({ ...current, color }))}
+                    />
+                  </div>
+                </div>
+
+                {/* Tags Section */}
                 <div className="md:col-span-2">
                   <div className="mb-1 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <label className="block text-sm font-medium">{autoT('ui_358210386a4f')}</label>
+                    <label className="block text-sm font-medium">{autoT('ui_482257533f55')}</label>
                     <button
                       type="button"
                       onClick={() => {
-                        setNewCatModal(true);
+                        setNewTagModal(true);
                       }}
                       className="text-xs text-viridian hover:underline"
                     >
-                      {autoT('ui_c9b868afb94c')}
+                      {autoT('ui_05cfcf480f8a')}
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {(categories || []).map((c) => {
-                      const active = String(form.categoryId || '') === c.id;
-                      const color = c.color || '#7aa39a';
+                    {(tags || []).map((t) => {
+                      const selected = (form.selectedTags || []).some(
+                        (st) => st.name.toLowerCase() === t.name.toLowerCase(),
+                      );
                       return (
                         <button
-                          key={c.id}
+                          key={t.id}
                           type="button"
                           onClick={() => {
-                            if (active) {
+                            if (selected) {
                               setForm((f) => ({
                                 ...f,
-                                categoryId: '',
-                                categoryName: '',
-                                categoryColor: '',
+                                selectedTags: (f.selectedTags || []).filter(
+                                  (st) => st.name.toLowerCase() !== t.name.toLowerCase(),
+                                ),
                               }));
                             } else {
                               setForm((f) => ({
                                 ...f,
-                                categoryId: c.id,
-                                categoryName: c.name,
-                                categoryColor: c.color || '#7aa39a',
+                                selectedTags: [
+                                  ...(f.selectedTags || []),
+                                  { name: t.name, color: t.color || '#7aa39a' },
+                                ],
                               }));
                             }
                           }}
                           className="px-2 py-1 rounded-full text-xs border"
                           style={
-                            active
-                              ? { backgroundColor: color, color: '#fff', borderColor: color }
+                            selected
+                              ? {
+                                  backgroundColor: t.color || '#7aa39a',
+                                  color: '#fff',
+                                  borderColor: t.color || '#7aa39a',
+                                }
                               : {
                                   backgroundColor: 'var(--surface-1)',
                                   color: 'var(--text-primary)',
-                                  borderColor: color,
+                                  borderColor: t.color || '#7aa39a',
                                 }
                           }
-                          title={c.name}
                         >
-                          {c.name}
+                          {t.name}
                         </button>
                       );
                     })}
                   </div>
                 </div>
-              )}
 
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium mb-1">{autoT('ui_b3c8defcacc0')}</label>
-                <textarea
-                  value={form.description || ''}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  className="editor-field w-full px-3 py-2"
-                  rows={4}
-                />
-              </div>
+                {/* Category Section */}
+                {(form.type as string) !== 'open_door' && (
+                  <div className="md:col-span-2">
+                    <div className="mb-1 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <label className="block text-sm font-medium">{autoT('ui_358210386a4f')}</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewCatModal(true);
+                        }}
+                        className="text-xs text-viridian hover:underline"
+                      >
+                        {autoT('ui_c9b868afb94c')}
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {(categories || []).map((c) => {
+                        const active = String(form.categoryId || '') === c.id;
+                        const color = c.color || '#7aa39a';
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              if (active) {
+                                setForm((f) => ({
+                                  ...f,
+                                  categoryId: '',
+                                  categoryName: '',
+                                  categoryColor: '',
+                                }));
+                              } else {
+                                setForm((f) => ({
+                                  ...f,
+                                  categoryId: c.id,
+                                  categoryName: c.name,
+                                  categoryColor: c.color || '#7aa39a',
+                                }));
+                              }
+                            }}
+                            className="px-2 py-1 rounded-full text-xs border"
+                            style={
+                              active
+                                ? { backgroundColor: color, color: '#fff', borderColor: color }
+                                : {
+                                    backgroundColor: 'var(--surface-1)',
+                                    color: 'var(--text-primary)',
+                                    borderColor: color,
+                                  }
+                            }
+                            title={c.name}
+                          >
+                            {c.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
-              <div className="md:col-span-2">
-                <label className="inline-flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={!!form.archived}
-                    onChange={(e) => setForm((f) => ({ ...f, archived: e.target.checked }))}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1">{autoT('ui_b3c8defcacc0')}</label>
+                  <textarea
+                    value={form.description || ''}
+                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                    className="editor-field w-full px-3 py-2"
+                    rows={4}
                   />
-                  <span>{autoT('ui_b196834dac08')}</span>
-                </label>
-              </div>
-            </div>
+                </div>
 
-            {/* Sticky footer */}
-            <div className="sticky bottom-0 bg-white border-t mt-4 py-4 flex items-center justify-end gap-2">
-              <button
-                className="px-3 py-1.5 rounded bg-gray-200 text-gray-700"
-                onClick={dismissTemplateModal}
-              >
-                {autoT('ui_07af7cb30fca')}
-              </button>
-              <button
-                className="px-3 py-1.5 rounded bg-viridian text-white disabled:opacity-60"
-                disabled={!String(form.title || '').trim() || create.isPending || update.isPending}
-                onClick={() => {
-                  void handleTemplateSave();
-                }}
-              >
-                {autoT('ui_70b73bbc118d')}
-              </button>
+                <div className="md:col-span-2">
+                  <label className="inline-flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={!!form.archived}
+                      onChange={(e) => setForm((f) => ({ ...f, archived: e.target.checked }))}
+                    />
+                    <span>{autoT('ui_b196834dac08')}</span>
+                  </label>
+                </div>
+              </div>
+
             </div>
+            <EditorActions
+              className="shrink-0"
+              secondary={
+                <Button variant="secondary" size="lg" onClick={dismissTemplateModal}>
+                  {autoT('ui_07af7cb30fca')}
+                </Button>
+              }
+              primary={
+                <Button
+                  size="lg"
+                  disabled={!String(form.title || '').trim() || create.isPending || update.isPending}
+                  onClick={() => {
+                    void handleTemplateSave();
+                  }}
+                >
+                  <SaveIcon className="h-4 w-4" />
+                  {autoT('ui_70b73bbc118d')}
+                </Button>
+              }
+            />
           </div>
-        </div>
+        </Modal>
       )}
 
       {newCatModal ? (

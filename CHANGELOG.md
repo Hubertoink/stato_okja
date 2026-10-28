@@ -10,6 +10,7 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 ## [Unreleased]
 
 ### Fixed
+- Vorlagendialoge verwenden den gemeinsamen Editor-Rahmen und dieselben Abbrechen-/Speichern-Buttons mit Icon wie Aktivitäten; die Aktionsleiste bleibt beim Scrollen sichtbar.
 - Tooltips der Stammdaten-Dialogaktionen werden außerhalb des Modalrahmens angezeigt; doppelte Browser-Tooltips entfallen.
 - Kompaktere, gleichmäßig gepolsterte Fußleisten in Kategorie-, Tag-, Altersgruppen-, Team- und Einrichtungsdialogen.
 - Einrichtungs- und Altersgruppendialoge verwenden den gemeinsamen Modalrahmen mit einheitlichen Rundungen, Titel- und Aktionsklassen.

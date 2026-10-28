@@ -3,10 +3,9 @@ import { useLocations, Location } from '@/lib/locations';
 import { api } from '@/lib/api';
 import { Pencil, Save as SaveIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
-import { useModalHistory } from '@/components/Modal';
-import { CloseButton, DeleteIconButton } from '@/components/ui/Button';
+import Modal from '@/components/Modal';
+import { CloseButton, DeleteIconButton, IconButton } from '@/components/ui/Button';
 import ConfirmModal from '@/components/ConfirmModal';
 import { Input } from '@/components/ui/Field';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -17,8 +16,6 @@ function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Locatio
   const [form, setForm] = useState<Partial<Location>>({ ...initial });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  useBodyScrollLock(true);
-  const { dismiss } = useModalHistory(onClose);
   const update = <K extends keyof Location>(k: K, v: Location[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
@@ -43,34 +40,40 @@ function LocationForm({ initial, onClose, onSaved }: { initial?: Partial<Locatio
   };
 
   return (
-    <div
-      className="modal-overlay fixed inset-0 z-[60] bg-black/30 flex items-end md:items-center justify-center overflow-x-hidden p-0 md:p-6"
-      onClick={(event) => { if (event.target === event.currentTarget) dismiss(); }}
+    <Modal
+      open
+      onClose={onClose}
+      maxWidth="lg"
+      showCloseButton={false}
+      title={initial?.id ? t('locations.edit') : t('locations.create')}
     >
-      <div className="bg-white w-full max-w-full min-w-0 md:max-w-lg rounded-t-2xl md:rounded-lg pt-4 md:pt-6 px-4 md:px-6 pb-0 max-h-[80vh] overflow-y-auto overflow-x-hidden bottom-sheet-animate">
-        <h3 className="text-xl font-semibold text-viridian mb-4">{initial?.id ? t('locations.edit') : t('locations.create')}</h3>
-        <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">{t('locations.name')}</label>
-            <Input value={form.name || ''} onChange={(e)=> update('name', e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">{t('locations.address')}</label>
-            <Input value={form.address || ''} onChange={(e)=> update('address', e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">{t('locations.roomType')}</label>
-            <Input value={form.roomType || ''} onChange={(e)=> update('roomType', e.target.value)} />
-          </div>
-          {/* Locations are always active; no UI toggle */}
+      <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-medium mb-1">{t('locations.name')}</label>
+          <Input value={form.name || ''} onChange={(e)=> update('name', e.target.value)} />
         </div>
-        {saveError && <p role="alert" className="text-[var(--status-danger-text)]">{saveError}</p>}
-        <div data-scroll-footer className="settings-modal-actions roomy-settings-modal-actions -mx-4 md:-mx-6 px-4 md:px-6">
-          <CloseButton onClick={dismiss} aria-label={t('common:actions.cancel')} />
-          <button type="button" disabled={saving} className="inline-flex items-center justify-center p-2 rounded-full bg-viridian text-white disabled:opacity-50" onClick={save} aria-label={t('common:actions.save')}><SaveIcon className="w-5 h-5"/></button>
+        <div>
+          <label className="block text-sm font-medium mb-1">{t('locations.address')}</label>
+          <Input value={form.address || ''} onChange={(e)=> update('address', e.target.value)} />
         </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">{t('locations.roomType')}</label>
+          <Input value={form.roomType || ''} onChange={(e)=> update('roomType', e.target.value)} />
+        </div>
+        {/* Locations are always active; no UI toggle */}
       </div>
-    </div>
+      {saveError && <p role="alert" className="text-[var(--status-danger-text)]">{saveError}</p>}
+      <div data-scroll-footer className="settings-modal-actions entity-form-actions -mx-4 md:-mx-6 px-4 md:px-6">
+        <Tooltip text={t('common:actions.cancel')}>
+          <CloseButton onClick={onClose} aria-label={t('common:actions.cancel')} />
+        </Tooltip>
+        <Tooltip text={t('common:actions.save')} disabled={saving}>
+          <IconButton disabled={saving} onClick={save} aria-label={t('common:actions.save')}>
+            <SaveIcon className="w-5 h-5" />
+          </IconButton>
+        </Tooltip>
+      </div>
+    </Modal>
   );
 }
 

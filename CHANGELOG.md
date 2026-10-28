@@ -9,6 +9,11 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+### Fixed
+- Tooltips der Stammdaten-Dialogaktionen werden außerhalb des Modalrahmens angezeigt; doppelte Browser-Tooltips entfallen.
+- Kompaktere, gleichmäßig gepolsterte Fußleisten in Kategorie-, Tag-, Altersgruppen-, Team- und Einrichtungsdialogen.
+- Einrichtungs- und Altersgruppendialoge verwenden den gemeinsamen Modalrahmen mit einheitlichen Rundungen, Titel- und Aktionsklassen.
+
 ## [1.19.0] - 2026-10-27
 
 ### Added

@@ -1,11 +1,11 @@
-# StatO Desktop für Windows – Vorschau
+# StatO Desktop für Windows
 
 Dieser zusätzliche Electron-Client öffnet die **bestehende StatO-Weboberfläche**
 eines konfigurierten Servers. Frontend, Backend und Datenbank werden nicht kopiert
 oder lokal gestartet. Für den Client brauchen Nutzende weder Node.js noch Docker.
 Die erste Distribution ist ein Windows-x64-Installer für das aktuelle Benutzerkonto.
 
-Download: [StatO Desktop 1.18.5 – Windows-Vorschau](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.18.5).
+Download: [StatO Desktop 1.20.1 – Windows](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.20.1).
 
 ## Integrierte Fenstersteuerung (ab Version 1.18.2)
 
@@ -101,7 +101,7 @@ bestehenden StatO-Assets. Bei einer Branding-Änderung diese Kopien aktualisiere
 Zum lokalen Entwickeln mit Vite braucht `/api/health` ein laufendes Backend hinter
 dem vorhandenen Vite-Proxy. Im Client beispielsweise `http://localhost:5173` wählen.
 
-Die Vorschau ist **nicht digital signiert**. Für eine reguläre Veröffentlichung
+Der Installer ist **nicht digital signiert**. Für eine signierte Veröffentlichung
 die Windows-Code-Signierung mit electron-builder einrichten. Der Updater verwendet
 die bestehende NSIS-Installation und unterstützt später auch signierte Installer.
 Die Weboberfläche aktualisiert sich weiterhin über den Server. Backend-Daten und
@@ -117,18 +117,18 @@ Der Workflow `.github/workflows/desktop.yml` prüft und baut die App auf Windows
 Bei Änderungen auf `main`/`dev`, Pull Requests und manuellen Läufen stellt er den
 Installer, `.exe.blockmap`, `latest.yml` und `SHA256SUMS` als Workflow-Artefakt bereit.
 
-Für eine verteilbare Desktop-Vorschau `desktop/RELEASE_NOTES.md` und die Download-Links
+Für ein verteilbares Desktop-Release `desktop/RELEASE_NOTES.md` und die Download-Links
 an die neue Version anpassen, die Änderungen auf `main` pushen und danach einen
-eigenen Desktop-Tag erstellen. Beispiel für Version 1.17.0:
+eigenen Desktop-Tag erstellen. Beispiel für Version 1.20.1:
 
 ```powershell
-git tag -a desktop-v1.17.0 -m "StatO Desktop 1.17.0 Windows preview"
-git push origin desktop-v1.17.0
+git tag -a desktop-v1.20.1 -m "StatO Desktop 1.20.1 Windows release"
+git push origin desktop-v1.20.1
 ```
 
 Der Tag muss zur Version in `VERSION` passen und auf einem Commit aus `main` liegen.
 Nach erfolgreichen Tests und Build veröffentlicht der Workflow automatisch einen
-GitHub-Prerelease mit `StatO-Setup-<version>-x64.exe`, `.exe.blockmap`, `latest.yml`
+reguläres GitHub-Release mit `StatO-Setup-<version>-x64.exe`, `.exe.blockmap`, `latest.yml`
 und `SHA256SUMS`. Alle vier Dateien gehören zum Release; fehlende Metadaten machen
 ihn für den Updater unsichtbar. Der Workflow setzt `__VERSION__` in den Release-Notizen
 automatisch aus `VERSION` ein. Das bestehende
@@ -174,7 +174,7 @@ und `--stato-hidden` für einen unsichtbaren Testlauf.
 Vor einer produktiven Freigabe zusätzlich die echten Serverabläufe mit einem
 Testkonto prüfen: Passwortanmeldung, E-Mail-2FA, Sitzungserneuerung, Uploads,
 Excel/PDF-Exporte und die vorhandenen Einladungs-/Passwortlinks. Diese Links öffnen
-zunächst weiterhin im Browser; ein Desktop-Deep-Link-Protokoll ist nicht Teil der Vorschau.
+zunächst weiterhin im Browser; ein Desktop-Deep-Link-Protokoll ist nicht enthalten.
 
 Die Health-Prüfung erkennt das aktuelle StatO-Antwortformat, ist aber kein
 Identitätsnachweis für einen Server. Serververtrauen entsteht über die korrekt

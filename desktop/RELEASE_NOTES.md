@@ -2,10 +2,9 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Minimieren, Maximieren/Wiederherstellen und Schließen bleiben auch bei aktiver Seitenleiste oben rechts sichtbar.
-- Bei ausgeblendeter oberer Navigation erscheint eine kompakte, themenangepasste Titelleiste. Die Seitenleiste sitzt darunter und wird nicht überdeckt.
-- Der Wechsel zwischen Seitenleiste und oberer Navigation verschiebt die Fensterknöpfe automatisch an die passende Stelle. Die Desktop-Korrektur funktioniert auch mit bestehenden Serveroberflächen.
-- Mit einem Server ab 1.20.0 verwenden Öffnungszeiten, Organisationsanlage, Benutzereinladungen und Organisationswechsel die einheitlichen App-Buttons.
+- Datenschutz und Nutzungsbedingungen werden vollständig unterhalb der Desktop-Titelleiste angezeigt, auch bei kleinen Fenstern.
+- Die äußere Scrollleiste beginnt unterhalb der Fensterknöpfe.
+- Desktop-Versionen werden ab jetzt als reguläre Releases veröffentlicht.
 
 ### Installation und einmaliger Umstieg
 
@@ -17,7 +16,7 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 Node.js und Docker werden auf dem Client nicht benötigt. Backend und Datenbank werden nicht lokal installiert. Der StatO-Server muss erreichbar sein; interne Installationen benötigen gegebenenfalls LAN oder VPN.
 
-### Status der Vorschau
+### Hinweise zum Installer
 
 Der Installer ist noch nicht digital signiert; Windows kann beim Start eine SmartScreen-Warnung anzeigen. Die Weboberfläche und ihre Neuerungen werden weiterhin vom verbundenen Server bereitgestellt.
 

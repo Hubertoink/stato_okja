@@ -9,6 +9,13 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.20.1] - 2026-10-28
+
+### Desktop
+- Datenschutz- und Nutzungsbedingungen-Dialoge berücksichtigen die Desktop-Titelleiste und werden oben nicht mehr abgeschnitten.
+- Die äußere Scrollleiste beginnt unterhalb der Fenstersteuerung.
+- Desktop-Veröffentlichungen sind reguläre Releases statt Vorschau-Releases. Für diese Korrekturen genügt das Desktop-Update; ein Server-Update ist nicht erforderlich.
+
 ## [1.20.0] - 2026-10-28
 
 ### Fixed

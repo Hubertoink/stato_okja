@@ -1,6 +1,6 @@
 {
   "name": "stato-desktop",
-  "version": "1.20.0",
+  "version": "1.20.1",
   "description": "StatO Desktop – lokal installierter Client für bestehende StatO-Server",
   "author": "OKJA Team",
   "license": "MIT",
@@ -40,7 +40,7 @@
       "owner": "Hubertoink",
       "repo": "stato_okja",
       "tagNamePrefix": "desktop-v",
-      "releaseType": "prerelease"
+      "releaseType": "release"
     },
     "win": {
       "icon": "assets/stato.ico",

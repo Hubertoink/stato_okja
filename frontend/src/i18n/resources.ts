@@ -12,6 +12,12 @@ export const resources = {
         halfHour: '30 Min.', hour: '1 Std.',
       },
       staffSelection: { archived: 'Archiviert', cannotAssignArchived: 'Dieses Teammitglied ist archiviert und kann nicht neu zugeordnet werden.' },
+      organizationDeletion: {
+        users: '{{count}} verknüpfte Benutzerkonten: Die Konten bleiben bestehen, ihre Zuordnung zu dieser Organisation wird entfernt. Ohne weitere Zuordnung sehen sie einen Hinweis und benötigen eine neue Organisationszuordnung durch die Administration.',
+        loading: 'Benutzerverknüpfungen werden geladen …',
+        error: 'Benutzerverknüpfungen konnten nicht geladen werden. Bitte den Dialog erneut öffnen.',
+        data: 'Die Organisation einschließlich ihrer Einstellungen, ihres Brandings, ihrer Öffnungszeiten und Schließtage wird dauerhaft gelöscht. Organisationsmitgliedschaften und zugehörige Prozesse werden gelöscht. Andere Fachdaten werden dadurch nicht vollständig gelöscht; je nach Datenart bleibt die bisherige Organisations-ID erhalten oder die Zuordnung wird aufgehoben. Dies ist keine vollständige Datenbereinigung.',
+      },
       workflow: {
         "todayActivities": "Heutige Aktivitäten",
         "noActivitiesToday": "Für heute sind noch keine Aktivitäten dokumentiert.",
@@ -22,6 +28,8 @@ export const resources = {
         "recentOffers": "Favoriten und zuletzt gewählte Angebote zuerst",
         "organization": "Organisation",
         "noOrganization": "Keine Organisation ausgewählt",
+        noOrganizationAssigned: "Keine Organisation zugeordnet",
+        noOrganizationAssignedHelp: "Ihrem Benutzerkonto ist derzeit keine Organisation zugeordnet. Bitte wenden Sie sich an Ihre Administration, um eine Organisation zuweisen zu lassen.",
         "chooseOrganization": "Organisation auswählen",
         "contextHelp": "Wähle eine Organisation, um Angebote, Dokumentation und Auswertungen zu sehen.",
         "openTopics": "Offene Besprechungspunkte",
@@ -1167,6 +1175,12 @@ export const resources = {
         halfHour: '30 min.', hour: '1 hr.',
       },
       staffSelection: { archived: 'Archived', cannotAssignArchived: 'This team member is archived and cannot be assigned again.' },
+      organizationDeletion: {
+        users: '{{count}} linked user accounts: Accounts are retained, but their membership in this organization is removed. Users without another assignment see a notice and need an administrator to assign an organization.',
+        loading: 'Loading linked user accounts …',
+        error: 'Could not load linked user accounts. Please reopen this dialog.',
+        data: 'The organization, including its settings, branding, opening hours and closure days, is permanently deleted. Organization memberships and associated processes are deleted. Other business data is not completely deleted: depending on the data type, the previous organization ID is retained or the assignment is cleared. This is not a complete data purge.',
+      },
       workflow: {
         "todayActivities": "Today’s activities",
         "noActivitiesToday": "No activities have been documented for today yet.",
@@ -1177,6 +1191,8 @@ export const resources = {
         "recentOffers": "Favourites and recently selected programmes first",
         "organization": "Organization",
         "noOrganization": "No organization selected",
+        noOrganizationAssigned: "No organization assigned",
+        noOrganizationAssignedHelp: "Your account is not currently assigned to an organization. Please contact your administrator to have an organization assigned.",
         "chooseOrganization": "Select organization",
         "contextHelp": "Select an organization to view programmes, documentation and reports.",
         "openTopics": "Open discussion points",

@@ -55,6 +55,9 @@
   width: 16px;
 }
 .sidebar-org-menu {
+  border-radius: 1rem;
+  background: var(--surface-elevated);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   position: fixed;
   z-index: 60;
   width: 320px;
@@ -67,4 +70,9 @@
 .sidebar-org-retry {
   max-width: 100%;
   overflow-wrap: anywhere;
+}
+
+/* The scroll container owns the rounded surface and shadow. */
+.sidebar-org-menu > div {
+  box-shadow: none;
 }

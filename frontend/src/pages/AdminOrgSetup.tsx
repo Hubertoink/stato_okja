@@ -1653,6 +1653,7 @@ export default function AdminOrgSetup() {
           : parentId || null
         : (user?.orgId ?? null);
       const org = await createOrgApi(orgName.trim(), effectiveParentId);
+      void qc.invalidateQueries({ queryKey: ['sidebar-organizations'] });
 
       if (withAdmin && adminEmail.trim()) {
         if (localProvisioning) {

@@ -56,6 +56,7 @@ export type AuthUserResponse = {
 export type InviteUserResponse = {
   invitationSent: true;
   emailQueued: boolean;
+  outcome?: 'invited' | 'resent' | 'access_added' | 'already_member';
   user: Pick<AuthUserResponse, 'id' | 'email' | 'name' | 'role' | 'orgId'>;
 };
 
@@ -734,7 +735,7 @@ export class AuthService {
     orgId?: string | null;
     orgName?: string;
   }): Promise<InviteUserResponse> {
-    const email = payload.email.toLowerCase();
+    const email = payload.email.trim().toLowerCase();
     let user = await this.users.findOne({ where: { email } });
     let resolvedOrgId: string | null | undefined = payload.orgId;
 
@@ -765,6 +766,12 @@ export class AuthService {
       const existingMembership = await this.memberships.findOne({
         where: { userId: user.id, orgId: targetOrgId },
       });
+      if (existingMembership?.status === 'active') {
+        return {
+          invitationSent: true, emailQueued: false, outcome: 'already_member',
+          user: { id: user.id, email: user.email, name: user.name, role: existingMembership.role, orgId: targetOrgId },
+        };
+      }
       if (existingMembership) {
         existingMembership.role = targetRole as Exclude<UserRole, 'superadmin'>;
         existingMembership.status = 'active';
@@ -780,6 +787,7 @@ export class AuthService {
       return {
         invitationSent: true,
         emailQueued: false,
+        outcome: 'access_added',
         user: {
           id: user.id,
           email: user.email,
@@ -812,11 +820,14 @@ export class AuthService {
 
     user.inviteTokenVersion = previousInviteTokenVersion + 1;
     await this.users.save(user);
+    let membershipToReactivate: OrganizationMembership | null = null;
     if (targetOrgId && targetRole !== 'superadmin') {
       const existingMembership = await this.memberships.findOne({
         where: { userId: user.id, orgId: targetOrgId },
       });
-      if (!existingMembership) {
+      if (existingMembership) {
+        if (existingMembership.status === 'disabled') membershipToReactivate = existingMembership;
+      } else {
         await this.memberships.save(this.memberships.create({
           userId: user.id,
           orgId: targetOrgId,
@@ -834,11 +845,16 @@ export class AuthService {
     try {
       const emailResult = await this.email.sendInviteEmail(user.email, user.name || user.email, link);
       if (!emailResult.queued) {
-        throw new Error('Invite email was not delivered. Configure SMTP before inviting users.');
+        throw new HttpException({ code: 'SMTP_NOT_CONFIGURED', message: 'Die Einladungs-E-Mail konnte nicht gesendet werden: Der E-Mail-Versand (SMTP) ist nicht konfiguriert. Bitte die Administration kontaktieren.' }, HttpStatus.SERVICE_UNAVAILABLE);
+      }
+      if (membershipToReactivate) {
+        membershipToReactivate.status = 'active';
+        await this.memberships.save(membershipToReactivate);
       }
       return {
         invitationSent: true,
         emailQueued: true,
+        outcome: isPendingInvite ? 'resent' : 'invited',
         user: {
           id: user.id,
           email: user.email,
@@ -856,7 +872,8 @@ export class AuthService {
       } else {
         await this.users.delete({ id: user.id });
       }
-      throw error;
+      if (error instanceof HttpException) throw error;
+      throw new HttpException({ code: 'INVITE_DELIVERY_FAILED', message: 'Die Einladungs-E-Mail konnte nicht zugestellt werden. Bitte Empfängeradresse und E-Mail-Versand prüfen und erneut versuchen.' }, HttpStatus.SERVICE_UNAVAILABLE);
     }
   }
 

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import { isStrictSecurityMode } from '../config/security.config';
@@ -55,6 +55,12 @@ export class EmailService {
   }
 
   private handleMissingTransportForLink(kind: 'Invite' | 'Password reset', recipient: string, link: string) {
+    if (kind === 'Invite') {
+      throw new ServiceUnavailableException({
+        code: 'SMTP_NOT_CONFIGURED',
+        message: 'Die Einladungs-E-Mail konnte nicht gesendet werden: Der E-Mail-Versand (SMTP) ist nicht konfiguriert. Bitte die Administration kontaktieren.',
+      });
+    }
     if (isStrictSecurityMode()) {
       throw new Error(`${kind} email cannot be sent because SMTP is not configured.`);
     }

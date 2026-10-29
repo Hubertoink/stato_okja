@@ -1,9 +1,10 @@
+import { invitationFeedback } from '@/lib/invitationFeedback';
+import RemoveUserModal from '@/components/RemoveUserModal';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useAuth, type Role } from '@/lib/auth';
 import {
   fetchGlobalUsers,
   fetchUsers,
-  removeUserApi,
   removeUserMembershipApi,
   updateUserApi,
   type UserDto,
@@ -231,6 +232,7 @@ export default function OrgUserManagement() {
         user?.role === 'superadmin'
           ? targetOrgId || null
           : (targetOrgId as string) || (user?.orgId ?? null);
+      let invitationMessage = '';
       if (localProvisioning) {
         await createLocalUserApi({
           email: email.trim(),
@@ -240,18 +242,19 @@ export default function OrgUserManagement() {
           temporaryPassword,
         });
       } else {
-        await inviteUserApi({
+        const invitation = await inviteUserApi({
           email: email.trim(),
           name: name.trim() || email.split('@')[0],
           role,
           orgId: selectedOrgId,
         });
+        invitationMessage = invitationFeedback(invitation);
       }
 
       resetCreateForm();
       setCreateModalOpen(false);
       await reload();
-      showToast(localProvisioning ? autoT('ui_3e9d9ed6bfed') : autoT('ui_a6b3076de73d'), {
+      showToast(localProvisioning ? autoT('ui_3e9d9ed6bfed') : invitationMessage, {
         type: 'success',
       });
     } catch (e: unknown) {
@@ -399,6 +402,7 @@ export default function OrgUserManagement() {
                           key={u.id}
                           userData={u}
                           currentUser={user}
+                          deleteAccount={isGlobalSuperadminView}
                           isMobile={isMobile}
                           onReload={reload}
                           onAssign={() => setAssignUser(u)}
@@ -569,7 +573,9 @@ export default function OrgUserManagement() {
 
       {/* Delete confirmation modal */}
       <RemoveUserModal
+        key={`${confirmUser?.id}:${isGlobalSuperadminView}`}
         user={confirmUser}
+        deleteAccount={isGlobalSuperadminView}
         onClose={() => setConfirmUser(null)}
         onRemoved={() => {
           setConfirmUser(null);
@@ -619,6 +625,7 @@ export default function OrgUserManagement() {
 function UserRow({
   userData,
   currentUser,
+  deleteAccount = false,
   isMobile,
   onReload,
   onAssign,
@@ -628,6 +635,7 @@ function UserRow({
 }: {
   userData: UserDto;
   currentUser: { id: string; role: string };
+  deleteAccount?: boolean;
   isMobile: boolean;
   onReload: () => void;
   onAssign: () => void;
@@ -706,7 +714,7 @@ function UserRow({
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
-          {!isSuperadmin && !isCurrentUser && (
+          {!isSuperadmin && !isCurrentUser && !!userData.orgId && (
             <button
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
               onClick={() => {
@@ -740,14 +748,14 @@ function UserRow({
             />
           )}
 
-          {!isCurrentUser && (
+          {!isCurrentUser && !isSuperadmin && (
             <Button
               variant="danger"
               size="lg"
               onClick={onDelete}
             >
               <Trash2 className="w-4 h-4" />
-              {autoT('ui_f78b6376e028')}
+              {t(deleteAccount ? 'accountRemoval.deleteTitle' : 'accountRemoval.revokeTitle')}
             </Button>
           )}
         </div>
@@ -792,7 +800,7 @@ function UserRow({
           <span className={`text-xs px-2 py-1 rounded-full ${roleBadgeClass}`}>{roleLabel}</span>
 
           {/* Role change (requires explicit confirmation; not for superadmin or self) */}
-          {!isSuperadmin && !isCurrentUser && (
+          {!isSuperadmin && !isCurrentUser && !!userData.orgId && (
             <button
               className="inline-flex items-center gap-1.5 border rounded px-2 py-1 text-xs bg-white hover:bg-gray-50 transition-colors"
               title={autoT('ui_3cde967bbfd0')}
@@ -831,11 +839,11 @@ function UserRow({
           )}
 
           {/* Delete button (not for self) */}
-          {!isCurrentUser && (
+          {!isCurrentUser && !isSuperadmin && (
             <DeleteIconButton
               size="icon-compact"
-              title={autoT('ui_2a1dd54ba9b6')}
-              aria-label={autoT('ui_2a1dd54ba9b6')}
+              title={t(deleteAccount ? 'accountRemoval.deleteTitle' : 'accountRemoval.revokeTitle')}
+              aria-label={t(deleteAccount ? 'accountRemoval.deleteTitle' : 'accountRemoval.revokeTitle')}
               onClick={onDelete}
             />
           )}
@@ -913,7 +921,7 @@ function UserRow({
               disabled={pendingRole === currentSelectableRole}
               onClick={async () => {
                 try {
-                  await updateUserApi(userData.id, { role: pendingRole });
+                  await updateUserApi(userData.id, { role: pendingRole, orgId: userData.orgId });
                   setRoleModalOpen(false);
                   await onReload();
                   showToast(autoT('ui_d524dd5d7012'), { type: 'success' });
@@ -1255,53 +1263,5 @@ function PasswordInput({
         {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
     </div>
-  );
-}
-
-// Confirm delete modal
-function RemoveUserModal({
-  user,
-  onClose,
-  onRemoved,
-}: {
-  user: UserDto | null;
-  onClose: () => void;
-  onRemoved: () => void;
-}) {
-  if (!user) return null;
-  return (
-    <Modal open={true} onClose={onClose} title="Organisationszugang entziehen" maxWidth="sm">
-      <p className="text-sm text-gray-700">
-        Möchtest du
-        {' '}
-        <span className="font-medium">{user.name || user.email}</span>
-        {' '}
-        den Zugang zur aktuell ausgewählten Organisation entziehen?
-      </p>
-      <p className="text-xs text-gray-500 mt-2">Das Benutzerkonto und Zugänge zu anderen Organisationen bleiben erhalten.</p>
-      <div className="mt-4 flex items-center justify-end gap-2">
-        <button
-          className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
-          onClick={onClose}
-        >
-          {autoT('ui_07af7cb30fca')}
-        </button>
-        <button
-          className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
-          onClick={async () => {
-            try {
-              await removeUserApi(user.id);
-              onClose();
-              onRemoved();
-            } catch (err: unknown) {
-              const e = err as { response?: { data?: { message?: unknown } } };
-              alert(String(e?.response?.data?.message || autoT('ui_bbe17e081ceb')));
-            }
-          }}
-        >
-          {autoT('ui_f78b6376e028')}
-        </button>
-      </div>
-    </Modal>
   );
 }

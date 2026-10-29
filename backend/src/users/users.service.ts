@@ -156,6 +156,32 @@ export class UsersService {
     return this.repo.update({ id }, safePatch);
   }
   async remove(id: string) { await this.repo.delete({ id }); return true; }
+  async removeAccount(id: string) {
+    return this.repo.manager.transaction(async (manager) => {
+      const users = manager.getRepository(User);
+      const memberships = manager.getRepository(OrganizationMembership);
+      const user = await users.findOne({ where: { id } });
+      if (!user) throw new BadRequestException('Benutzerkonto nicht gefunden');
+      if (user.role === 'superadmin') {
+        throw new BadRequestException('Superadmin-Konten können hier nicht gelöscht werden');
+      }
+      const adminMemberships = await memberships.find({
+        where: { userId: id, status: 'active', role: 'org_admin' },
+      });
+      for (const membership of adminMemberships) {
+        const admins = await memberships.count({
+          where: { orgId: membership.orgId, status: 'active', role: 'org_admin' },
+        });
+        if (admins <= 1) {
+          throw new BadRequestException('Der letzte Organisationsadmin kann nicht gelöscht werden. Bitte zuerst einen weiteren Admin zuweisen.');
+        }
+      }
+      // Foreign keys cascade memberships, refresh sessions and personal KPIs.
+      // Organisational content stays; nullable author relations become NULL.
+      await users.delete({ id });
+      return true;
+    });
+  }
   findById(id: string) { return this.repo.findOne({ where: { id } }); }
   countAdmins(orgId: string | null) {
     if (orgId) return this.repo.count({ where: { role: 'org_admin', orgId: Equal(orgId) } });

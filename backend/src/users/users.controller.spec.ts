@@ -33,6 +33,7 @@ describe('UsersController global directory', () => {
     findMembership: jest.fn(),
     countActiveMembershipAdmins: jest.fn(),
     addMembership: jest.fn(),
+    removeAccount: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -80,6 +81,29 @@ describe('UsersController global directory', () => {
         effectiveOrgId: null,
       }),
     ).rejects.toThrow('Globale Benutzerliste');
+  });
+
+  it('does not use legacy organization or role for an account with no active memberships', async () => {
+    service.findAllActiveMembershipUsers.mockResolvedValueOnce([]);
+    const result = await controller.directory({ user: { role: 'superadmin' }, effectiveOrgId: null });
+    expect(result[0]).toMatchObject({ id: 'user-1', orgId: null, org: null, role: 'user' });
+  });
+
+  it('allows explicit account deletion only in global superadmin scope', async () => {
+    await expect(controller.removeAccount('user-1', {
+      user: { id: 'root', role: 'superadmin' }, effectiveOrgId: null,
+    })).resolves.toEqual({ ok: true });
+    expect(service.removeAccount).toHaveBeenCalledWith('user-1');
+  });
+
+  it.each([
+    { user: { id: 'admin', role: 'org_admin' }, effectiveOrgId: 'org-1' },
+    { user: { id: 'admin', role: 'org_admin' }, effectiveOrgId: null },
+    { user: { id: 'root', role: 'superadmin' }, effectiveOrgId: 'org-1' },
+    { user: { id: 'user-1', role: 'superadmin' }, effectiveOrgId: null },
+  ])('rejects account deletion outside the permitted context or for self', async (req) => {
+    await expect(controller.removeAccount('user-1', req)).rejects.toThrow();
+    expect(service.removeAccount).not.toHaveBeenCalled();
   });
 
   it('does not allow the last active organisation admin to be demoted', async () => {

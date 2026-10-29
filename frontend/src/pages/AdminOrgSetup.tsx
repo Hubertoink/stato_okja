@@ -1,3 +1,4 @@
+import { invitationFeedback } from '@/lib/invitationFeedback';
 import OrganizationModulesMenu from '@/components/OrganizationModulesMenu';
 import { updateOrganizationModule, type OrganizationModule } from '@/lib/organizationModules';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -1655,6 +1656,7 @@ export default function AdminOrgSetup() {
       const org = await createOrgApi(orgName.trim(), effectiveParentId);
       void qc.invalidateQueries({ queryKey: ['sidebar-organizations'] });
 
+      let adminInvitationMessage = '';
       if (withAdmin && adminEmail.trim()) {
         if (localProvisioning) {
           await createLocalUserApi({
@@ -1665,12 +1667,13 @@ export default function AdminOrgSetup() {
             temporaryPassword: adminTemporaryPassword,
           });
         } else {
-          await inviteUserApi({
+          const invitation = await inviteUserApi({
             email: adminEmail.trim(),
             name: adminName.trim() || adminEmail.split('@')[0],
             role: 'org_admin',
             orgId: org.id,
           });
+          adminInvitationMessage = invitationFeedback(invitation);
         }
       }
 
@@ -1681,7 +1684,7 @@ export default function AdminOrgSetup() {
         withAdmin
           ? localProvisioning
             ? autoT('ui_382a758a5739', { value0: org.name })
-            : autoT('ui_d1e50e86b092', { value0: org.name })
+            : `${autoT('ui_cd9e04bd6469', { value0: org.name })} ${adminInvitationMessage}`
           : autoT('ui_cd9e04bd6469', { value0: org.name }),
         { type: 'success' },
       );
@@ -2572,14 +2575,14 @@ function OrgRow({
                     role: 'user',
                     orgId: org.id,
                   });
-                  const message = invitation.emailQueued
-                    ? autoT('ui_b90214965611')
-                    : autoT('ui_4fb8125a11b1');
+                  const message = invitationFeedback(invitation);
                   setCopyMsg(message);
                   setTimeout(() => setCopyMsg(null), 1500);
-                  showToast(`${message}.`, { type: invitation.emailQueued ? 'success' : 'error' });
-                } catch {
-                  showToast(autoT('ui_cc6688313c0a'), { type: 'error' });
+                  showToast(message, { type: 'success' });
+                  onMoved();
+                } catch (error: unknown) {
+                  const message = (error as { response?: { data?: { message?: string | string[] } } }).response?.data?.message;
+                  showToast(Array.isArray(message) ? message.join(' ') : message || autoT('ui_cc6688313c0a'), { type: 'error' });
                 } finally {
                   setInviteBusy(false);
                 }

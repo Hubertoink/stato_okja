@@ -2,10 +2,9 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Die Desktop-Titelleiste liegt jetzt außerhalb des Webinhalts. Scrollleisten und Dialoge beginnen vollständig darunter; neben dem Schließen-Knopf bleibt kein Scrollbereich.
-- Die Titelleiste bleibt bei oberer Navigation und Seitenleiste sichtbar und übernimmt die Theme-Farben.
-- Die untere Serverleiste schließt ohne zusätzliche Rahmenlinie direkt an den Webinhalt an, auch bei Windows-Skalierung.
-- Kein Server-Update erforderlich.
+- Die leere Projektauswahl bleibt in normaler und kompakter Ansicht gleich, inklusive Hinweis und Link zur Projektseite.
+- Der Link zur Projektseite öffnet zuverlässig die Projektverwaltung.
+- Für diese Korrekturen den verbundenen StatO-Server ebenfalls auf 1.20.3 aktualisieren; die Weboberfläche wird vom Server bereitgestellt.
 
 ### Installation und einmaliger Umstieg
 

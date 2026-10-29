@@ -1,6 +1,6 @@
 import { useRecentProjectChoices } from '@/lib/useRecentProjectChoices';
 import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useProjects, type Project } from '@/lib/projects';
 import { ArrowLeft, Grid2x2, Rows3 } from 'lucide-react';
 import { getStarredProjectIds } from '@/lib/starred';
@@ -114,7 +114,18 @@ export default function ProjectPickerPage() {
           </label>
         </div>
 
-        {!compact && (
+        {projects.length === 0 && (
+          <div className="py-10 md:py-14 text-center">
+            <div className="text-gray-500">{search.trim() ? t('workflow.noResults') : t('projectPicker.empty')}</div>
+            <div className="mt-2 text-xs text-gray-600">
+              {t('projectPicker.emptyHint')}
+              <Link to="/projects" className="text-viridian hover:underline ml-1">
+                {t('projectPicker.projectsPage')}
+              </Link>
+            </div>
+          </div>
+        )}
+        {projects.length > 0 && !compact && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {(projects || []).map((p) => (
               <button
@@ -146,15 +157,10 @@ export default function ProjectPickerPage() {
                 </div>
               </button>
             ))}
-            {(projects || []).length === 0 && (
-              <div className="col-span-full text-center py-6 text-gray-500">
-                {search.trim() ? t('workflow.noResults') : t('projectPicker.empty')}
-              </div>
-            )}
           </div>
         )}
 
-        {compact && (
+        {projects.length > 0 && compact && (
           <ul className="grid gap-px overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--border-subtle)]">
             {(projects || []).map((p) => (
               <li key={p.id} className="bg-[var(--surface-1)]">
@@ -177,9 +183,6 @@ export default function ProjectPickerPage() {
                 </button>
               </li>
             ))}
-            {(projects || []).length === 0 && (
-              <li className="px-3 py-6 text-center text-gray-500">{search.trim() ? t('workflow.noResults') : t('projectPicker.empty')}</li>
-            )}
           </ul>
         )}
       </div>

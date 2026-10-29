@@ -3,7 +3,7 @@ import { useProjects, Project } from '@/lib/projects';
 import { colorFromStringHash } from '@/lib/colors';
 import { useMemo, useState } from 'react';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Grid2x2, Rows3 } from 'lucide-react';
 import { getStarredProjectIds } from '@/lib/starred';
 import ProtectedImage from '@/components/ProtectedImage';
@@ -26,7 +26,8 @@ export default function ProjectPickerModal({
   onClose: () => void;
 }) {
   const { t } = useTranslation(['common', 'activities']);
-  const { dismiss } = useModalHistory(onClose);
+  const { dismiss, dismissWithoutCallback } = useModalHistory(onClose);
+  const navigate = useNavigate();
   // This component mounts only when open – lock body scroll while mounted
   useBodyScrollLock(true);
   const { recentIds, remember } = useRecentProjectChoices();
@@ -115,7 +116,30 @@ export default function ProjectPickerModal({
 
         <p className="mb-3 text-xs text-[var(--text-secondary)]">{t('workflow.recentOffers')}</p>
         <div className="project-picker-scroll min-h-0 flex-1 overflow-y-auto pb-4">
-          {!compact && (
+          {projects.length === 0 && (
+            <div className="py-10 md:py-14 text-center">
+              <div className="text-gray-500">{search.trim() ? t('workflow.noResults') : t('projectPicker.empty')}</div>
+              <div className="mt-2 text-xs text-gray-600">
+                {t('projectPicker.emptyHint')}
+                <Link
+                  to="/projects"
+                  className="text-viridian hover:underline ml-1"
+                  onClick={(event) => {
+                    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                    event.preventDefault();
+                    const openProjects = () => {
+                      onClose();
+                      navigate('/projects');
+                    };
+                    if (!dismissWithoutCallback(openProjects)) openProjects();
+                  }}
+                >
+                  {t('projectPicker.projectsPage')}
+                </Link>
+              </div>
+            </div>
+          )}
+          {projects.length > 0 && !compact && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {projects.map((p) => (
                 <button
@@ -151,25 +175,10 @@ export default function ProjectPickerModal({
                   </div>
                 </button>
               ))}
-              {projects.length === 0 && (
-                <div className="col-span-full py-10 md:py-14 text-center">
-                  <div className="text-gray-500">{search.trim() ? t('workflow.noResults') : t('projectPicker.empty')}</div>
-                  <div className="mt-2 text-xs text-gray-600">
-                    {t('projectPicker.emptyHint')}
-                    <Link
-                      to="/projects"
-                      className="text-viridian hover:underline ml-1"
-                      onClick={dismiss}
-                    >
-                      {t('projectPicker.projectsPage')}
-                    </Link>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
-          {compact && (
+          {projects.length > 0 && compact && (
             <ul className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--border-subtle)] md:grid-cols-2">
               {projects.map((p) => (
                 <li key={p.id} className="bg-[var(--surface-1)]">
@@ -192,11 +201,6 @@ export default function ProjectPickerModal({
                   </button>
                 </li>
               ))}
-              {projects.length === 0 && (
-                <li className="col-span-full px-3 py-10 md:py-14 text-center text-gray-500">
-                  {search.trim() ? t('workflow.noResults') : t('projectPicker.empty')}
-                </li>
-              )}
             </ul>
           )}
         </div>

@@ -2,9 +2,9 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Die leere Projektauswahl bleibt in normaler und kompakter Ansicht gleich, inklusive Hinweis und Link zur Projektseite.
-- Der Link zur Projektseite öffnet zuverlässig die Projektverwaltung.
-- Für diese Korrekturen den verbundenen StatO-Server ebenfalls auf 1.20.3 aktualisieren; die Weboberfläche wird vom Server bereitgestellt.
+- Electron wurde auf eine korrigierte Version aktualisiert.
+- Organisationswechsel, Konten ohne Organisationszuordnung und Rückmeldungen zu Einladungen wurden verbessert. Kontolöschung und Entfernen von Organisationszugriffen sind klar getrennt.
+- Für die Änderungen an der Weboberfläche den verbundenen StatO-Server ebenfalls auf 1.20.4 aktualisieren.
 
 ### Installation und einmaliger Umstieg
 

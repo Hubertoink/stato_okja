@@ -9,6 +9,15 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.20.3] - 2026-10-29
+
+### Fixed
+- Die leere Projektauswahl bleibt beim Umschalten auf Kompakt unverändert, einschließlich Hinweis und Link zur Projektseite. Dies gilt auch für die mobile Projektauswahl und leere Suchergebnisse.
+- Der Link zur Projektseite wartet auf das Entfernen des Dialog-Verlaufseintrags und navigiert zuverlässig zur Projektverwaltung.
+
+### Upgrade-Hinweise
+- Web-/Server- und Windows-Desktop-Release verwenden Version 1.20.3. Für die korrigierte Projektauswahl auch den verbundenen Server aktualisieren.
+
 ## [1.20.2] - 2026-10-28
 
 ### Desktop

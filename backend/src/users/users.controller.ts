@@ -89,7 +89,13 @@ export class UsersController {
     const membershipUsers = await this.service.findAllActiveMembershipUsers();
     const membershipUserIds = new Set(membershipUsers.map((user) => user.id));
     const standaloneUsers = (await this.service.findAll())
-      .filter((user) => !membershipUserIds.has(user.id));
+      .filter((user) => !membershipUserIds.has(user.id))
+      .map((user) => ({
+        ...user,
+        orgId: null,
+        org: null,
+        role: user.role === 'superadmin' ? 'superadmin' : 'user',
+      }));
     return [...membershipUsers, ...standaloneUsers].map(toPublicUser);
   }
 
@@ -223,6 +229,21 @@ export class UsersController {
       throw new BadRequestException('Der letzte Organisationsadmin kann nicht entfernt werden');
     }
     await this.service.disableMembership(id, orgId);
+    return { ok: true };
+  }
+
+  /** Explicit account deletion, separate from removing an organisation access. */
+  @Roles('superadmin')
+  @Delete(':id/account')
+  async removeAccount(
+    @Param('id') id: string,
+    @Req() req: { user: { id: string; role: string }; effectiveOrgId?: string | null },
+  ) {
+    if (req.user.role !== 'superadmin' || req.effectiveOrgId !== null) {
+      throw new ForbiddenException('Konten können nur im globalen Superadmin-Bereich gelöscht werden');
+    }
+    if (req.user.id === id) throw new BadRequestException('Das eigene Konto kann nicht gelöscht werden');
+    await this.service.removeAccount(id);
     return { ok: true };
   }
 

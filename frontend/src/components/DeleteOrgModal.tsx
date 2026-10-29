@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import Modal from '@/components/Modal';
-import { deleteOrgApi } from '@/lib/orgs';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import { useOrgScope } from '@/lib/orgScope';
+import { deleteOrgApi, listUsersByOrg } from '@/lib/orgs';
 import { useToast } from '@/components/Toast';
 import { autoT } from '@/i18n/auto';
 import { Button } from '@/components/ui/Button';
@@ -15,6 +18,15 @@ interface DeleteOrgModalProps {
 
 export default function DeleteOrgModal({ orgId, orgName, open, onClose, onDeleted }: DeleteOrgModalProps) {
   const { showToast } = useToast();
+  const { t } = useTranslation('common');
+  const qc = useQueryClient();
+  const { scope, setScope } = useOrgScope();
+  const users = useQuery({
+    queryKey: ['organization-delete-users', orgId],
+    queryFn: () => listUsersByOrg(orgId!),
+    enabled: open && !!orgId,
+    staleTime: 0,
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +35,8 @@ export default function DeleteOrgModal({ orgId, orgName, open, onClose, onDelete
     setBusy(true); setError(null);
     try {
       await deleteOrgApi(orgId);
+      if (scope === orgId) setScope(null);
+      void qc.invalidateQueries({ queryKey: ['sidebar-organizations'] });
       showToast(autoT('ui_e46562d380c7', { value0: orgName }), { type: 'success' });
       onClose();
       onDeleted();
@@ -42,13 +56,17 @@ export default function DeleteOrgModal({ orgId, orgName, open, onClose, onDelete
           <strong>{autoT('ui_7535160fba8a')}</strong>{' '}
           {autoT('ui_36156e721c4c')}
         </div>
+        <p className="text-sm text-[var(--text-secondary)]">{t('organizationDeletion.data')}</p>
+        <p className="text-sm text-[var(--text-secondary)]" role="status">
+          {users.isPending ? t('organizationDeletion.loading') : users.isError ? t('organizationDeletion.error') : t('organizationDeletion.users', { count: users.data.length })}
+        </p>
         {error && <div className="text-xs text-red-600 bg-red-50 border border-red-300 rounded p-2">{error}</div>}
         <div className="flex items-center justify-end gap-2">
           <Button variant="secondary" size="sm" disabled={busy} onClick={()=> onClose()}>{autoT('ui_07af7cb30fca')}</Button>
           <Button
             variant="danger"
             size="sm"
-            disabled={busy || !orgId}
+            disabled={busy || !orgId || users.isPending || users.isError}
             onClick={handleDelete}
           >{busy ? autoT('ui_2b5a5dd9afbb') : autoT('ui_65cebdf22580')}</Button>
         </div>

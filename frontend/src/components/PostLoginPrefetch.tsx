@@ -104,6 +104,10 @@ export default function PostLoginPrefetch({ children }: { children: React.ReactN
     // Wait until the org scope has been hydrated so we do not warm up the
     // temporary legacy/global cache and immediately repeat the same work.
     if (!ready) return;
+    if (user.role !== 'superadmin' && !user.orgId && !user.memberships?.length) {
+      setOpen(false);
+      return;
+    }
     // Wait for org switching to complete before running prefetch,
     // but keep the overlay open while switching.
     if (switching) return;

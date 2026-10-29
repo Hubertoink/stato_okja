@@ -188,6 +188,7 @@ export async function uploadOrganizationBanner(file: File): Promise<string> {
 export type InviteUserResult = {
   invitationSent: true;
   emailQueued: boolean;
+  outcome?: 'invited' | 'resent' | 'access_added' | 'already_member';
   user: {
     id: string;
     email: string;

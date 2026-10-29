@@ -5,7 +5,7 @@ eines konfigurierten Servers. Frontend, Backend und Datenbank werden nicht kopie
 oder lokal gestartet. Für den Client brauchen Nutzende weder Node.js noch Docker.
 Die erste Distribution ist ein Windows-x64-Installer für das aktuelle Benutzerkonto.
 
-Download: [StatO Desktop 1.20.2 – Windows](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.20.2).
+Download: [StatO Desktop 1.20.4 – Windows](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.20.4).
 
 ## Desktop-Titelleiste
 
@@ -120,11 +120,11 @@ Installer, `.exe.blockmap`, `latest.yml` und `SHA256SUMS` als Workflow-Artefakt 
 
 Für ein verteilbares Desktop-Release `desktop/RELEASE_NOTES.md` und die Download-Links
 an die neue Version anpassen, die Änderungen auf `main` pushen und danach einen
-eigenen Desktop-Tag erstellen. Beispiel für Version 1.20.2:
+eigenen Desktop-Tag erstellen. Beispiel für Version 1.20.4:
 
 ```powershell
-git tag -a desktop-v1.20.2 -m "StatO Desktop 1.20.2 Windows release"
-git push origin desktop-v1.20.2
+git tag -a desktop-v1.20.4 -m "StatO Desktop 1.20.4 Windows release"
+git push origin desktop-v1.20.4
 ```
 
 Der Tag muss zur Version in `VERSION` passen und auf einem Commit aus `main` liegen.

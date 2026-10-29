@@ -9,6 +9,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.20.4] - 2026-10-29
+
+### Fixed
+- Der Organisationswechsel aktualisiert die verfügbaren Organisationen zuverlässig; Konten ohne Organisationszuordnung erhalten eine passende Ansicht.
+- Kontolöschung und das Entfernen von Organisationszugriffen sind klar getrennt. Rückmeldungen zu Einladungen zeigen das tatsächliche Ergebnis.
+
+### Security
+- Electron und betroffene Entwicklungsabhängigkeiten wurden auf korrigierte Versionen aktualisiert.
+
+### Upgrade-Hinweise
+- Server und Windows-Desktop verwenden Version 1.20.4. Für die Änderungen an Organisations- und Benutzerverwaltung den verbundenen Server aktualisieren; für das Electron-Sicherheitsupdate den Desktop-Client aktualisieren.
+
 ## [1.20.3] - 2026-10-29
 
 ### Fixed

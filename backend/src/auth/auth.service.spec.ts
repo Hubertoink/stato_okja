@@ -97,6 +97,7 @@ describe('AuthService invitations', () => {
     expect(result).toEqual({
       invitationSent: true,
       emailQueued: true,
+      outcome: 'invited',
       user: expect.objectContaining({ email: 'new.user@example.org', orgId: 'org-1' }),
     });
     expect(result).not.toHaveProperty('token');
@@ -152,7 +153,53 @@ describe('AuthService invitations', () => {
 
     await expect(
       service.inviteUser({ email: 'new@example.org', name: 'New User', role: 'user', orgId: 'org-1' }),
-    ).rejects.toThrow('Invite email was not delivered');
+    ).rejects.toThrow('SMTP');
+    expect(users.delete).toHaveBeenCalledWith({ id: 'user-1' });
+  });
+
+  it('reports an already active membership without sending mail or changing its role', async () => {
+    const { service, memberships, email } = createService({ existingUser: {
+      id: 'user-1', email: 'existing@example.org', passwordHash: 'hash', role: 'user', orgId: 'org-1',
+    } });
+    memberships.findOne.mockResolvedValue({ userId: 'user-1', orgId: 'org-1', role: 'org_admin', status: 'active' });
+    const result = await service.inviteUser({ email: 'existing@example.org', name: 'Existing', role: 'user', orgId: 'org-1' });
+    expect(result).toMatchObject({ outcome: 'already_member', emailQueued: false, user: { role: 'org_admin' } });
+    expect(memberships.save).not.toHaveBeenCalled();
+    expect(email.sendInviteEmail).not.toHaveBeenCalled();
+  });
+
+  it('reactivates a disabled membership for an existing account without requiring SMTP', async () => {
+    const { service, memberships, email } = createService({ existingUser: {
+      id: 'user-1', email: 'existing@example.org', passwordHash: 'hash', role: 'user', orgId: 'org-1',
+    }, emailResult: { queued: false } });
+    memberships.findOne.mockResolvedValue({ userId: 'user-1', orgId: 'org-1', role: 'user', status: 'disabled' });
+    await expect(service.inviteUser({ email: 'existing@example.org', name: 'Existing', role: 'user', orgId: 'org-1' }))
+      .resolves.toMatchObject({ outcome: 'access_added', emailQueued: false });
+    expect(memberships.save).toHaveBeenCalledWith(expect.objectContaining({ status: 'active' }));
+    expect(email.sendInviteEmail).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])('only reactivates a pending invitation after successful delivery: %s', async (queued) => {
+    const { service, memberships, users } = createService({ existingUser: {
+      id: 'user-1', email: 'pending@example.org', passwordHash: null, role: 'user', orgId: 'org-1', inviteTokenVersion: 2,
+    }, emailResult: { queued } });
+    memberships.findOne.mockResolvedValue({ userId: 'user-1', orgId: 'org-1', role: 'user', status: 'disabled' });
+    const result = service.inviteUser({ email: 'pending@example.org', name: 'Pending', role: 'user', orgId: 'org-1' });
+    if (queued) {
+      await expect(result).resolves.toMatchObject({ outcome: 'resent', emailQueued: true });
+      expect(memberships.save).toHaveBeenCalledWith(expect.objectContaining({ status: 'active' }));
+    } else {
+      await expect(result).rejects.toThrow('SMTP');
+      expect(memberships.save).not.toHaveBeenCalled();
+      expect(users.save).toHaveBeenLastCalledWith(expect.objectContaining({ inviteTokenVersion: 2 }));
+    }
+  });
+
+  it('distinguishes actual delivery failures from missing SMTP configuration', async () => {
+    const { service, email, users } = createService();
+    email.sendInviteEmail.mockRejectedValue(new Error('Recipient rejected'));
+    await expect(service.inviteUser({ email: 'new@example.org', name: 'New', role: 'user', orgId: 'org-1' }))
+      .rejects.toMatchObject({ response: { code: 'INVITE_DELIVERY_FAILED' }, status: 503 });
     expect(users.delete).toHaveBeenCalledWith({ id: 'user-1' });
   });
 

@@ -1,3 +1,5 @@
+import OrganizationAssignmentGate from './OrganizationAssignmentGate';
+import { useQueryClient } from '@tanstack/react-query';
 import { useOrganizationModules } from '@/lib/organizationModules';
 import { Button } from '@/components/ui/Button';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
@@ -166,6 +168,7 @@ export default function Layout() {
   const restrictToPasswordChange = user?.mustChangePassword === true;
   const { scope, setScope, switching: orgSwitching } = useOrgScope();
   const scopeKey = useOrgScopeKey();
+  const queryClient = useQueryClient();
   const { showToast } = useToast(); // ensure toast provider is initialized; also used for feedback
   const demoGuidesMutedForPageLoad = useDemoMobileGuideMuted();
 
@@ -315,12 +318,12 @@ export default function Layout() {
     };
 
     if (typeof scope === 'undefined') {
-      // Should be rare (legacy). Treat as safe superadmin area.
-      setActiveOrgName('Superadmin Bereich');
+      // Use the account role to label an unselected context.
+      setActiveOrgName(user?.role === 'superadmin' ? t('shell.globalOrganization') : t('workflow.noOrganizationAssigned'));
       return;
     }
     if (scope === null) {
-      setActiveOrgName('Superadmin Bereich');
+      setActiveOrgName(user?.role === 'superadmin' ? t('shell.globalOrganization') : t('workflow.noOrganizationAssigned'));
       return;
     }
     // scope is an orgId string
@@ -359,7 +362,7 @@ export default function Layout() {
     return () => {
       cancelled = true;
     };
-  }, [scope, user?.id, user?.role, user?.orgId, user?.orgName, assignedOrgs]);
+  }, [scope, user?.id, user?.role, user?.orgId, user?.orgName, assignedOrgs, t]);
 
   // Banner data is loaded independently from the name cache so an organisation
   // switch never briefly shows the preceding organisation's visual identity.
@@ -541,13 +544,15 @@ export default function Layout() {
       <main
         className={`container mx-auto min-w-0 w-full flex-1 overflow-x-clip px-2 sm:px-3 md:px-4 py-8 pt-[4.25rem] md:pt-32 ${hideBottomNav ? 'pb-0' : 'pb-24'} md:pb-8`}
       >
-        {!restrictToPasswordChange && isSuperadmin && !scope && /^\/(dashboard|activities|projects|calendar|logbook|statistics|surveys|master-data|operations)(\/|$)/.test(location.pathname) ? (
-          <section className="mx-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-6 md:mx-2">
-            <h2 className="text-xl font-semibold">{t('workflow.noOrganization')}</h2>
-            <p className="my-3">{t('workflow.contextHelp')}</p>
-            <Button onClick={() => setScopeModalOpen(true)}>{t('workflow.chooseOrganization')}</Button>
-          </section>
-        ) : <Outlet key={`${scopeKey}:${location.pathname}`} context={{ openQuickTally }} />}
+        <OrganizationAssignmentGate>
+          {!restrictToPasswordChange && isSuperadmin && !scope && /^\/(dashboard|activities|projects|calendar|logbook|statistics|surveys|master-data|operations)(\/|$)/.test(location.pathname) ? (
+            <section className="mx-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-6 md:mx-2">
+              <h2 className="text-xl font-semibold">{t('workflow.noOrganization')}</h2>
+              <p className="my-3">{t('workflow.contextHelp')}</p>
+              <Button onClick={() => setScopeModalOpen(true)}>{t('workflow.chooseOrganization')}</Button>
+            </section>
+          ) : <Outlet key={`${scopeKey}:${location.pathname}`} context={{ openQuickTally }} />}
+        </OrganizationAssignmentGate>
       </main>
 
       {/* QuickTally overlay (global) */}
@@ -736,6 +741,7 @@ export default function Layout() {
                     newOrgName.trim(),
                     parentId as string | null | undefined,
                   );
+                  void queryClient.invalidateQueries({ queryKey: ['sidebar-organizations'] });
                   setNewOrgName('');
                   setCreateModalOpen(false);
                   showToast(autoT('ui_76783d2c57a3', { value0: created.name }), {

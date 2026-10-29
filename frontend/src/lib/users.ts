@@ -43,6 +43,11 @@ export async function removeUserApi(id: string) {
   await api.delete(`/users/${id}`);
 }
 
+/** Deletes the account globally; only available to a superadmin in global scope. */
+export async function deleteUserAccountApi(id: string) {
+  await api.delete(`/users/${id}/account`);
+}
+
 /** Entzieht nur den Zugang zu einer Organisation, nicht das Benutzerkonto. */
 export async function removeUserMembershipApi(id: string, orgId: string) {
   await api.delete(`/users/${id}/memberships/${orgId}`);

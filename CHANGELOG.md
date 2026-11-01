@@ -9,6 +9,15 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.20.5] - 2026-11-01
+
+### Changed
+- Die aktive Organisation steht hervorgehoben oben in der Seitenleiste. Organisationskontext und Wechselmöglichkeiten sind klarer erkennbar.
+- Kompaktere Abstände in der Organisationskarte und verständlichere Hinweise ohne redundante Zuordnungsinformation.
+
+### Upgrade-Hinweise
+- Server und Windows-Desktop verwenden Version 1.20.5. Die Seitenleistenänderungen werden vom verbundenen Server bereitgestellt; dafür auch den Server aktualisieren.
+
 ## [1.20.4] - 2026-10-29
 
 ### Fixed

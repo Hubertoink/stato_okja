@@ -117,7 +117,7 @@ StatO ist als TypeScript-Monorepo aufgebaut:
 
 Details: [Architektur](docs/ARCHITECTURE.md), [On-Prem-Betrieb](docs/DOCKER_ONPREM_SETUP.md) und [Mittwald-Deployment](DEPLOY_MITTWALD.md).
 
-### Windows-Desktop-App (Vorschau)
+### Windows-Desktop-App
 
 Der zusätzliche Client in `desktop/` verbindet sich mit einer bestehenden StatO-Installation
 im eigenen Netzwerk oder beim Hosting-Anbieter. Beim ersten Start wird die Serveradresse
@@ -126,7 +126,7 @@ App-Fenster; Anmeldung, Datenhaltung und Updates der Oberfläche bleiben auf dem
 
 Entwicklung: `npm run desktop:install`, danach `npm run desktop:dev`.
 Windows-Installer: `npm run desktop:build` (auf Windows).
-Download: [Windows-Desktop-Vorschau 1.17.0](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.17.0).
+Download: [StatO Desktop 1.20.5 – Windows](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.20.5).
 Details zu Verbindung, Installation und Tests: [Desktop-App](desktop/README.md).
 
 ## Projektstatus und Roadmap

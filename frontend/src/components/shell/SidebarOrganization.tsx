@@ -1,5 +1,5 @@
 import SidebarTooltip from './SidebarTooltip';
-import { Building2, Info } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import OrganizationDropdown from './OrganizationDropdown';
@@ -60,12 +60,6 @@ export default function SidebarOrganization({
             {scope && <span className="sidebar-label sidebar-org-status" aria-hidden="true" />}
           </div>
         </SidebarTooltip>
-      )}
-      {!canSwitch && scope && (
-        <div className="sidebar-label sidebar-org-hint">
-          <Info aria-hidden="true" />
-          <p>{t('shell.organizationAssigned')}</p>
-        </div>
       )}
       {organizations.isError && (
         <Button

@@ -2,9 +2,9 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Electron wurde auf eine korrigierte Version aktualisiert.
-- Organisationswechsel, Konten ohne Organisationszuordnung und Rückmeldungen zu Einladungen wurden verbessert. Kontolöschung und Entfernen von Organisationszugriffen sind klar getrennt.
-- Für die Änderungen an der Weboberfläche den verbundenen StatO-Server ebenfalls auf 1.20.4 aktualisieren.
+- Die aktive Organisation wird oben in der Seitenleiste hervorgehoben; Organisationskontext und Wechselmöglichkeiten sind klarer erkennbar.
+- Kompaktere Abstände und verständlichere Hinweise in der Organisationskarte.
+- Für die Änderungen an der Weboberfläche den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren.
 
 ### Installation und einmaliger Umstieg
 

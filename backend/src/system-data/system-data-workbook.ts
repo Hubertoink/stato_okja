@@ -32,6 +32,7 @@ const ACTIVITY_TYPE_LABELS: Record<string, string> = {
 };
 
 const ACTIVITY_EXECUTION_STATUS_LABELS: Record<string, string> = {
+  planned: 'Geplant',
   completed: 'Stattgefunden',
   cancelled: 'Ausgefallen',
 };
@@ -688,7 +689,7 @@ function formatActivityCohorts(value: unknown, cohortById: Map<string, Row>) {
 }
 
 function activityExecutionStatusLabel(value: unknown) {
-  const status = stringValue(value) === 'cancelled' ? 'cancelled' : 'completed';
+  const status = stringValue(value) === 'planned' ? 'planned' : stringValue(value) === 'cancelled' ? 'cancelled' : 'completed';
   return ACTIVITY_EXECUTION_STATUS_LABELS[status];
 }
 

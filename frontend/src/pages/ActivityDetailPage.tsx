@@ -21,7 +21,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { getBadgeBackgroundColor } from '@/lib/colorPalette';
-import { isCancelledActivity } from '@/lib/activityExecutionStatus';
+import { isCompletedActivity } from '@/lib/activityExecutionStatus';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '@/i18n/formatters';
 import { Button, IconButton } from '@/components/ui/Button';
@@ -134,7 +134,7 @@ export default function ActivityDetailPage() {
           {activity.project?.description && <div className="activity-detail-description" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(activity.project.description, { ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li'], ALLOWED_ATTR: [] }) }} />}
         </section>
         <section className="activity-detail-section activity-detail-participants" aria-label={t('detail.participants')}>
-          {isCancelledActivity(activity.executionStatus) ? <ActivityExecutionStatusBadge status={activity.executionStatus} /> : <>
+          {!isCompletedActivity(activity.executionStatus) ? <ActivityExecutionStatusBadge status={activity.executionStatus} /> : <>
             <div><div className="activity-mobile-total"><Users className="h-6 w-6 shrink-0" aria-hidden="true" /><strong>{total}</strong></div><div className="activity-mobile-count-label">{t('detail.participants')}</div></div>
             <div className="activity-mobile-genders"><span aria-label={`Männlich: ${male}`}>M <b>{male}</b></span><span aria-label={`Weiblich: ${female}`}>W <b>{female}</b></span><span aria-label={`Divers: ${diverse}`}>D <b>{diverse}</b></span></div>
           </>}
@@ -237,8 +237,8 @@ export default function ActivityDetailPage() {
           </>
         ) : null}
         <div className="relative z-10 space-y-3">
-          {isCancelledActivity(activity.executionStatus) && (
-            <div className="activity-status-banner rounded-xl px-3 py-2">
+          {!isCompletedActivity(activity.executionStatus) && (
+            <div className={`rounded-xl px-3 py-2 ${activity.executionStatus === 'planned' ? 'activity-planning-notice' : 'activity-status-banner'}`}>
               <ActivityExecutionStatusBadge status={activity.executionStatus} compact />
             </div>
           )}
@@ -267,7 +267,7 @@ export default function ActivityDetailPage() {
 
           <div className="text-sm text-gray-700">
             <div className="font-medium mb-1">{t('detail.participants')}</div>
-            {isCancelledActivity(activity.executionStatus) ? (
+            {!isCompletedActivity(activity.executionStatus) ? (
               <ActivityExecutionStatusBadge status={activity.executionStatus} />
             ) : (
               <div>

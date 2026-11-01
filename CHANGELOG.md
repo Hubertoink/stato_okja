@@ -9,6 +9,13 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+### Added
+- Zukünftige Aktivitäten erhalten den Status „Geplant“. Im Kalender erscheinen sie mit gestricheltem Rand und verblasstem Hintergrund, in Aktivitäten mit einem eigenen Badge.
+- Besucherzahlen können erst bei der Dokumentation einer durchgeführten Aktivität erfasst werden. Planungen bleiben bis zur manuellen Dokumentation geplant und fließen nicht in Ist-Auswertungen ein.
+
+### Fixed
+- Icons in der eingeklappten Seitenleiste sind mittig ausgerichtet.
+
 ## [1.20.5] - 2026-11-01
 
 ### Changed

@@ -1,3 +1,4 @@
+import { activityStatusForDate, isFutureActivityDate, isPlannedActivity } from '@/lib/activityExecutionStatus';
 import { DEMO_ORG_ID, DEMO_USER_ID, demoUser } from './config';
 import type { Activity, PagedActivitiesResult } from '../lib/activities';
 import type { AuditLog, AuditLogAction } from '../lib/audit';
@@ -173,7 +174,7 @@ function activityType(value: unknown): Activity['type'] {
 }
 
 function status(value: unknown): Activity['executionStatus'] {
-  return value === 'cancelled' ? 'cancelled' : 'completed';
+  return value === 'planned' ? 'planned' : value === 'cancelled' ? 'cancelled' : 'completed';
 }
 
 function createDemoImage(label: string, color: string): string {
@@ -1593,6 +1594,14 @@ function normalizeActivityPayload(data: Partial<Activity> & Record<string, unkno
   const countDiverse = readNumber(data.countDiverse) ?? fallback?.countDiverse ?? 0;
   const countTotal = readNumber(data.countTotal) ?? countMale + countFemale + countDiverse;
   const counts = { countMale, countFemale, countDiverse, countTotal };
+  const date = String(data.date || fallback?.date || localIsoDate(new Date())).slice(0, 10);
+  const executionStatus = activityStatusForDate(status(data.executionStatus ?? fallback?.executionStatus), date);
+  if (executionStatus === 'planned' && !isFutureActivityDate(date) && fallback?.executionStatus !== 'planned') {
+    throw new Error('Neue Planungen benötigen ein zukünftiges Datum.');
+  }
+  if ((isPlannedActivity(executionStatus) || isFutureActivityDate(date)) && countTotal > 0) {
+    throw new Error('Besucherzahlen können erst nach der Durchführung erfasst werden.');
+  }
   return {
     id: fallback?.id || nextId('act'),
     orgId: DEMO_ORG_ID,
@@ -1600,7 +1609,7 @@ function normalizeActivityPayload(data: Partial<Activity> & Record<string, unkno
     startTime,
     endTime,
     durationMinutes: readNumber(data.durationMinutes) ?? durationMinutes(startTime, endTime),
-    executionStatus: status(data.executionStatus ?? fallback?.executionStatus),
+    executionStatus,
     type: activityType(data.type || project.type || fallback?.type),
     locationId: typeof data.locationId === 'string' ? data.locationId : fallback?.locationId ?? null,
     projectId: project.id,
@@ -1653,7 +1662,7 @@ function participantValue(activity: Activity, field: 'countMale' | 'countFemale'
 }
 
 export function getDemoStatsSummary(params: DemoQueryParams = {}) {
-  const activities = filterActivityRecords(params).map(hydrateActivity);
+  const activities = filterActivityRecords(params).filter((activity) => activity.executionStatus !== 'planned').map(hydrateActivity);
   const totalActivities = activities.length;
   const totalParticipants = activities.reduce((sum, activity) => sum + participantValue(activity, 'countTotal'), 0);
   const totalDurationMinutes = activities.reduce(
@@ -1802,7 +1811,7 @@ function getDemoWeeklyProfile(activities: Activity[]): WeeklyProfile {
 }
 
 export function getDemoStatsOverview(params: DemoQueryParams = {}): StatsOverviewResponse {
-  const activities = filterActivityRecords(params).map(hydrateActivity);
+  const activities = filterActivityRecords(params).filter((activity) => activity.executionStatus !== 'planned').map(hydrateActivity);
   const summaryBase = getDemoStatsSummary(params);
   const byType = new Map<string, { count: number; totalParticipants: number }>();
   const byCohort = new Map<string, { male: number; female: number; diverse: number }>();
@@ -1877,7 +1886,7 @@ export function getDemoStatsOverview(params: DemoQueryParams = {}): StatsOvervie
 
 export function getDemoStatsByCohort() {
   const overview = getDemoStatsOverview({});
-  return overview.byCohort.map((entry) => ({ cohortId: entry.cohortId, name: entry.name, total: entry.total, activities: filterActivityRecords({ cohortIds: entry.cohortId }).length }));
+  return overview.byCohort.map((entry) => ({ cohortId: entry.cohortId, name: entry.name, total: entry.total, activities: filterActivityRecords({ cohortIds: entry.cohortId }).filter((activity) => activity.executionStatus !== 'planned').length }));
 }
 
 export function listDemoAuditLogs(params: DemoQueryParams = {}): AuditLog[] {

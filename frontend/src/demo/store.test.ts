@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { getDemoProcessAccess, getDemoStatsOverview, listDemoProcesses, resetDemoStore } from './store';
+import { createDemoActivity, getDemoProcessAccess, getDemoStatsOverview, listDemoProcesses, resetDemoStore } from './store';
 
 describe('demo statistics', () => {
   beforeEach(() => resetDemoStore());
@@ -11,6 +11,13 @@ describe('demo statistics', () => {
     expect(overview.weeklyProfile.slots.length).toBeGreaterThan(0);
     expect(overview.weeklyProfile.days.some((day) => day.activityCount > 0)).toBe(true);
     expect(overview.weeklyProfile.rangeEnd).toBeGreaterThan(overview.weeklyProfile.rangeStart);
+  });
+
+  it('retains a plan without counting it in actual statistics', () => {
+    const before = getDemoStatsOverview().summary;
+    const planned = createDemoActivity({ date: '2099-11-19', startTime: '15:00', endTime: '18:00', executionStatus: 'planned' });
+    expect(planned.executionStatus).toBe('planned');
+    expect(getDemoStatsOverview().summary).toEqual(before);
   });
 
   it('provides editable seeded ProcessO examples', () => {

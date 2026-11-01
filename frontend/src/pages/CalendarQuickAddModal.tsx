@@ -1,3 +1,4 @@
+import ActivityPlanningNotice from '@/components/ActivityPlanningNotice';
 import { usePublicConfig } from '@/lib/publicConfig';
 import {
   selectActivityCategory,
@@ -42,7 +43,7 @@ import { createPortal } from 'react-dom';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useActivityModalCountMode } from '@/lib/useActivityModalCountMode';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
-import { DEFAULT_ACTIVITY_EXECUTION_STATUS } from '@/lib/activityExecutionStatus';
+import { DEFAULT_ACTIVITY_EXECUTION_STATUS, activityStatusForDate, isPlannedActivity, isFutureActivityDate } from '@/lib/activityExecutionStatus';
 import { useAuth } from '@/lib/auth';
 import { useActivityInlineCreation } from './useActivityInlineCreation';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
@@ -128,14 +129,14 @@ export default function ActivityQuickAdd({
       });
       return {
         ...activityForm,
-        executionStatus: activity.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
+        executionStatus: activityStatusForDate(activity.executionStatus, activity.date),
         cohortCounts: getActivityCohortCounts(activity),
       };
     }
     return {
       cohortCounts: {},
       date: (dateISO || '').slice(0, 10),
-      executionStatus: DEFAULT_ACTIVITY_EXECUTION_STATUS,
+      executionStatus: activityStatusForDate(undefined, dateISO),
     };
   });
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -152,7 +153,7 @@ export default function ActivityQuickAdd({
     if (!activity || isDirty) return;
     const nextForm = {
       ...getActivityFormStateFromActivity(activity),
-      executionStatus: activity.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
+      executionStatus: activityStatusForDate(activity.executionStatus, activity.date),
       cohortCounts: getActivityCohortCounts(activity),
     };
     // Refresh the form and its version together. Never advance the version of
@@ -169,6 +170,7 @@ export default function ActivityQuickAdd({
   const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date, true), [form.date]);
   const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
+  const countsLocked = isPlannedActivity(form.executionStatus) || isFutureActivityDate(form.date);
   const isCohortValueChanged = (cohortId: string, gender: GenderKey, value: number) =>
     Boolean(activity) && (initialCohortCountsRef.current[cohortId]?.[gender] || 0) !== value;
   const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end);
@@ -350,6 +352,10 @@ export default function ActivityQuickAdd({
   const { dismiss } = useModalHistory(handleClose);
 
   const handleSave = () => {
+    if (countsLocked && cohortTotal > 0) {
+      setErrorOpen(t('common:executionStatus.clearCountsHint'));
+      return;
+    }
     if (categoryMode === 'single' && (form.categoryIds?.length ?? 0) > 1 && selectedProject?.type !== 'open_door') {
       showToast(SINGLE_CATEGORY_MESSAGE, { type: 'error' });
       return;
@@ -371,7 +377,7 @@ export default function ActivityQuickAdd({
     const payloadBase = buildActivitySavePayload({
       form: {
         ...form,
-        executionStatus: form.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
+        executionStatus: activityStatusForDate(form.executionStatus, form.date),
       },
       selectedProject,
       fallbackDate: activity?.date || dateISO,
@@ -456,6 +462,7 @@ export default function ActivityQuickAdd({
           <div className="flex items-center gap-2">
             <ActivityExecutionStatusControl
               value={form.executionStatus}
+              date={form.date}
               onChange={(executionStatus) =>
                 setForm((current) => ({ ...current, executionStatus }))
               }
@@ -495,7 +502,7 @@ export default function ActivityQuickAdd({
                     type="date"
                     value={(form.date || '').slice(0, 10)}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setForm({ ...form, date: e.target.value })
+                      setForm({ ...form, date: e.target.value, executionStatus: activityStatusForDate(form.executionStatus, e.target.value) })
                     }
                     className="editor-field w-full border px-3 py-2"
                   />
@@ -622,7 +629,10 @@ export default function ActivityQuickAdd({
                   {timeRangeError}
                 </p>
               ) : null}
-              <div>
+              <ActivityPlanningNotice status={form.executionStatus} date={form.date} hasCounts={cohortTotal > 0}
+                onClearCounts={() => setForm((current) => ({ ...current, cohortCounts: {} }))}
+                onDocument={() => setForm((current) => ({ ...current, executionStatus: 'completed' }))} />
+            <fieldset disabled={countsLocked} className="min-w-0">
                 <div className="mb-1 flex items-center justify-between gap-3">
                   <label className="block text-sm font-medium">{t('quickAdd.ageCohorts')}</label>
                   {isMobile && (
@@ -764,6 +774,7 @@ export default function ActivityQuickAdd({
                         </span>
                         {(['m', 'w', 'd'] as const).map((g) => (
                           <ActivityCohortCountField
+                          disabled={countsLocked}
                             key={g}
                             mode={tapModeEnabled ? 'tap' : 'input'}
                             value={entry[g] || 0}
@@ -791,7 +802,7 @@ export default function ActivityQuickAdd({
                     total={cohortTotal}
                   />
                 </div>
-              </div>
+              </fieldset>
             </div>
             <details open={!isMobile} className="space-y-3">
               <summary className="cursor-pointer font-medium md:hidden">{t('common:workflow.extraDetails')}</summary>

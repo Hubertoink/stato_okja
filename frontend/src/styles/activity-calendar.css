@@ -1422,3 +1422,40 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 @media (prefers-reduced-motion: reduce) {
   .activity-day-heading > span { transition: none; }
 }
+
+/* Planning fades the background rather than the readable label. */
+.activity-status-control--planned,
+.activity-status-badge--planned {
+  --activity-status-border: color-mix(in srgb, var(--viridian) 35%, transparent);
+  --activity-status-bg: color-mix(in srgb, var(--viridian) 8%, var(--surface-1));
+  --activity-status-bg-hover: color-mix(in srgb, var(--viridian) 15%, var(--surface-1));
+  --activity-status-fg: var(--text-primary);
+  border-style: dashed;
+}
+.activity-planning-notice {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+  padding: 0.75rem;
+  border: 1px dashed var(--border-strong, var(--text-secondary));
+  border-radius: 0.75rem;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+.calendar-event--planned {
+  border: 1px dashed var(--text-secondary);
+  background-image: linear-gradient(color-mix(in srgb, var(--surface-1) 78%, transparent), color-mix(in srgb, var(--surface-1) 78%, transparent));
+  color: var(--text-primary);
+  box-shadow: none;
+}
+.calendar-event--planned > img {
+  opacity: 0.12;
+}
+.calendar-event--planned > .calendar-img-overlay {
+  background: color-mix(in srgb, var(--surface-1) 70%, transparent);
+}
+.calendar-event--planned > :is(span, div):not(.calendar-img-overlay) {
+  color: var(--text-primary);
+  text-shadow: none;
+}

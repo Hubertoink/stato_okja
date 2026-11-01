@@ -172,8 +172,7 @@
     opacity: 0;
   }
   /* Keep section headings in the flow in both states, so every icon stays at its Y position. */
-  .app-sidebar .sidebar-admin > p,
-  .app-sidebar .sidebar-organization-section > p {
+  .app-sidebar .sidebar-admin > p {
     display: block;
     height: 32px;
     line-height: 18px;

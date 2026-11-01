@@ -9,6 +9,8 @@ import { useAnchoredPopoverPosition } from '@/components/ui/useAnchoredPopoverPo
 export default function OrganizationDropdown({
   label,
   currentName,
+  contextLabel,
+  menuHeading,
   value,
   options,
   disabled,
@@ -16,6 +18,8 @@ export default function OrganizationDropdown({
 }: {
   label: string;
   currentName: string;
+  contextLabel: string;
+  menuHeading: string;
   value: string;
   options: Array<{ id: string; name: string }>;
   disabled: boolean;
@@ -65,7 +69,10 @@ export default function OrganizationDropdown({
             }}
           >
             <Building2 aria-hidden="true" />
-            <span className="sidebar-label">{currentName}</span>
+            <span className="sidebar-label sidebar-org-copy">
+              <strong title={currentName}>{currentName}</strong>
+              <small>{contextLabel}</small>
+            </span>
             <ChevronDown aria-hidden="true" className="sidebar-label sidebar-org-chevron" />
           </Button>
         </SidebarTooltip>
@@ -108,6 +115,7 @@ export default function OrganizationDropdown({
             }}
           >
             <Menu>
+              <p className="sidebar-org-menu-heading" role="presentation">{menuHeading}</p>
               {options.map((option) => (
                 <MenuItem
                   key={option.id}
@@ -119,6 +127,7 @@ export default function OrganizationDropdown({
                     onChange(option.id);
                   }}
                 >
+                  <Building2 className="h-4 w-4 shrink-0" aria-hidden="true" />
                   <span className="min-w-0 flex-1 break-words">{option.name}</span>
                   {value === option.id && <Check className="h-4 w-4 shrink-0" aria-hidden="true" />}
                 </MenuItem>

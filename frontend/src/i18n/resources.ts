@@ -4,7 +4,7 @@ export const resources = {
   de: {
     auto: autoResources.de,
     common: {
-      shell: { globalOrganization: 'Superadmin-Bereich', retryOrganizations: 'Organisationen erneut laden', navigation: 'Navigation', administration: 'Verwaltung', legal: 'Rechtstexte', expand: 'Seitenleiste ausklappen', collapse: 'Seitenleiste einklappen' },
+      shell: { activeOrganization: 'Aktive Organisation', organizationContext: 'Organisationskontext', organizationAssigned: 'Sie sind aktuell dieser Organisation zugeordnet.', switchOrganization: 'Zu einer anderen Organisation wechseln', globalOrganization: 'Superadmin-Bereich', retryOrganizations: 'Organisationen erneut laden', navigation: 'Navigation', administration: 'Verwaltung', legal: 'Rechtstexte', expand: 'Seitenleiste ausklappen', collapse: 'Seitenleiste einklappen' },
       chartExport: {
         name: 'Bezeichnung', share: 'Anteil', noData: 'Keine Daten', bar: 'Balken',
         offers: 'Ø Angebote parallel', participants: 'Ø Besucher:innen',
@@ -1183,7 +1183,7 @@ export const resources = {
   en: {
     auto: autoResources.en,
     common: {
-      shell: { globalOrganization: 'Superadmin area', retryOrganizations: 'Reload organizations', navigation: 'Navigation', administration: 'Administration', legal: 'Legal texts', expand: 'Expand sidebar', collapse: 'Collapse sidebar' },
+      shell: { activeOrganization: 'Active organization', organizationContext: 'Organization context', organizationAssigned: 'You are currently assigned to this organization.', switchOrganization: 'Switch to another organization', globalOrganization: 'Superadmin area', retryOrganizations: 'Reload organizations', navigation: 'Navigation', administration: 'Administration', legal: 'Legal texts', expand: 'Expand sidebar', collapse: 'Collapse sidebar' },
       chartExport: {
         name: 'Label', share: 'Share', noData: 'No data', bar: 'Bar',
         offers: 'Average concurrent activities', participants: 'Average visitors',

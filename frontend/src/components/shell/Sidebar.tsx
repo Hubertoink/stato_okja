@@ -58,6 +58,10 @@ export default function Sidebar({
           <img src={logoUrl} alt="StatO" />
           <strong className="sidebar-label">StatO</strong>
         </div>
+        <SidebarOrganization
+          activeOrgName={userMenu.activeOrgName}
+          canSwitch={userMenu.canSwitchOrganization}
+        />
         <div className="sidebar-toggle-row">
           <Button
             variant="ghost"
@@ -92,10 +96,6 @@ export default function Sidebar({
               onNavigate={() => setExpanded(false)}
             />
           </nav>
-          <SidebarOrganization
-            activeOrgName={userMenu.activeOrgName}
-            canSwitch={userMenu.canSwitchOrganization}
-          />
           <nav className="sidebar-admin" aria-label={t('navigation.masterData')}>
             <NavigationLinks
               sidebar

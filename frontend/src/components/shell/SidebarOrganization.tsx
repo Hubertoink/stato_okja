@@ -1,5 +1,5 @@
 import SidebarTooltip from './SidebarTooltip';
-import { Building2 } from 'lucide-react';
+import { Building2, Info } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import OrganizationDropdown from './OrganizationDropdown';
@@ -29,13 +29,15 @@ export default function SidebarOrganization({
   });
   const options = [...(organizations.data || [])].sort((a, b) => compareLocalized(a.name, b.name));
   const currentName = activeOrgName || t('workflow.noOrganization');
+  const contextLabel = scope ? t('shell.activeOrganization') : t('shell.organizationContext');
   return (
     <section className="sidebar-organization-section" aria-label={t('workflow.organization')}>
-      <p className="sidebar-label">{t('workflow.organization')}</p>
       {canSwitch ? (
         <OrganizationDropdown
           label={t('workflow.chooseOrganization')}
           currentName={currentName}
+          contextLabel={contextLabel}
+          menuHeading={t('shell.switchOrganization')}
           value={scope || ''}
           disabled={switching || organizations.isPending || organizations.isError}
           onChange={(value) => setScope(value || null)}
@@ -48,12 +50,22 @@ export default function SidebarOrganization({
           ]}
         />
       ) : (
-        <SidebarTooltip text={currentName}>
-          <div className="sidebar-org-control" aria-label={currentName}>
+        <SidebarTooltip text={`${contextLabel}: ${currentName}`}>
+          <div className="sidebar-org-control" aria-label={`${contextLabel}: ${currentName}`}>
             <Building2 aria-hidden="true" className="h-5 w-5 shrink-0" />
-            <span className="sidebar-label">{currentName}</span>
+            <span className="sidebar-label sidebar-org-copy">
+              <strong title={currentName}>{currentName}</strong>
+              <small>{contextLabel}</small>
+            </span>
+            {scope && <span className="sidebar-label sidebar-org-status" aria-hidden="true" />}
           </div>
         </SidebarTooltip>
+      )}
+      {!canSwitch && scope && (
+        <div className="sidebar-label sidebar-org-hint">
+          <Info aria-hidden="true" />
+          <p>{t('shell.organizationAssigned')}</p>
+        </div>
       )}
       {organizations.isError && (
         <Button

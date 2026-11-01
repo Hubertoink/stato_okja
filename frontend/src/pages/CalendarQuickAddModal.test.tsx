@@ -167,7 +167,7 @@ describe('planned activity workflow', () => {
     expect(screen.getByLabelText('6-9 Jahre W')).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     expect(state.mutate).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'OK', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
     fireEvent.click(screen.getByRole('button', { name: 'Besucherzahlen entfernen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     expect(state.mutate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ executionStatus: 'planned', countTotal: 0, cohorts: [] }) }), expect.anything());

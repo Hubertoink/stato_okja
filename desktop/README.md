@@ -5,7 +5,7 @@ eines konfigurierten Servers. Frontend, Backend und Datenbank werden nicht kopie
 oder lokal gestartet. Für den Client brauchen Nutzende weder Node.js noch Docker.
 Die erste Distribution ist ein Windows-x64-Installer für das aktuelle Benutzerkonto.
 
-Download: [StatO Desktop 1.20.5 – Windows](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.20.5).
+Download: [StatO Desktop 1.21.0 – Windows](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.21.0).
 
 ## Desktop-Titelleiste
 
@@ -28,6 +28,13 @@ Der Avatar-Eintrag und der In-App-Toast benötigen die aktualisierte Serveroberf
 Downloads beginnen erst auf Wunsch; auch beim Beenden wird nichts automatisch
 installiert. Vor dem Neustart erinnert der Dialog an das Speichern offener Eingaben. Fehlgeschlagene Prüfungen/Downloads können wiederholt werden.
 Entwicklungsstarts führen keine Update-Netzwerkanfragen aus.
+
+Ab 1.21.0 verwenden Release-Suche und Download dieselbe Electron-Netzwerksitzung
+mit Windows-Systemproxy/PAC. Zertifikatsprüfungen bleiben aktiv. Das Dienstnetz muss
+Zugriff auf die GitHub-API und GitHub-Release-Downloads erlauben. Wenn eine ältere
+Installation dort keine Updates findet, den aktuellen Installer einmal manuell
+installieren. Ein Cisco-/Kommunal-VPN wurde nicht direkt getestet; ein automatisierter
+Electron-Test prüft die Suche über einen lokalen Proxy.
 
 **Einmaliger Umstieg:** Desktop 1.16.0 und ältere Versionen enthalten keinen Updater.
 Die erste Version mit dieser Funktion muss einmal manuell installiert werden.
@@ -120,11 +127,11 @@ Installer, `.exe.blockmap`, `latest.yml` und `SHA256SUMS` als Workflow-Artefakt 
 
 Für ein verteilbares Desktop-Release `desktop/RELEASE_NOTES.md` und die Download-Links
 an die neue Version anpassen, die Änderungen auf `main` pushen und danach einen
-eigenen Desktop-Tag erstellen. Beispiel für Version 1.20.5:
+eigenen Desktop-Tag erstellen. Beispiel für Version 1.21.0:
 
 ```powershell
-git tag -a desktop-v1.20.5 -m "StatO Desktop 1.20.5 Windows release"
-git push origin desktop-v1.20.5
+git tag -a desktop-v1.21.0 -m "StatO Desktop 1.21.0 Windows release"
+git push origin desktop-v1.21.0
 ```
 
 Der Tag muss zur Version in `VERSION` passen und auf einem Commit aus `main` liegen.

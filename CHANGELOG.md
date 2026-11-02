@@ -9,12 +9,19 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.21.0] - 2026-11-02
+
 ### Added
 - Zukünftige Aktivitäten erhalten den Status „Geplant“. Im Kalender erscheinen sie mit gestricheltem Rand und verblasstem Hintergrund, in Aktivitäten mit einem eigenen Badge.
 - Besucherzahlen können erst bei der Dokumentation einer durchgeführten Aktivität erfasst werden. Planungen bleiben bis zur manuellen Dokumentation geplant und fließen nicht in Ist-Auswertungen ein.
 
 ### Fixed
 - Icons in der eingeklappten Seitenleiste sind mittig ausgerichtet.
+- Desktop-Update-Suche verwendet wie der Download Electrons Netzwerkzugriff mit Windows-Systemproxy/PAC statt Node-fetch. Netzwerkfehler zeigen Hinweise zu VPN, Proxy oder Zugriffsbeschränkungen.
+
+### Upgrade-Hinweise
+- Server und Windows-Desktop verwenden Version 1.21.0. Für die Aktivitätsplanung den Server aktualisieren; die Datenbankmigration ergänzt den Status „Geplant“.
+- Wenn ältere Desktop-Versionen im Dienstnetz keine Updates finden, den Installer 1.21.0 einmal manuell installieren. Künftige Suchen verwenden dann den korrigierten Netzwerkzugriff.
 
 ## [1.20.5] - 2026-11-01
 

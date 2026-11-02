@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CheckCircle2 } from 'lucide-react';
 import {
   normalizeActivityExecutionStatus,
 } from '@/lib/activityExecutionStatus';
@@ -20,10 +20,8 @@ export default function ActivityExecutionStatusBadge({
   if (normalizedStatus === 'completed' && !showCompleted) return null;
 
   const isCancelled = normalizedStatus === 'cancelled';
-  const Icon = isCancelled ? AlertTriangle : CheckCircle2;
-  const classes = isCancelled
-    ? 'activity-status-badge activity-status-badge--cancelled'
-    : 'activity-status-badge activity-status-badge--completed';
+  const Icon = normalizedStatus === 'planned' ? CalendarClock : isCancelled ? AlertTriangle : CheckCircle2;
+  const classes = `activity-status-badge activity-status-badge--${normalizedStatus}`;
 
   return (
     <span

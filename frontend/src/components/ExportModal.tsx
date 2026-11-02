@@ -64,7 +64,7 @@ function countActivitiesByStatus(items: Activity[]) {
       counts[status] += 1;
       return counts;
     },
-    { completed: 0, cancelled: 0 },
+    { completed: 0, cancelled: 0, planned: 0 },
   );
 }
 
@@ -244,13 +244,13 @@ export default function ExportModal({
       const cats = isOpenDoor ? '' : a.categories?.map((c) => c.name).join(' | ') || '';
       const tags = a.tags?.map((t) => t.name).join(' | ') || '';
       const staff = a.staff?.map((s) => s.name).join(' | ') || '';
-      const cohortTotals = cohortColumns.map((c) => String(getCohortTotal(a, c.id)));
+      const cohortTotals = cohortColumns.map((c) => a.executionStatus === 'planned' ? '' : String(getCohortTotal(a, c.id)));
       rows.push([
         a.date?.slice(0, 10) || '',
         executionStatusLabel(a.executionStatus),
         hhmm(a.startTime),
         hhmm(a.endTime),
-        String(computeDurationMinutes(a)),
+        a.executionStatus === 'planned' ? '' : String(computeDurationMinutes(a)),
         typeLabel(a.type),
         a.title || '',
         a.project?.title || '',
@@ -259,10 +259,10 @@ export default function ExportModal({
         tags,
         a.location?.name || '',
         staff,
-        String(a.countTotal ?? 0),
-        String(a.countMale ?? 0),
-        String(a.countFemale ?? 0),
-        String(a.countDiverse ?? 0),
+        a.executionStatus === 'planned' ? '' : String(a.countTotal ?? 0),
+        a.executionStatus === 'planned' ? '' : String(a.countMale ?? 0),
+        a.executionStatus === 'planned' ? '' : String(a.countFemale ?? 0),
+        a.executionStatus === 'planned' ? '' : String(a.countDiverse ?? 0),
         a.notes || '',
         ...cohortTotals,
       ]);
@@ -277,6 +277,7 @@ export default function ExportModal({
       { key: string; projekt: string; kategorie: string; typ: string; items: Activity[] }
     >();
     for (const a of activities) {
+      if (a.executionStatus === 'planned') continue;
       const key = a.project?.id || autoT('ui_cef927f53a80', { value0: a.project?.title || a.type });
       const projekt = a.project?.title || autoT('ui_5b4a4a84148c');
       const kategorie = projectMainCategoryName(a);
@@ -381,6 +382,7 @@ export default function ExportModal({
       { key: string; projekt: string; kategorie: string; typ: string; items: Activity[] }
     >();
     for (const a of activities) {
+      if (a.executionStatus === 'planned') continue;
       const key = a.project?.id || autoT('ui_cef927f53a80', { value0: a.project?.title || a.type });
       const projekt = a.project?.title || autoT('ui_5b4a4a84148c');
       const kategorie = projectMainCategoryName(a);
@@ -514,13 +516,13 @@ export default function ExportModal({
       const cats = isOpenDoor ? '' : a.categories?.map((c) => c.name).join(' | ') || '';
       const tags = a.tags?.map((t) => t.name).join(' | ') || '';
       const staff = a.staff?.map((s) => s.name).join(' | ') || '';
-      const cohortTotals = cohortColumns.map((c) => getCohortTotal(a, c.id));
+      const cohortTotals = cohortColumns.map((c) => a.executionStatus === 'planned' ? '' : getCohortTotal(a, c.id));
       return [
         a.date?.slice(0, 10) || '',
         executionStatusLabel(a.executionStatus),
         hhmm(a.startTime),
         hhmm(a.endTime),
-        computeDurationMinutes(a),
+        a.executionStatus === 'planned' ? '' : computeDurationMinutes(a),
         typeLabel(a.type),
         a.title || '',
         a.project?.title || '',
@@ -529,10 +531,10 @@ export default function ExportModal({
         tags,
         a.location?.name || '',
         staff,
-        a.countTotal ?? 0,
-        a.countMale ?? 0,
-        a.countFemale ?? 0,
-        a.countDiverse ?? 0,
+        a.executionStatus === 'planned' ? '' : a.countTotal ?? 0,
+        a.executionStatus === 'planned' ? '' : a.countMale ?? 0,
+        a.executionStatus === 'planned' ? '' : a.countFemale ?? 0,
+        a.executionStatus === 'planned' ? '' : a.countDiverse ?? 0,
         a.notes || '',
         ...cohortTotals,
       ];

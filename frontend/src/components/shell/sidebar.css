@@ -291,3 +291,21 @@
 .app-sidebar .sidebar-links .app-tooltip-trigger > a {
   width: 100%;
 }
+
+/* Center icon-only rows independently of icon size and hidden label width. */
+.app-sidebar[data-icon-only='true'] :is(.sidebar-link, .sidebar-org-control, .sidebar-org-trigger, .sidebar-brand, .shell-user-trigger) {
+  justify-content: center;
+  padding-inline: 0;
+  gap: 0;
+}
+.app-sidebar[data-icon-only='true'] :is(.sidebar-link, .sidebar-org-control, .sidebar-org-trigger, .sidebar-brand) > .sidebar-label,
+.app-sidebar[data-icon-only='true'] .shell-user-copy {
+  display: none;
+}
+.app-sidebar[data-icon-only='true'] .sidebar-toggle-row {
+  justify-content: center;
+}
+.app-sidebar[data-icon-only='true'] .sidebar-scroll {
+  /* The negative outer margin already compensates for the scrollbar gutter. */
+  padding-right: 0;
+}

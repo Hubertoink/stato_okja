@@ -1,3 +1,4 @@
+import { normalizeExecutionStatus, validateActivityPlanning } from './activity-planning';
 import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, SelectQueryBuilder } from 'typeorm';
@@ -90,13 +91,6 @@ export class ActivitiesService {
     return typeof value === 'number' && Number.isFinite(value) ? value : null;
   }
 
-  private normalizeExecutionStatus(
-    value?: string | null,
-  ): ActivityExecutionStatus {
-    return value === ActivityExecutionStatus.CANCELLED
-      ? ActivityExecutionStatus.CANCELLED
-      : ActivityExecutionStatus.COMPLETED;
-  }
 
   private assertUserCanAccessActivity(
     activity: Pick<Activity, 'orgId'>,
@@ -384,7 +378,7 @@ export class ActivitiesService {
         .map((row) => row.executionStatus)
         .filter(
           (status): status is ActivityExecutionStatus =>
-            status === ActivityExecutionStatus.COMPLETED || status === ActivityExecutionStatus.CANCELLED,
+            Object.values(ActivityExecutionStatus).includes(status),
         ),
       hasUncategorized: Boolean(uncategorizedRow),
       availableYears: yearRows
@@ -438,7 +432,9 @@ export class ActivitiesService {
     // locationId is optional; if omitted, activity can still be created
 
     const activity = this.activityRepository.create(rest);
-    activity.executionStatus = this.normalizeExecutionStatus(rest.executionStatus);
+    const planning = { ...activity, executionStatus: rest.executionStatus, cohorts: cohorts ?? activity.cohorts };
+    validateActivityPlanning(planning);
+    activity.executionStatus = planning.executionStatus!;
     const activityOrgId = (rest.orgId ?? null) as string | null;
 
     // If a project is linked, enforce the activity type to match the project's type
@@ -543,8 +539,9 @@ export class ActivitiesService {
 
     assertActivityCategorySelection(categoryIds ?? rest.categories?.map((category) => category.id) ?? existing.categories?.map((category) => category.id) ?? []);
 
+    validateActivityPlanning({ ...existing, ...rest, cohorts: cohorts ?? existing.cohorts }, existing.executionStatus);
     Object.assign(existing, rest);
-    existing.executionStatus = this.normalizeExecutionStatus(rest.executionStatus ?? existing.executionStatus);
+    existing.executionStatus = normalizeExecutionStatus(rest.executionStatus ?? existing.executionStatus);
 
     // If a project is linked (new or existing), ensure the activity type mirrors the project's type
     const restWithProject = rest as Partial<Activity> & { projectId?: string | null };

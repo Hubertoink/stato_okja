@@ -150,6 +150,36 @@ async function switchModal(application, local) {
       const { join } = require('node:path');
       const { NsisUpdater, autoUpdater } = require('electron-updater');
       const { createUpdateController } = require(join(app.getAppPath(), 'src/updates.cjs'));
+      // Redirect discovery to an unresolvable test host accessible only through
+      // this proxy. Node fetch would bypass both the session hook and proxy.
+      let proxyRequests = 0;
+      const proxy = createServer((req, res) => {
+        if (req.url !== 'http://stato-update.invalid/releases') {
+          res.writeHead(502); res.end(); return;
+        }
+        proxyRequests += 1;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify([{ tag_name: 'desktop-v1.16.0', assets: [
+          { name: 'latest.yml', state: 'uploaded' },
+          { name: 'StatO-Setup-1.16.0-x64.exe', state: 'uploaded' },
+        ] }]));
+      });
+      await new Promise((done) => proxy.listen(0, '127.0.0.1', done));
+      const updateSession = autoUpdater.netSession;
+      try {
+        await updateSession.setProxy({ mode: 'fixed_servers', proxyRules: `127.0.0.1:${proxy.address().port}` });
+        updateSession.webRequest.onBeforeRequest({ urls: ['https://api.github.com/repos/Hubertoink/stato_okja/releases*'] },
+          (_details, callback) => callback({ redirectURL: 'http://stato-update.invalid/releases' }));
+        const controller = createUpdateController({ updater: autoUpdater, currentVersion: '1.16.0', enabled: true });
+        if ((await controller.check()).status !== 'current' || proxyRequests !== 1) {
+          throw new Error('Release discovery did not use the Electron updater proxy session');
+        }
+      } finally {
+        updateSession.webRequest.onBeforeRequest(null);
+        await updateSession.setProxy({ mode: 'system' });
+        await updateSession.closeAllConnections();
+        await new Promise((done) => proxy.close(done));
+      }
       const payload = Buffer.from('StatO test payload, never executed');
       const sha512 = createHash('sha512').update(payload).digest('base64');
       let corrupt = false;
@@ -196,6 +226,7 @@ async function switchModal(application, local) {
       } finally { await new Promise((done) => server.close(done)); }
     });
     console.log('PASS: real NSIS updater metadata, download, SHA-512 validation and corrupt download rejection');
+    console.log('PASS: release discovery through the Electron updater proxy session');
     await local.locator('#server-url').fill(first.url);
     await local.locator('#check').click();
     await local.waitForFunction(() => document.getElementById('status').dataset.kind === 'success');

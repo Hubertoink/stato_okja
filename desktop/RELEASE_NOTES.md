@@ -2,15 +2,18 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Die aktive Organisation wird oben in der Seitenleiste hervorgehoben; Organisationskontext und Wechselmöglichkeiten sind klarer erkennbar.
-- Kompaktere Abstände und verständlichere Hinweise in der Organisationskarte.
-- Für die Änderungen an der Weboberfläche den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren.
+- Update-Suche berücksichtigt jetzt den Windows-Systemproxy und automatische Proxy-Konfiguration (PAC), wie bereits der Update-Download.
+- Verständlichere Hinweise bei Zeitüberschreitung, Proxy-Anmeldung und blockierten Update-Anfragen.
+- Zukünftige Aktivitäten können als „Geplant“ erfasst und später dokumentiert werden; dafür den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren.
+- Zentrierte Icons in der eingeklappten Seitenleiste.
 
 ### Installation und einmaliger Umstieg
 
 1. `StatO-Setup-__VERSION__-x64.exe` herunterladen und installieren (Windows x64).
 2. StatO starten und die vollständige Serveradresse eingeben, zum Beispiel `https://stato.traeger.de`.
 3. Verbinden und mit dem vorhandenen StatO-Konto anmelden.
+
+**Falls die Update-Suche im Dienstnetz bisher fehlschlägt, diesen Installer einmal manuell installieren.** Erst danach steht der korrigierte Netzwerkzugriff zur Verfügung.
 
 **Desktop 1.16.0 und ältere Versionen benötigen diesen Installer einmalig manuell.** Danach können künftige Desktop-Updates innerhalb der App heruntergeladen und installiert werden.
 

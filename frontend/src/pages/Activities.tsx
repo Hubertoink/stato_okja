@@ -37,7 +37,7 @@ import { useStaff } from '@/lib/staff';
 import {
   ACTIVITY_EXECUTION_STATUS_LABELS,
   formatActivityExecutionStatusList,
-  isCancelledActivity,
+  isCompletedActivity,
 } from '@/lib/activityExecutionStatus';
 import DemoHoverHint from '@/demo/DemoHoverHint';
 import {
@@ -400,7 +400,7 @@ export default function Activities() {
     tags?: Array<{ name: string; color?: string | null }>;
     categories?: Array<{ name: string; color?: string | null }>;
     notes?: string | null;
-    executionStatus?: 'completed' | 'cancelled' | null;
+    executionStatus?: 'completed' | 'cancelled' | 'planned' | null;
     cohorts?: Array<{ cohortId: string; m: number; w: number; d: number }>;
   };
   const loadExportRows = async () => {
@@ -470,20 +470,20 @@ export default function Activities() {
       rows.push([
         dateDE,
         ACTIVITY_EXECUTION_STATUS_LABELS[
-          activity.executionStatus === 'cancelled' ? 'cancelled' : 'completed'
+          activity.executionStatus || 'completed'
         ],
         activityTypeLabels[activity.type] || activity.type,
         activity.title || '',
         activity.project?.title || '',
-        total,
-        activity.countMale || 0,
-        activity.countFemale || 0,
-        activity.countDiverse || 0,
-        ...cohortIds.flatMap((id) => {
+        activity.executionStatus === 'planned' ? '' : total,
+        activity.executionStatus === 'planned' ? '' : activity.countMale || 0,
+        activity.executionStatus === 'planned' ? '' : activity.countFemale || 0,
+        activity.executionStatus === 'planned' ? '' : activity.countDiverse || 0,
+        ...cohortIds.flatMap<string | number>((id) => {
           const cohort = perCohort[id] || { m: 0, w: 0, d: 0 };
-          return [cohort.m, cohort.w, cohort.d];
+          return activity.executionStatus === 'planned' ? ['', '', ''] : [cohort.m, cohort.w, cohort.d];
         }),
-        durationFrom(activity) ?? '',
+        activity.executionStatus === 'planned' ? '' : durationFrom(activity) ?? '',
         activity.project?.title && activity.project?.type === 'open_door'
           ? ''
           : (activity.categories || []).map((category) => category.name).join(', '),
@@ -669,7 +669,7 @@ export default function Activities() {
         const projectsById = new Map(projects.map((project) => [project.id, project]));
         const activitiesByProject = new Map<string, ExportRow[]>();
         for (const activity of list) {
-          if (!activity.projectId) continue;
+          if (!activity.projectId || activity.executionStatus === 'planned') continue;
           const grouped = activitiesByProject.get(activity.projectId) || [];
           grouped.push(activity);
           activitiesByProject.set(activity.projectId, grouped);
@@ -1012,7 +1012,7 @@ export default function Activities() {
                   <div className="text-xs text-gray-600 truncate">{a.project?.title || '-'}</div>
                 </td>
                 <td className="activities-col-participants px-3 lg:px-6 py-4 text-sm whitespace-nowrap">
-                  {isCancelledActivity(a.executionStatus) ? (
+                  {!isCompletedActivity(a.executionStatus) ? (
                     <ActivityExecutionStatusBadge status={a.executionStatus} />
                   ) : (
                     <>
@@ -1245,7 +1245,7 @@ export default function Activities() {
                   ) : null;
                 })()}
                   </div>
-                  {isCancelledActivity(a.executionStatus) ? (
+                  {!isCompletedActivity(a.executionStatus) ? (
                     <ActivityExecutionStatusBadge status={a.executionStatus} />
                   ) : (() => {
                     const m = a.countMale ?? 0;

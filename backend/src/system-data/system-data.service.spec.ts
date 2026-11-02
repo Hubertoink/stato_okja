@@ -323,14 +323,14 @@ describe('SystemDataService', () => {
     expect(result.warnings).toHaveLength(1);
   });
 
-  it('normalizes legacy ISO timestamps in date-only columns when reading an import archive', async () => {
+  it.each([undefined, 'planned'])('preserves activity status %s and normalizes legacy dates when reading an import archive', async (executionStatus) => {
     const { service } = createService();
     const zip = new JSZip();
     const legacyExportDate = new Date(2026, 3, 17).toJSON();
     const tempZipPath = join(tmpdir(), `stato-system-data-${Date.now()}.zip`);
 
     zip.file('manifest.json', JSON.stringify({ format: 'stato-system-data-export', schemaVersion: 1, tables: [{ tableName: 'activities', rowCount: 1, files: ['database/activities.json'] }, { tableName: 'organizations', rowCount: 0, files: ['database/organizations.json'] }, { tableName: 'users', rowCount: 0, files: ['database/users.json'] }] }));
-    zip.file('database/activities.json', JSON.stringify([{ id: 'activity-1', date: legacyExportDate, type: 'open_door' }]));
+    zip.file('database/activities.json', JSON.stringify([{ id: 'activity-1', date: legacyExportDate, type: 'open_door', executionStatus }]));
     zip.file('database/organizations.json', JSON.stringify([]));
     zip.file('database/users.json', JSON.stringify([]));
 
@@ -349,7 +349,7 @@ describe('SystemDataService', () => {
 
       if (!activities) throw new Error('activities table missing from archive');
       expect(activities.rows[0]?.date).toBe('2026-04-17');
-      expect(activities.rows[0]?.executionStatus).toBe('completed');
+      expect(activities.rows[0]?.executionStatus).toBe(executionStatus ?? 'completed');
     } finally {
       await rm(tempZipPath, { force: true });
     }

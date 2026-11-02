@@ -10,6 +10,7 @@ interface ActivityCohortCountFieldProps {
   cohortId: string;
   gender: string;
   changed?: boolean;
+  disabled?: boolean;
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
 }
 
@@ -22,11 +23,13 @@ export default function ActivityCohortCountField({
   cohortId,
   gender,
   changed = false,
+  disabled = false,
   onKeyDown,
 }: ActivityCohortCountFieldProps) {
   if (mode === 'tap') {
     return (
       <QuickTallyButton
+        disabled={disabled}
         value={value}
         onChange={onChange}
         label={ariaLabel}
@@ -40,6 +43,7 @@ export default function ActivityCohortCountField({
 
   return (
     <input
+      disabled={disabled}
       type="number"
       inputMode="numeric"
       pattern="[0-9]*"

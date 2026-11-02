@@ -43,7 +43,7 @@ export async function exportControllingDataAsExcel({
   await new Promise(requestAnimationFrame);
   const xlsx = await import('xlsx-js-style');
   const { utils, writeFile } = xlsx as unknown as typeof import('xlsx-js-style');
-  const rows = activities as ControllingExportRow[];
+  const rows = activities.filter((activity) => activity.executionStatus !== 'planned') as ControllingExportRow[];
   const cohortOrder = cohorts
     .slice()
     .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0));

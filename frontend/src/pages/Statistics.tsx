@@ -271,11 +271,11 @@ export default function Statistics() {
       weekdays: selectedWeekdays.length > 0 ? selectedWeekdays : undefined,
       projectIds: projectId ? [projectId] : undefined,
       type: selectedType || undefined,
-      executionStatuses: executionStatusFilterParam,
+      executionStatuses: effectiveExecutionStatuses,
       closureState: selectedClosureState,
     }),
     [
-      executionStatusFilterParam,
+      effectiveExecutionStatuses,
       from,
       to,
       projectId,
@@ -2736,7 +2736,7 @@ export default function Statistics() {
           <div className="pt-2 border-t">
             <div className="text-xs font-medium text-gray-500 mb-2">{autoT('ui_bae7d5be7082')}</div>
             <div className="flex flex-wrap gap-2">
-              {ACTIVITY_EXECUTION_STATUS_OPTIONS.map((status) => {
+              {ACTIVITY_EXECUTION_STATUS_OPTIONS.filter((status) => status !== 'planned').map((status) => {
                 const active = tempSelectedExecutionStatuses.includes(status);
                 const activeClass =
                   status === 'cancelled'

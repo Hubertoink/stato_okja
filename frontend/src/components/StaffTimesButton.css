@@ -10,9 +10,13 @@ input.staff-time-slider {
   cursor: pointer;
 }
 
-input.staff-time-slider:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 3px;
+/* The shared text-field hover/focus treatment must not frame the track. */
+input.staff-time-slider.ui-field-control:hover:not(:disabled):not([readonly]),
+input.staff-time-slider.ui-field-control:focus {
+  border: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
 }
 
 input.staff-time-slider::-webkit-slider-runnable-track {
@@ -46,6 +50,16 @@ input.staff-time-slider::-moz-range-thumb {
   border-radius: 50%;
   background: var(--viridian);
   box-shadow: 0 2px 6px #0003;
+}
+
+input.staff-time-slider:not(:disabled):hover::-webkit-slider-thumb,
+input.staff-time-slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px var(--focus-ring), 0 2px 6px #0003;
+}
+
+input.staff-time-slider:not(:disabled):hover::-moz-range-thumb,
+input.staff-time-slider:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 4px var(--focus-ring), 0 2px 6px #0003;
 }
 
 input.staff-time-slider:disabled {

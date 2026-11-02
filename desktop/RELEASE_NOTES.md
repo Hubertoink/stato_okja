@@ -2,10 +2,9 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Update-Suche berücksichtigt jetzt den Windows-Systemproxy und automatische Proxy-Konfiguration (PAC), wie bereits der Update-Download.
-- Verständlichere Hinweise bei Zeitüberschreitung, Proxy-Anmeldung und blockierten Update-Anfragen.
-- Zukünftige Aktivitäten können als „Geplant“ erfasst und später dokumentiert werden; dafür den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren.
-- Zentrierte Icons in der eingeklappten Seitenleiste.
+- Mobile Aktivitätskarten zeigen Status und Dauer gemeinsam in einer kompakten Kombi-Badge.
+- Die mobile Detailansicht verwendet dieselbe Badge im Kopfbereich; die separate Status-Karte darunter entfällt.
+- Für diese Änderungen den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren.
 
 ### Installation und einmaliger Umstieg
 

@@ -5,6 +5,7 @@ import { StatisticsTabs } from '@/components/AnnualTargetCards';
 import { formatStatisticsReportPeriod } from './statistics/reportPeriod';
 import { useTranslation } from 'react-i18next';
 import { useActiveOrganizationName } from '@/lib/useActiveOrganizationName';
+import { TeamStatistics, type TeamStatisticsHandle } from './statistics/TeamStatistics';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   ResponsiveContainer,
@@ -145,6 +146,8 @@ function getActivityTypeLabel(type?: string | null) {
 }
 
 export default function Statistics() {
+  const teamStatisticsRef = useRef<TeamStatisticsHandle>(null);
+  const [audience, setAudience] = useState<'visitors' | 'team'>('visitors');
   const { t } = useTranslation('common');
   const organizationName = useActiveOrganizationName();
   // Touch-enabled laptops still use the desktop controls and floating menu.
@@ -1169,6 +1172,7 @@ export default function Statistics() {
 
       {/* Time Range Selector */}
       <SurfaceCard className="mb-6">
+        <div className="mb-4"><SegmentedControl ariaLabel="Statistikansicht" value={audience} onChange={setAudience} options={[{ value: 'visitors', label: 'Besucher*innen' }, { value: 'team', label: 'Team' }]} /></div>
         {(() => {
           const openAdvancedFilters = () => {
             setTempFrom(isCustomRange ? from : '');
@@ -1349,7 +1353,7 @@ export default function Statistics() {
                     </Button>
                     <Button
                       disabled={isExportInProgress}
-                      onClick={() => setReportExportOpen(true)}
+                      onClick={() => audience === 'team' ? teamStatisticsRef.current?.export() : setReportExportOpen(true)}
                       title={autoT('ui_8dbb5c1c7f40')}
                     >
                       <FileDown aria-hidden="true" />
@@ -1759,7 +1763,7 @@ export default function Statistics() {
                 <div ref={reportExportTriggerRef} className="flex items-center gap-2 sm:ml-0">
                   <Button
                     disabled={isExportInProgress}
-                    onClick={() => setReportExportOpen(true)}
+                    onClick={() => audience === 'team' ? teamStatisticsRef.current?.export() : setReportExportOpen(true)}
                     title={autoT('ui_4e4a0d7117ee')}
                   >
                     <FileDown aria-hidden="true" />
@@ -1983,7 +1987,7 @@ export default function Statistics() {
         })()}
       </SurfaceCard>
 
-      <DataTransition variant="statistics" pending={overviewQ.isPending || overviewQ.isPlaceholderData}
+      {audience === 'team' ? <TeamStatistics ref={teamStatisticsRef} params={statsParams} /> : <DataTransition variant="statistics" pending={overviewQ.isPending || overviewQ.isPlaceholderData}
         refreshing={overviewQ.isFetching} error={overviewQ.isError}
         label={`Statistik für ${formatRangeDisplay(MONTH_NAMES)} wird geladen …`}
         onRetry={() => { void overviewQ.refetch(); }}>
@@ -2385,7 +2389,7 @@ export default function Statistics() {
             </div>
           </div>
         </div>
-      </DataTransition>
+      </DataTransition>}
 
       <ResponsiveFilterPanel
         anchorRef={typePickerTriggerRef}
@@ -2733,7 +2737,7 @@ export default function Statistics() {
             </div>
           </div>
 
-          <div className="pt-2 border-t">
+          {audience === 'visitors' && (<div className="pt-2 border-t">
             <div className="text-xs font-medium text-gray-500 mb-2">{autoT('ui_bae7d5be7082')}</div>
             <div className="flex flex-wrap gap-2">
               {ACTIVITY_EXECUTION_STATUS_OPTIONS.filter((status) => status !== 'planned').map((status) => {
@@ -2767,7 +2771,7 @@ export default function Statistics() {
                 );
               })}
             </div>
-          </div>
+          </div>)}
 
           <div className="pt-2 border-t">
             <div className="text-xs font-medium text-gray-500 mb-2">{autoT('ui_afd5e7713414')}</div>

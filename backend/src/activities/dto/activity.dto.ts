@@ -44,7 +44,24 @@ export class ActivityCohortDto {
   d?: number;
 }
 
+export class ActivityStaffTimeDto {
+  @IsUUID('4')
+  staffId!: string;
+
+  @IsInt()
+  @Min(0)
+  @Max(1_000_000)
+  minutes!: number;
+}
+
 export class CreateActivityDto {
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => ActivityStaffTimeDto)
+  staffTimes?: ActivityStaffTimeDto[];
+
   @IsDateString()
   date!: string;
 

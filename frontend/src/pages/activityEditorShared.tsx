@@ -29,6 +29,7 @@ export type ActivityFormState = {
   tagIds?: string[];
   notes?: string;
   staffIds?: string[];
+  staffTimes?: Array<{ staffId: string; minutes: number }>;
   cohortCounts?: Record<string, { m: number; w: number; d: number }>;
 };
 
@@ -61,6 +62,7 @@ export function getActivityFormSnapshot(form: ActivityFormState): string {
     tagIds: normalizedIds(form.tagIds),
     notes: form.notes || '',
     staffIds: normalizedIds(form.staffIds),
+    staffTimes: (form.staffTimes || []).filter(e => form.staffIds?.includes(e.staffId)).sort((a, b) => a.staffId.localeCompare(b.staffId)),
     cohortCounts,
   });
 }
@@ -208,6 +210,7 @@ export function getActivityFormStateFromActivity(
     tagIds: (activity.tags || []).map((tag) => tag.id),
     notes: activity.notes || undefined,
     staffIds: (activity.staff || []).map((member) => member.id),
+    staffTimes: activity.staffTimes || [],
     cohortCounts: getActivityCohortCounts(activity),
   };
 }
@@ -248,6 +251,7 @@ export function buildActivitySavePayload({
     categoryIds: isOpenDoor ? [] : form.categoryIds || [],
     tagIds: form.tagIds || [],
     staffIds: form.staffIds || [],
+    staffTimes: (form.staffTimes || []).filter(e => form.staffIds?.includes(e.staffId)),
     durationMinutes,
     countMale: cohortSums.m,
     countFemale: cohortSums.w,

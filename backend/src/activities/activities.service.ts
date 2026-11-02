@@ -19,6 +19,7 @@ import {
   type OrgScopedUser,
 } from '../auth/org-scope-access';
 import { ActivityListQuery, type ActivityListFilters } from './activity-list-query';
+import { validateActivityStaffTimes } from './activity-staff-times';
 import { normalizeActivityMetrics } from './activity-metrics';
 import { assertActivityCategorySelection } from '../config/activity-category.config';
 
@@ -41,6 +42,7 @@ type ActivityAuditSnapshot = {
   categories: string[];
   tags: string[];
   staff: string[];
+  staffTimes: Array<{ staffId: string; minutes: number }>;
   cohorts: string[];
 };
 
@@ -240,6 +242,7 @@ export class ActivitiesService {
       categories: this.mapRelationNames(activity?.categories),
       tags: this.mapRelationNames(activity?.tags),
       staff: this.mapRelationNames(activity?.staff),
+      staffTimes: [...(activity?.staffTimes || [])].sort((a, b) => a.staffId.localeCompare(b.staffId)),
       cohorts: this.mapCohortEntries(activity?.cohorts, cohortNamesById),
     };
   }
@@ -284,6 +287,7 @@ export class ActivitiesService {
       'categories',
       'tags',
       'staff',
+      'staffTimes',
       'cohorts',
     ];
 
@@ -477,6 +481,7 @@ export class ActivitiesService {
     }
 
     normalizeActivityMetrics(activity);
+    validateActivityStaffTimes(activity);
 
     const saved = await this.activityRepository.save(activity);
     await this.audit.log({
@@ -582,6 +587,7 @@ export class ActivitiesService {
     }
 
     normalizeActivityMetrics(existing);
+    validateActivityStaffTimes(existing);
 
     const updated = await this.activityRepository.manager.transaction(async (manager) => {
       const repository = manager.getRepository(Activity);

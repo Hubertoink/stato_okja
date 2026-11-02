@@ -1,3 +1,4 @@
+import { aggregateTeamStatistics } from './team-statistics';
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository, SelectQueryBuilder } from 'typeorm';
@@ -212,6 +213,15 @@ export class StatsService {
     this.applyWeekdayFilter(qb, weekdays);
 
     return qb;
+  }
+
+  async getTeamStatistics(scope: StatsScope) {
+    const qb = await this.createFilteredActivityQuery(scope.from, scope.to, scope.orgId, scope.orgIds, scope.projectId, scope.type, undefined, scope.weekdays, scope.closureState);
+    // Team planning includes future assignments; visitor statistics retain their existing status rules.
+    qb.setParameter('executionStatuses', ['completed', 'planned', 'cancelled']);
+    const activities = await qb.select(['activity.id', 'activity.type', 'activity.executionStatus', 'activity.durationMinutes', 'activity.staffTimes'])
+      .leftJoinAndSelect('activity.staff', 'staff').getMany();
+    return aggregateTeamStatistics(activities);
   }
 
   private toNumber(value: unknown): number {

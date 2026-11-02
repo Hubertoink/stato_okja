@@ -1,6 +1,7 @@
 import { KpiCard } from './StatisticsKpis';
 import { teamTimeSeries } from './teamTimeSeries';
 import { TeamActivitiesTable } from './TeamActivitiesTable';
+import { TeamParticipationChart } from './TeamParticipationChart';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -131,6 +132,7 @@ export const TeamStatistics = forwardRef<
           label="Durchgeführte Einsätze"
         />
       </div>
+      {(params.projectId || params.type) && <TeamParticipationChart rows={rows} />}
       {!rows.length ? (
         <p>Keine zugeordneten Team-Einsätze für diese Auswahl.</p>
       ) : (

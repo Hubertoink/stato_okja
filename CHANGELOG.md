@@ -9,6 +9,10 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+### Changed
+- Team-Statistik: Bei Projekt- oder Typauswahl zeigt ein Ringdiagramm die durchgeführten Einsätze je Teammitglied, mit Anzahl und Anteil.
+- Statistikfilter ohne doppelte Auswahl: Desktop verwendet Typ- und Projekt-Badges, Mobile die bestehenden Auswahldialoge.
+
 ## [1.21.1] - 2026-11-02
 
 ### Changed

@@ -109,8 +109,6 @@ const STATISTICS_TYPE_OPTIONS: Activity['type'][] = [
 const COLORS = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#14b8a6'];
 const DESKTOP_PROJECT_CHIP_COLLAPSE_THRESHOLD = 12;
 const DESKTOP_PROJECT_CHIP_VISIBLE_COUNT = 10;
-const MOBILE_TYPE_CHIP_VISIBLE_COUNT = 4;
-const MOBILE_PROJECT_CHIP_VISIBLE_COUNT = 5;
 
 const WEEKDAY_OPTIONS = [
   { value: 1, shortLabel: 'Mo', label: autoT('ui_8bb0f19f592e') },
@@ -181,10 +179,6 @@ export default function Statistics() {
     setDesktopProjectFilterExpanded,
     mobileFiltersExpanded,
     setMobileFiltersExpanded,
-    mobileTypeFilterExpanded,
-    setMobileTypeFilterExpanded,
-    mobileProjectFilterExpanded,
-    setMobileProjectFilterExpanded,
     selectedWeekdays,
     tempSelectedWeekdays,
     setTempSelectedWeekdays,
@@ -226,8 +220,6 @@ export default function Statistics() {
     useState<ActivitiesExportFormat | null>(null);
   const [isControllingExporting, setIsControllingExporting] = useState(false);
   const [reportExportOpen, setReportExportOpen] = useState(false);
-  const typePickerTriggerRef = useRef<HTMLDivElement | null>(null);
-  const projectPickerTriggerRef = useRef<HTMLDivElement | null>(null);
   const reportExportTriggerRef = useRef<HTMLDivElement | null>(null);
   const [exportProgress, setExportProgress] = useState<string | null>(null);
   const [isExportInProgress, setIsExportInProgress] = useState(false);
@@ -669,7 +661,6 @@ export default function Statistics() {
   const mobileSoftSurfaceClass = isDarkTheme
     ? 'bg-white/[0.05] text-slate-300'
     : 'bg-gray-50 text-slate-700';
-  const mobileSoftSurfaceHoverClass = isDarkTheme ? 'hover:bg-white/[0.10]' : 'hover:bg-gray-100';
   const mobileDashedSurfaceClass = isDarkTheme
     ? 'border-white/10 bg-white/[0.04] text-slate-300'
     : 'border-gray-300 bg-gray-50 text-slate-600';
@@ -842,34 +833,6 @@ export default function Statistics() {
     sortedProjects.length - visibleDesktopProjects.length,
     0,
   );
-  const useMobileTypeCollapse =
-    isMobile && STATISTICS_TYPE_OPTIONS.length > MOBILE_TYPE_CHIP_VISIBLE_COUNT;
-  const visibleMobileTypes = useMemo(() => {
-    if (!useMobileTypeCollapse || mobileTypeFilterExpanded) return STATISTICS_TYPE_OPTIONS;
-
-    const initialTypes = STATISTICS_TYPE_OPTIONS.slice(0, MOBILE_TYPE_CHIP_VISIBLE_COUNT);
-    if (!selectedType || initialTypes.includes(selectedType)) return initialTypes;
-
-    return [...initialTypes, selectedType];
-  }, [mobileTypeFilterExpanded, selectedType, useMobileTypeCollapse]);
-  const hiddenMobileTypeCount = Math.max(
-    STATISTICS_TYPE_OPTIONS.length - new Set(visibleMobileTypes).size,
-    0,
-  );
-  const useMobileProjectCollapse =
-    isMobile && sortedProjects.length > MOBILE_PROJECT_CHIP_VISIBLE_COUNT;
-  const visibleMobileProjects = useMemo(() => {
-    return getVisibleSelectedItems({
-      items: sortedProjects,
-      selectedId: projectId,
-      expanded: !useMobileProjectCollapse || mobileProjectFilterExpanded,
-      visibleCount: MOBILE_PROJECT_CHIP_VISIBLE_COUNT,
-    });
-  }, [mobileProjectFilterExpanded, projectId, sortedProjects, useMobileProjectCollapse]);
-  const hiddenMobileProjectCount = Math.max(
-    sortedProjects.length - visibleMobileProjects.length,
-    0,
-  );
   useEffect(() => {
     if (!useDesktopProjectCollapse && desktopProjectFilterExpanded) {
       setDesktopProjectFilterExpanded(false);
@@ -877,8 +840,6 @@ export default function Statistics() {
   }, [desktopProjectFilterExpanded, useDesktopProjectCollapse]);
   useEffect(() => {
     setMobileFiltersExpanded(!isMobile);
-    setMobileTypeFilterExpanded(false);
-    setMobileProjectFilterExpanded(false);
   }, [isMobile]);
   const fallbackBarColors = [
     '#2563eb',
@@ -1492,204 +1453,7 @@ export default function Statistics() {
                       )}
                     </section>
 
-                    <section className="space-y-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className={`text-sm font-medium ${mobilePrimaryTextClass}`}>
-                          {autoT('ui_de9f4ac20f7f')}
-                        </div>
-                        {useMobileTypeCollapse && (
-                          <button
-                            type="button"
-                            onClick={() => setMobileTypeFilterExpanded((current) => !current)}
-                            className={`inline-flex items-center gap-1 rounded-full border border-dashed px-3 py-1.5 text-xs font-medium ${mobileDashedSurfaceClass} ${mobileSoftSurfaceHoverClass}`}
-                            aria-expanded={mobileTypeFilterExpanded}
-                          >
-                            {mobileTypeFilterExpanded ? (
-                              <>
-                                <ChevronUp className="h-3.5 w-3.5" />
-                                {autoT('ui_cc193d70551f')}
-                              </>
-                            ) : (
-                              <>
-                                <ChevronDown className="h-3.5 w-3.5" />
-                                {hiddenMobileTypeCount}
-                                {autoT('ui_1960ac5a2d44')}
-                              </>
-                            )}
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedType('')}
-                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
-                            !selectedType
-                              ? 'bg-viridian text-white border-viridian'
-                              : mobileSurfaceClass
-                          }`}
-                        >
-                          {autoT('ui_172a950cc0da')}
-                        </button>
-                        {(useMobileTypeCollapse ? visibleMobileTypes : STATISTICS_TYPE_OPTIONS).map(
-                          (type) => {
-                            const active = selectedType === type;
-                            const typeColor = colorForActivityType(type);
-                            return (
-                              <button
-                                key={type}
-                                type="button"
-                                onClick={() => setSelectedType(type)}
-                                className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
-                                  active
-                                    ? 'text-white shadow ring-2 ring-offset-1 ring-viridian/20'
-                                    : 'text-gray-800'
-                                }`}
-                                style={{
-                                  backgroundColor: active
-                                    ? typeColor
-                                    : translucent(typeColor, '14'),
-                                  borderColor: active ? typeColor : translucent(typeColor, '66'),
-                                }}
-                              >
-                                <span
-                                  aria-hidden
-                                  className="h-2.5 w-2.5 rounded-full border"
-                                  style={{
-                                    backgroundColor: active ? 'rgba(255,255,255,0.9)' : typeColor,
-                                    borderColor: active
-                                      ? 'rgba(255,255,255,0.35)'
-                                      : translucent(typeColor, 'aa'),
-                                  }}
-                                />
-                                {TYPE_LABEL[type]}
-                              </button>
-                            );
-                          },
-                        )}
-                      </div>
-                    </section>
-
                     {teamMemberFilter}
-
-                    {projectsAll.length > 0 && (
-                      <section className="space-y-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className={`text-sm font-medium ${mobilePrimaryTextClass}`}>
-                            {autoT('ui_3930f79f07e5')}
-                          </div>
-                          {useMobileProjectCollapse && sortedProjects.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => setMobileProjectFilterExpanded((current) => !current)}
-                              className={`inline-flex items-center gap-1 rounded-full border border-dashed px-3 py-1.5 text-xs font-medium ${mobileDashedSurfaceClass} ${mobileSoftSurfaceHoverClass}`}
-                              aria-expanded={mobileProjectFilterExpanded}
-                            >
-                              {mobileProjectFilterExpanded ? (
-                                <>
-                                  <ChevronUp className="h-3.5 w-3.5" />
-                                  {autoT('ui_cc193d70551f')}
-                                </>
-                              ) : (
-                                <>
-                                  <ChevronDown className="h-3.5 w-3.5" />
-                                  {hiddenMobileProjectCount}
-                                  {autoT('ui_1960ac5a2d44')}
-                                </>
-                              )}
-                            </button>
-                          )}
-                        </div>
-
-                        {sortedProjects.length === 0 ? (
-                          <div
-                            className={`rounded-xl border border-dashed px-4 py-3 text-sm ${mobileDashedSurfaceClass}`}
-                          >
-                            {autoT('ui_63c009ada12c')}
-                          </div>
-                        ) : (
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setProjectId('')}
-                              className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
-                                !projectId
-                                  ? 'bg-viridian text-white border-viridian'
-                                  : mobileSurfaceClass
-                              }`}
-                            >
-                              {autoT('ui_b857d350e38e')}
-                            </button>
-                            {(useMobileProjectCollapse
-                              ? visibleMobileProjects
-                              : sortedProjects
-                            ).map((p) => {
-                              const active = projectId === p.id;
-                              const color =
-                                typeof p.color === 'string' && p.color.trim()
-                                  ? p.color.trim()
-                                  : undefined;
-                              const imageUrl =
-                                typeof p.imageUrl === 'string' && p.imageUrl.trim()
-                                  ? p.imageUrl.trim()
-                                  : undefined;
-                              const overlayColor = color || '#0f766e';
-
-                              return (
-                                <button
-                                  key={p.id}
-                                  type="button"
-                                  onClick={() => setProjectId(p.id)}
-                                  className={`inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
-                                    active
-                                      ? 'text-white shadow ring-2 ring-offset-1 ring-viridian/20'
-                                      : 'text-gray-800'
-                                  }`}
-                                  style={{
-                                    backgroundColor: active
-                                      ? overlayColor
-                                      : color
-                                        ? translucent(overlayColor, '14')
-                                        : undefined,
-                                    borderColor: active ? overlayColor : color || undefined,
-                                  }}
-                                  title={p.title}
-                                >
-                                  {imageUrl ? (
-                                    <span
-                                      className={`h-6 w-6 overflow-hidden rounded-full border ${
-                                        active
-                                          ? 'border-white/35 bg-white/15'
-                                          : 'border-gray-300 bg-gray-100'
-                                      }`}
-                                    >
-                                      <ProtectedImage
-                                        src={imageUrl}
-                                        alt=""
-                                        className="h-full w-full object-cover"
-                                      />
-                                    </span>
-                                  ) : (
-                                    <span
-                                      aria-hidden
-                                      className="h-2.5 w-2.5 rounded-full border"
-                                      style={{
-                                        backgroundColor: overlayColor,
-                                        borderColor: active
-                                          ? 'rgba(255,255,255,0.45)'
-                                          : 'rgba(0,0,0,0.08)',
-                                      }}
-                                    />
-                                  )}
-                                  <span className="truncate">{p.title}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </section>
-                    )}
                   </div>
                 )}
               </div>
@@ -1788,33 +1552,6 @@ export default function Statistics() {
                   </Button>
                 </div>
               </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <div ref={typePickerTriggerRef}>
-                    <Button
-                      variant="secondary"
-                      aria-expanded={typePickerOpen}
-                      aria-haspopup="dialog"
-                      onClick={() => setTypePickerOpen(open => !open)}
-                      title="Aktivitätstyp auswählen"
-                    >
-                      {selectedType ? TYPE_LABEL[selectedType] : 'Alle Aktivitätstypen'}
-                      <ChevronDown aria-hidden="true" className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div ref={projectPickerTriggerRef} className="min-w-0 max-w-full">
-                    <Button
-                      className="max-w-full"
-                      variant="secondary"
-                      aria-expanded={projectPickerOpen}
-                      aria-haspopup="dialog"
-                      onClick={() => setProjectPickerOpen(open => !open)}
-                      title="Angebot oder Projekt auswählen"
-                    >
-                      <span className="truncate">{selectedProjectRecord?.title || 'Alle Angebote & Projekte'}</span>
-                      <ChevronDown aria-hidden="true" className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
               </FloatingPageActions>
 
               {filterMode === 'month' && !isCustomRange && (
@@ -2411,8 +2148,7 @@ export default function Statistics() {
       </DataTransition>}
 
       <ResponsiveFilterPanel
-        anchorRef={typePickerTriggerRef}
-        open={typePickerOpen}
+        open={isMobile && typePickerOpen}
         onClose={() => setTypePickerOpen(false)}
         title={autoT('ui_4324a8f20ad4')}
       >
@@ -2475,9 +2211,8 @@ export default function Statistics() {
       </ResponsiveFilterPanel>
 
       <ResponsiveFilterPanel
-        anchorRef={projectPickerTriggerRef}
         desktopClassName="filter-popover--projects"
-        open={projectPickerOpen}
+        open={isMobile && projectPickerOpen}
         onClose={() => setProjectPickerOpen(false)}
         title={autoT('ui_42da26b250b4')}
       >

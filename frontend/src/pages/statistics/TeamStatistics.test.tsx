@@ -53,6 +53,22 @@ vi.mock('@tanstack/react-query', () => ({
 }));
 
 describe('team statistics view', () => {
+  it('shows the member distribution for project/type selections and respects the member filter', () => {
+    function Harness({ params, staffId }: { params: { type?: string; projectId?: string }; staffId?: string }) {
+      const query = useTeamStatisticsQuery(params);
+      return <TeamStatistics params={params} query={query} staffId={staffId} />;
+    }
+    const view = render(<Harness params={{}} />);
+    expect(screen.queryByRole('region', { name: 'Durchgeführte Einsätze nach Teammitglied' })).not.toBeInTheDocument();
+    view.rerender(<Harness params={{ projectId: 'p1' }} />);
+    expect(screen.getByRole('table', { name: 'Durchgeführte Einsätze und Anteil je Teammitglied' })).toHaveTextContent('Anna');
+    expect(screen.getByRole('table', { name: 'Durchgeführte Einsätze und Anteil je Teammitglied' })).not.toHaveTextContent('Max');
+    expect(screen.getByText('100 %')).toBeInTheDocument();
+    view.rerender(<Harness params={{ type: 'open_door' }} staffId="max" />);
+    expect(screen.getByText('Keine durchgeführten Team-Einsätze für diese Auswahl.')).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'Durchgeführte Einsätze und Anteil je Teammitglied' })).not.toBeInTheDocument();
+  });
+
   it('keeps the selected member visible in a collapsed chip list', () => {
     const onChange = vi.fn();
     render(

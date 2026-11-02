@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Clock, RotateCcw } from 'lucide-react';
+import { Clock, Minus, Plus, RotateCcw } from 'lucide-react';
 import Modal from './Modal';
 import { Input } from './ui/Field';
 import { Button } from './ui/Button';
@@ -120,42 +120,51 @@ export function StaffTimesButton({
                       {override ? 'Angepasst' : 'Automatisch'}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="text-sm">
-                      Stunden
-                      <Input
-                        aria-label={`${member.name}: Stunden`}
-                        className="input w-full"
-                        type="number"
-                        min="0"
-                        max={Math.floor((duration ?? 0) / 60)}
-                        step="1"
-                        disabled={duration === null}
-                        value={Math.floor(value / 60)}
-                        onChange={(e) =>
-                          setMinutes(member.id, Number(e.target.value) * 60 + (value % 60))
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <Button variant="secondary" size="icon-touch"
+                        aria-label={`${member.name}: Einsatzzeit verkürzen`}
+                        disabled={duration === null || value <= 0}
+                        onClick={() => setMinutes(member.id, Math.max(0, Math.ceil(value / 15) * 15 - 15))}>
+                        <Minus aria-hidden="true" />
+                      </Button>
+                      <output className="text-lg font-semibold tabular-nums text-center" aria-live="polite">
+                        {Math.floor(value / 60)} Std. {value % 60} Min.
+                      </output>
+                      <Button variant="secondary" size="icon-touch"
+                        aria-label={`${member.name}: Einsatzzeit verlängern`}
+                        disabled={duration === null || value >= duration}
+                        onClick={() => setMinutes(member.id, Math.min(duration ?? 0, Math.floor(value / 15) * 15 + 15))}>
+                        <Plus aria-hidden="true" />
+                      </Button>
+                    </div>
+                    <Input type="range" min={0} max={duration || 1} step="any"
+                      aria-label={`${member.name}: Einsatzzeit`}
+                      aria-valuetext={`${Math.floor(value / 60)} Stunden ${value % 60} Minuten`}
+                      disabled={duration === null || duration === 0}
+                      value={value}
+                      className="cursor-pointer disabled:cursor-not-allowed"
+                      style={{ padding: 0, border: 0, boxShadow: 'none', background: 'transparent', accentColor: 'var(--viridian)', minHeight: 44 }}
+                      onChange={(event) => {
+                        const raw = Number(event.target.value);
+                        const rounded = Math.min(duration ?? 0, Math.round(raw / 15) * 15);
+                        setMinutes(member.id, Math.abs((duration ?? 0) - raw) < Math.abs(rounded - raw) ? duration ?? 0 : rounded);
+                      }}
+                      onKeyDown={(event) => {
+                        if (['ArrowLeft', 'ArrowDown', 'ArrowRight', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+                          event.preventDefault();
+                          const next = event.key === 'Home' ? 0 : event.key === 'End' ? duration ?? 0
+                            : ['ArrowLeft', 'ArrowDown'].includes(event.key)
+                              ? Math.ceil(value / 15) * 15 - 15 : Math.floor(value / 15) * 15 + 15;
+                          setMinutes(member.id, Math.max(0, Math.min(duration ?? 0, next)));
                         }
-                      />
-                    </label>
-                    <label className="text-sm">
-                      Minuten
-                      <Input
-                        aria-label={`${member.name}: Minuten`}
-                        className="input w-full"
-                        type="number"
-                        min="0"
-                        max="59"
-                        step="1"
-                        disabled={duration === null}
-                        value={value % 60}
-                        onChange={(e) =>
-                          setMinutes(
-                            member.id,
-                            Math.floor(value / 60) * 60 + Number(e.target.value),
-                          )
-                        }
-                      />
-                    </label>
+                      }}
+                    />
+                    <div className="flex justify-between gap-3 text-xs text-[var(--text-secondary)]" aria-hidden="true">
+                      <span>0 Min.</span>
+                      <span>{Math.floor((duration ?? 0) / 60)} Std. {(duration ?? 0) % 60} Min.</span>
+                    </div>
+                    <p className="pt-2 text-center text-xs text-[var(--text-secondary)]">In 15-Minuten-Schritten · maximal Aktivitätsdauer</p>
                   </div>
                 </div>
               );

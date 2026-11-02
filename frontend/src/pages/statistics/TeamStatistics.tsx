@@ -1,3 +1,4 @@
+import { TeamChartCard } from './TeamChartCard';
 import { KpiCard } from './StatisticsKpis';
 import { teamTimeSeries } from './teamTimeSeries';
 import { TeamActivitiesTable } from './TeamActivitiesTable';
@@ -152,7 +153,7 @@ export const TeamStatistics = forwardRef<
   );
 });
 
-const statusColors = ['var(--viridian)', '#3b82f6', '#f59e0b'];
+const statusColors = ['#8b5cf6', '#3b82f6', '#f59e0b'];
 
 function TeamDayCharts({ rows, singleMember }: { rows: TeamRow[]; singleMember: boolean }) {
   const series = teamTimeSeries(rows);
@@ -166,11 +167,7 @@ function TeamDayCharts({ rows, singleMember }: { rows: TeamRow[]; singleMember: 
         },
         { title: 'Ø Stunden nach Wochentag', data: series.weekdays, date: false },
       ].map((chart) => (
-        <section
-          key={chart.title}
-          className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 sm:p-6"
-        >
-          <h2 className="text-lg font-semibold">{chart.title}</h2>
+        <TeamChartCard key={chart.title} title={chart.title}>
           <p className="mt-1 text-xs text-[var(--text-secondary)]">
             Nur durchgeführte Einsätze mit positiver Einsatzzeit. Durchschnitt pro Person und
             Einsatztag; Tage ohne Einsatz zählen nicht mit.
@@ -212,7 +209,7 @@ function TeamDayCharts({ rows, singleMember }: { rows: TeamRow[]; singleMember: 
                 />
                 <Bar
                   dataKey="hours"
-                  fill="var(--viridian)"
+                  fill="#8b5cf6"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={36}
                   isAnimationActive={false}
@@ -220,7 +217,7 @@ function TeamDayCharts({ rows, singleMember }: { rows: TeamRow[]; singleMember: 
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </section>
+        </TeamChartCard>
       ))}
     </div>
   );
@@ -240,8 +237,7 @@ function TeamTypeChart({ rows }: { rows: TeamRow[] }) {
     ),
   }));
   return (
-    <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 sm:p-6">
-      <h2 className="text-lg font-semibold">Personenstunden nach Typ</h2>
+    <TeamChartCard title="Personenstunden nach Typ">
       <p className="mt-1 text-sm text-[var(--text-secondary)]">
         Einsatzzeiten im ausgewählten Zeitraum
       </p>
@@ -250,6 +246,7 @@ function TeamTypeChart({ rows }: { rows: TeamRow[] }) {
           <span key={status.key} className="inline-flex items-center gap-2">
             <span
               aria-hidden
+              data-export-preserve-background="true"
               className="h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: statusColors[index] }}
             />
@@ -311,7 +308,7 @@ function TeamTypeChart({ rows }: { rows: TeamRow[] }) {
           </BarChart>
         </ResponsiveContainer>
       </div>
-    </section>
+    </TeamChartCard>
   );
 }
 

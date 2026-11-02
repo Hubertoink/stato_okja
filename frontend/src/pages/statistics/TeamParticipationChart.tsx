@@ -1,3 +1,4 @@
+import { TeamChartCard } from './TeamChartCard';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { teamParticipation } from './teamParticipation';
 
@@ -8,9 +9,7 @@ export function TeamParticipationChart({ rows }: { rows: Parameters<typeof teamP
   const total = data.reduce((sum, member) => sum + member.value, 0);
   const percent = (value: number) => `${(value / total * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`;
   return (
-    <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 sm:p-6"
-      aria-label="Durchgeführte Einsätze nach Teammitglied">
-      <h2 className="text-lg font-semibold">Durchgeführte Einsätze nach Teammitglied</h2>
+    <TeamChartCard title="Durchgeführte Einsätze nach Teammitglied">
       <p className="mt-1 text-sm text-[var(--text-secondary)]">
         Beteiligung an den Aktivitäten der aktuellen Auswahl. Pro Aktivität zählt jede zugeordnete
         Person einmal. Gemeinsame Aktivitäten ergeben mehrere Team-Einsätze; geplante und
@@ -46,7 +45,7 @@ export function TeamParticipationChart({ rows }: { rows: Parameters<typeof teamP
               <tr key={member.staffId} className="border-t border-[var(--border-subtle)]">
                 <th scope="row" className="py-3 pr-3 text-left font-medium">
                   <span className="flex items-start gap-2">
-                    <span aria-hidden="true" className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
+                    <span aria-hidden="true" data-export-preserve-background="true" className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
                     <span className="min-w-0 break-words">{member.name}</span>
                   </span>
                 </th>
@@ -57,6 +56,6 @@ export function TeamParticipationChart({ rows }: { rows: Parameters<typeof teamP
           </table>
         </div>
       )}
-    </section>
+    </TeamChartCard>
   );
 }

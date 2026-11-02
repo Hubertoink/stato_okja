@@ -125,3 +125,5 @@ describe('team statistics view', () => {
     expect(screen.getByRole('heading', { name: 'Stunden je Einsatztag' })).toBeInTheDocument();
   });
 });
+
+vi.mock('@/components/Toast', () => ({ useToast: () => ({ showToast: vi.fn() }), useProgressToast: vi.fn() }));

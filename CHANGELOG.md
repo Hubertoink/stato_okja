@@ -10,6 +10,7 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 ## [Unreleased]
 
 ### Changed
+- Die mobile Aktivitätsdetailansicht zeigt Status und Dauer ebenfalls in der Kombi-Badge im Kopfbereich; die separate Status-Karte entfällt.
 - Mobile Aktivitätskarten zeigen „Geplant“ und „Ausgefallen“ zusammen mit der Dauer in einer kompakten Kombi-Badge.
 
 ## [1.21.0] - 2026-11-02

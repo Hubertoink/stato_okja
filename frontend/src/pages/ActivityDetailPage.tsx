@@ -122,7 +122,10 @@ export default function ActivityDetailPage() {
           </div>
           <div className="activity-mobile-header flex w-full items-start justify-between gap-2">
             <ActivityTypeBadge type={activity.type} label={typeLabel[activity.type] || activity.type} />
-            {!!minutes && <span className="ml-auto shrink-0 text-xs px-2 py-1 bg-viridian text-white rounded">{minutes}{autoT('ui_b6c935d4f3c7')}</span>}
+            {!isCompletedActivity(activity.executionStatus) ? (
+              <ActivityExecutionStatusBadge status={activity.executionStatus} combined className="ml-auto"
+                durationLabel={minutes ? `${minutes}${autoT('ui_b6c935d4f3c7')}` : undefined} />
+            ) : !!minutes && <span className="ml-auto shrink-0 text-xs px-2 py-1 bg-viridian text-white rounded">{minutes}{autoT('ui_b6c935d4f3c7')}</span>}
           </div>
           <h1>{title}</h1>
           {activity.project?.title && activity.project.title !== title && <p className="activity-mobile-project">{activity.project.title}</p>}
@@ -133,12 +136,12 @@ export default function ActivityDetailPage() {
           </div>
           {activity.project?.description && <div className="activity-detail-description" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(activity.project.description, { ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li'], ALLOWED_ATTR: [] }) }} />}
         </section>
-        <section className="activity-detail-section activity-detail-participants" aria-label={t('detail.participants')}>
-          {!isCompletedActivity(activity.executionStatus) ? <ActivityExecutionStatusBadge status={activity.executionStatus} /> : <>
+        {isCompletedActivity(activity.executionStatus) && (
+          <section className="activity-detail-section activity-detail-participants" aria-label={t('detail.participants')}>
             <div><div className="activity-mobile-total"><Users className="h-6 w-6 shrink-0" aria-hidden="true" /><strong>{total}</strong></div><div className="activity-mobile-count-label">{t('detail.participants')}</div></div>
             <div className="activity-mobile-genders"><span aria-label={`Männlich: ${male}`}>M <b>{male}</b></span><span aria-label={`Weiblich: ${female}`}>W <b>{female}</b></span><span aria-label={`Divers: ${diverse}`}>D <b>{diverse}</b></span></div>
-          </>}
-        </section>
+          </section>
+        )}
         <section className="activity-detail-section">
           <h2><Users className="h-4 w-4" aria-hidden="true" />{t('detail.staff')}</h2>
           <div className="activity-detail-staff">

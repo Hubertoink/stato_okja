@@ -9,6 +9,10 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+### Fixed
+- Individuelle Einsatzzeiten erhalten ein dezentes Uhrsymbol am Personen-Badge. Die volle Aktivitätsdauer gilt wieder als automatisch und wird nicht als Anpassung gespeichert.
+- Der Aktualisierungshinweis der Statistik erscheint als Toast unten rechts und verschwindet nach Abschluss.
+
 ### Changed
 - Team-Statistik: Bei Projekt- oder Typauswahl zeigt ein Ringdiagramm die durchgeführten Einsätze je Teammitglied, mit Anzahl und Anteil.
 - Statistikfilter ohne doppelte Auswahl: Desktop verwendet Typ- und Projekt-Badges, Mobile die bestehenden Auswahldialoge.

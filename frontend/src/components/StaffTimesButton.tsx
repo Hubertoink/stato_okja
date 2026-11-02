@@ -6,15 +6,17 @@ import { Button } from './ui/Button';
 import type { ActivityFormState } from '@/pages/activityEditorShared';
 import type { StaffMember } from '@/lib/staff';
 import { STAFF_ROLE_LABEL } from './settings/EntityFormModals';
+import { activityFormMinutes, customStaffTimes } from '@/lib/staffTimes';
 
-export function activityFormMinutes(form: Pick<ActivityFormState, 'start' | 'end'>): number | null {
-  if (!form.start || !form.end) return null;
-  const minutes = (time: string) => {
-    const [h, m] = time.split(':').map(Number);
-    return h * 60 + m;
-  };
-  const duration = (minutes(form.end) - minutes(form.start) + 1440) % 1440;
-  return Number.isFinite(duration) ? duration : null;
+export { activityFormMinutes } from '@/lib/staffTimes';
+
+export function StaffTimeIndicator({ form, staffId }: { form: ActivityFormState; staffId: string }) {
+  const override = customStaffTimes(form.staffTimes, form.staffIds, activityFormMinutes(form)).find(entry => entry.staffId === staffId);
+  if (!override) return null;
+  const label = `Angepasste Einsatzzeit: ${Math.floor(override.minutes / 60)} Std. ${override.minutes % 60} Min.`;
+  return <span role="img" aria-label={label} title={label} className="ml-1 inline-flex align-middle opacity-80">
+    <Clock aria-hidden="true" className="h-3 w-3 shrink-0" />
+  </span>;
 }
 
 export function StaffTimesButton({
@@ -38,7 +40,7 @@ export function StaffTimesButton({
       entry.minutes > duration,
   );
   const setMinutes = (staffId: string, minutes: number) =>
-    setDraft((current) => [...current.filter((e) => e.staffId !== staffId), { staffId, minutes }]);
+    setDraft((current) => customStaffTimes([...current.filter((e) => e.staffId !== staffId), { staffId, minutes }], form.staffIds, duration));
   return (
     <>
       <Button
@@ -47,7 +49,7 @@ export function StaffTimesButton({
         aria-label="Einsatzzeiten anpassen"
         title="Einsatzzeiten anpassen"
         onClick={() => {
-          setDraft((form.staffTimes || []).filter((e) => form.staffIds?.includes(e.staffId)));
+          setDraft(customStaffTimes(form.staffTimes, form.staffIds, duration));
           setOpen(true);
         }}
       >
@@ -170,7 +172,7 @@ export function StaffTimesButton({
               <Button
                 disabled={invalid}
                 onClick={() => {
-                  onChange(draft);
+                  onChange(customStaffTimes(draft, form.staffIds, duration));
                   setOpen(false);
                 }}
               >

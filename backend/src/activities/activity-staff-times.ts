@@ -18,4 +18,6 @@ export function validateActivityStaffTimes(activity: Partial<Activity>): void {
     }
     seen.add(entry.staffId);
   }
+  // Full-duration entries are automatic, so later duration changes follow along.
+  activity.staffTimes = activity.staffTimes.filter(entry => entry.minutes !== activity.durationMinutes);
 }

@@ -8,10 +8,18 @@ const makeActivity = (minutes: number): Partial<Activity> => ({
   staffTimes: [{ staffId: 'anna', minutes }],
 });
 describe('individual staff times', () => {
-  it.each([0, 45, 120])('accepts %s minutes within the activity', (minutes) => {
+  it.each([0, 45])('accepts %s minutes within the activity', (minutes) => {
     const activity = makeActivity(minutes);
     validateActivityStaffTimes(activity);
     expect(activity.staffTimes![0].minutes).toBe(minutes);
+  });
+  it('treats the full duration as automatic and follows later duration changes', () => {
+    const activity = makeActivity(120);
+    validateActivityStaffTimes(activity);
+    expect(activity.staffTimes).toEqual([]);
+    activity.durationMinutes = 60;
+    validateActivityStaffTimes(activity);
+    expect(activity.staffTimes).toEqual([]);
   });
   it.each([-1, 121, 1.5, NaN])('rejects invalid minutes %s', (minutes) =>
     expect(() => validateActivityStaffTimes(makeActivity(minutes))).toThrow(),

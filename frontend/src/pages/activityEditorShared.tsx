@@ -8,6 +8,7 @@ import type { StaffMember, StaffRole } from '@/lib/staff';
 import { getSelectableStaff } from '@/lib/staffSelection';
 import type { Tag } from '@/lib/taxonomy';
 import { formatDate } from '@/i18n/formatters';
+import { activityFormMinutes, customStaffTimes } from '@/lib/staffTimes';
 
 type NamedEntity = {
   id: string;
@@ -62,7 +63,7 @@ export function getActivityFormSnapshot(form: ActivityFormState): string {
     tagIds: normalizedIds(form.tagIds),
     notes: form.notes || '',
     staffIds: normalizedIds(form.staffIds),
-    staffTimes: (form.staffTimes || []).filter(e => form.staffIds?.includes(e.staffId)).sort((a, b) => a.staffId.localeCompare(b.staffId)),
+    staffTimes: customStaffTimes(form.staffTimes, form.staffIds, activityFormMinutes(form)).sort((a, b) => a.staffId.localeCompare(b.staffId)),
     cohortCounts,
   });
 }
@@ -210,7 +211,7 @@ export function getActivityFormStateFromActivity(
     tagIds: (activity.tags || []).map((tag) => tag.id),
     notes: activity.notes || undefined,
     staffIds: (activity.staff || []).map((member) => member.id),
-    staffTimes: activity.staffTimes || [],
+    staffTimes: customStaffTimes(activity.staffTimes || [], (activity.staff || []).map(member => member.id), activity.durationMinutes),
     cohortCounts: getActivityCohortCounts(activity),
   };
 }
@@ -251,7 +252,7 @@ export function buildActivitySavePayload({
     categoryIds: isOpenDoor ? [] : form.categoryIds || [],
     tagIds: form.tagIds || [],
     staffIds: form.staffIds || [],
-    staffTimes: (form.staffTimes || []).filter(e => form.staffIds?.includes(e.staffId)),
+    staffTimes: customStaffTimes(form.staffTimes, form.staffIds, durationMinutes),
     durationMinutes,
     countMale: cohortSums.m,
     countFemale: cohortSums.w,

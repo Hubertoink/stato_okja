@@ -38,7 +38,7 @@ import {
 } from 'lucide-react';
 import ExportProgressModal from '@/components/ExportProgressModal';
 import ProtectedImage from '@/components/ProtectedImage';
-import { useToast } from '@/components/Toast';
+import { useToast, useProgressToast } from '@/components/Toast';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 import { usePublicConfig } from '@/lib/publicConfig';
 import {
@@ -304,6 +304,7 @@ export default function Statistics() {
   const monthDescription = (month: number, name: string) => monthCountsQ.data
     ? `${name}: ${monthCounts[month - 1]} Aktivitäten (im Verhältnis zum stärksten Monat)`
     : `${name}: ${monthCountsQ.isError ? 'Monatsübersicht nicht verfügbar' : 'Monatsübersicht wird geladen …'}`;
+  useProgressToast(audience === 'team' ? teamQuery.isFetching : overviewQ.isFetching, 'Statistik wird aktualisiert …');
   const overview = overviewQ.data;
   const summary = overview?.summary;
   const byType = overview?.byType;
@@ -1743,7 +1744,7 @@ export default function Statistics() {
         })()}
       </SurfaceCard>
 
-      {audience === 'team' ? <TeamStatistics ref={teamStatisticsRef} params={statsParams} query={teamQuery} staffId={selectedTeamMember} /> : <DataTransition variant="statistics" pending={overviewQ.isPending || overviewQ.isPlaceholderData}
+      {audience === 'team' ? <TeamStatistics ref={teamStatisticsRef} params={statsParams} query={teamQuery} staffId={selectedTeamMember} /> : <DataTransition variant="statistics" showStatus={false} pending={overviewQ.isPending || overviewQ.isPlaceholderData}
         refreshing={overviewQ.isFetching} error={overviewQ.isError}
         label={`Statistik für ${formatRangeDisplay(MONTH_NAMES)} wird geladen …`}
         onRetry={() => { void overviewQ.refetch(); }}>

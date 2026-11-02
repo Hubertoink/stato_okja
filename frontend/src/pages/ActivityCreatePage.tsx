@@ -1,4 +1,4 @@
-import { StaffTimesButton } from '@/components/StaffTimesButton';
+import { StaffTimesButton, StaffTimeIndicator } from '@/components/StaffTimesButton';
 import ActivityPlanningNotice from '@/components/ActivityPlanningNotice';
 import { usePublicConfig } from '@/lib/publicConfig';
 import {
@@ -780,6 +780,7 @@ export default function ActivityCreatePage() {
                             }`}
                           >
                             {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
+                          <StaffTimeIndicator form={form} staffId={s.id} />
                           </button>
                         );
                       })}
@@ -823,6 +824,7 @@ export default function ActivityCreatePage() {
                             }`}
                           >
                             {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
+                          <StaffTimeIndicator form={form} staffId={s.id} />
                           </button>
                         );
                       })}
@@ -868,6 +870,7 @@ export default function ActivityCreatePage() {
                             }`}
                           >
                             {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
+                          <StaffTimeIndicator form={form} staffId={s.id} />
                           </button>
                         );
                       })}

@@ -8,6 +8,26 @@ const staff = [
   { id: 'max', name: 'Max' },
 ] as Activity['staff'];
 describe('team statistics', () => {
+  it('keeps separate days for chart aggregation', () => {
+    const rows = aggregateTeamStatistics([
+      {
+        date: new Date('2026-11-02T00:00:00Z'),
+        type: ActivityType.OPEN_DOOR,
+        durationMinutes: 60,
+        staff,
+      },
+      {
+        date: new Date('2026-11-03T00:00:00Z'),
+        type: ActivityType.OPEN_DOOR,
+        durationMinutes: 120,
+        staff,
+      },
+    ]);
+    expect(rows.filter((row) => row.staffId === 'anna')).toEqual([
+      expect.objectContaining({ date: '2026-11-02', minutes: 60 }),
+      expect.objectContaining({ date: '2026-11-03', minutes: 120 }),
+    ]);
+  });
   it('counts people separately, keeps zero overrides, and falls back for legacy records', () => {
     const rows = aggregateTeamStatistics([
       {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Clock } from 'lucide-react';
+import { Clock, RotateCcw } from 'lucide-react';
 import Modal from './Modal';
 import { Input } from './ui/Field';
 import { Button } from './ui/Button';
@@ -89,7 +89,21 @@ export function StaffTimesButton({
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2 border-b border-[var(--border-subtle)] pb-3">
                     <div className="min-w-0">
-                      <strong className="block break-words">{member.name}</strong>
+                      <div className="flex items-center gap-2">
+                        <strong className="block break-words">{member.name}</strong>
+                        <Button
+                          variant="ghost"
+                          size="icon-compact"
+                          disabled={!override}
+                          aria-label="Aktivitätsdauer übernehmen"
+                          title="Aktivitätsdauer übernehmen"
+                          onClick={() =>
+                            setDraft((current) => current.filter((e) => e.staffId !== member.id))
+                          }
+                        >
+                          <RotateCcw aria-hidden="true" />
+                        </Button>
+                      </div>
                       <p className="mt-1 text-xs text-[var(--text-secondary)]">
                         {(Array.isArray(member.roles)
                           ? member.roles
@@ -141,17 +155,6 @@ export function StaffTimesButton({
                       />
                     </label>
                   </div>
-                  {override && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setDraft((current) => current.filter((e) => e.staffId !== member.id))
-                      }
-                    >
-                      Aktivitätsdauer übernehmen
-                    </Button>
-                  )}
                 </div>
               );
             })}

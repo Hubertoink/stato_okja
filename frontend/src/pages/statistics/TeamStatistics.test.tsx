@@ -2,11 +2,20 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { cloneElement, useState, type ReactElement } from 'react';
 import { TeamStatistics, TeamMemberChips, useTeamStatisticsQuery } from './TeamStatistics';
+vi.mock('./TeamActivitiesTable', () => ({
+  TeamActivitiesTable: ({ staffId }: { staffId: string }) => (
+    <div data-testid="member-activities">{staffId}</div>
+  ),
+}));
 
 // jsdom has no layout/ResizeObserver; keep the actual chart with a fixed viewport.
 vi.mock('recharts', async (importOriginal) => ({
-  ...await importOriginal<typeof import('recharts')>(),
-  ResponsiveContainer: ({ children }: { children: ReactElement<{ width: number; height: number }> }) => cloneElement(children, { width: 600, height: 420 }),
+  ...(await importOriginal<typeof import('recharts')>()),
+  ResponsiveContainer: ({
+    children,
+  }: {
+    children: ReactElement<{ width: number; height: number }>;
+  }) => cloneElement(children, { width: 600, height: 420 }),
 }));
 
 vi.mock('@/lib/orgScope', () => ({
@@ -46,8 +55,17 @@ vi.mock('@tanstack/react-query', () => ({
 describe('team statistics view', () => {
   it('keeps the selected member visible in a collapsed chip list', () => {
     const onChange = vi.fn();
-    render(<TeamMemberChips people={Array.from({ length: 12 }, (_, index) => [String(index), `Person ${index}`])} selectedId="11" onChange={onChange} />);
-    expect(screen.getByRole('button', { name: 'Person 11' })).toHaveAttribute('aria-pressed', 'true');
+    render(
+      <TeamMemberChips
+        people={Array.from({ length: 12 }, (_, index) => [String(index), `Person ${index}`])}
+        selectedId="11"
+        onChange={onChange}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Person 11' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     expect(screen.queryByRole('button', { name: 'Person 10' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '3 weitere anzeigen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Person 10' }));
@@ -74,15 +92,20 @@ describe('team statistics view', () => {
     }
     render(<Harness />);
     expect(screen.getByRole('heading', { name: 'Personenstunden nach Typ' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Nach Team-Mitglied' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Nach Team-Mitglied' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('member-activities')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Ø Stunden je Einsatztag und Person' }),
+    ).toBeInTheDocument();
     expect(screen.getByText('1,5 Std.')).toBeInTheDocument();
     expect(screen.getByText('1 Std.')).toBeInTheDocument();
     expect(screen.getByText('0,5 Std.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Anna' }));
     expect(screen.getByRole('button', { name: 'Anna' })).toHaveAttribute('aria-pressed', 'true');
-    fireEvent.click(screen.getByText('Werte nach Typ anzeigen'));
+    expect(screen.queryByText('Werte nach Typ anzeigen')).not.toBeInTheDocument();
     expect(screen.getByText('0 Std.')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Max' })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Offene Tür' })).toBeInTheDocument();
+    expect(screen.getByTestId('member-activities')).toHaveTextContent('anna');
+    expect(screen.getByRole('heading', { name: 'Stunden je Einsatztag' })).toBeInTheDocument();
   });
 });

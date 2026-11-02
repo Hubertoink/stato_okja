@@ -1,3 +1,6 @@
+import { KpiCard } from './StatisticsKpis';
+import { teamTimeSeries } from './teamTimeSeries';
+import { TeamActivitiesTable } from './TeamActivitiesTable';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -7,6 +10,7 @@ import type { StatisticsOverviewParams } from './types';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 type TeamRow = {
+  date?: string;
   staffId: string;
   name: string;
   type: string;
@@ -60,7 +64,6 @@ export const TeamStatistics = forwardRef<
   }
 >(function TeamStatistics({ params, query, staffId = '' }, ref) {
   const all = query.data || [];
-  const people = [...new Map(all.map((row) => [row.staffId, row.name])).entries()];
   const rows = all.filter((row) => !staffId || row.staffId === staffId);
   const [exportError, setExportError] = useState(false);
   useImperativeHandle(ref, () => ({
@@ -72,8 +75,9 @@ export const TeamStatistics = forwardRef<
           const XLSX = await import('xlsx-js-style');
           const sheet = XLSX.utils.aoa_to_sheet([
             ['Team-Auswertung', params.from || '', params.to || ''],
-            ['Person', 'Typ', 'Status', 'Einsätze', 'Minuten', 'Personenstunden'],
+            ['Datum', 'Person', 'Typ', 'Status', 'Einsätze', 'Minuten', 'Personenstunden'],
             ...rows.map((row) => [
+              row.date || '',
               row.name,
               types[row.type] || row.type,
               statuses.find((s) => s.key === row.status)?.label || row.status,
@@ -106,54 +110,119 @@ export const TeamStatistics = forwardRef<
         Anpassung gilt die volle Aktivitätsdauer. Die Team-Ansicht zeigt alle drei Status getrennt.
       </p>
       {exportError && <p role="alert">Der Export ist fehlgeschlagen. Bitte erneut versuchen.</p>}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="statistics-kpi-grid">
         {statuses.map((status) => {
           const matching = rows.filter((row) => row.status === status.key);
           return (
-            <div
+            <KpiCard
               key={status.key}
-              className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-5"
-            >
-              <h3>{status.label}</h3>
-              <p className="text-2xl font-semibold mt-2">{hours(sum(matching, 'minutes'))} Std.</p>
-              <p className="text-sm">{sum(matching, 'assignments')} Einsätze</p>
-            </div>
+              variant={status.key === 'completed' ? 'hours' : 'participants'}
+              value={`${hours(sum(matching, 'minutes'))} Std.`}
+              label={`${status.label} · ${sum(matching, 'assignments').toLocaleString('de-DE')} Einsätze`}
+            />
           );
         })}
+        <KpiCard
+          variant="activities"
+          value={sum(
+            rows.filter((row) => row.status === 'completed'),
+            'assignments',
+          ).toLocaleString('de-DE')}
+          label="Durchgeführte Einsätze"
+        />
       </div>
       {!rows.length ? (
         <p>Keine zugeordneten Team-Einsätze für diese Auswahl.</p>
       ) : (
         <>
           <TeamTypeChart rows={rows} />
-          <details>
-            <summary className="cursor-pointer text-sm">Werte nach Typ anzeigen</summary>
-            <Breakdown
-              title="Nach Typ"
-              groups={Object.entries(types).map(([key, label]) => ({
-                key,
-                label,
-                rows: rows.filter((row) => row.type === key),
-              }))}
-            />
-          </details>
-          <Breakdown
-            title="Nach Team-Mitglied"
-            groups={people
-              .filter(([id]) => !staffId || staffId === id)
-              .map(([id, name]) => ({
-                key: id,
-                label: name,
-                rows: rows.filter((row) => row.staffId === id),
-              }))}
-          />
+          <TeamDayCharts rows={rows} singleMember={Boolean(staffId)} />
         </>
+      )}
+      {staffId && (
+        <TeamActivitiesTable
+          key={JSON.stringify([staffId, params])}
+          params={params}
+          staffId={staffId}
+        />
       )}
     </div>
   );
 });
 
 const statusColors = ['var(--viridian)', '#3b82f6', '#f59e0b'];
+
+function TeamDayCharts({ rows, singleMember }: { rows: TeamRow[]; singleMember: boolean }) {
+  const series = teamTimeSeries(rows);
+  return (
+    <div className="grid gap-6 xl:grid-cols-2">
+      {[
+        {
+          title: singleMember ? 'Stunden je Einsatztag' : 'Ø Stunden je Einsatztag und Person',
+          data: series.timeline,
+          date: true,
+        },
+        { title: 'Ø Stunden nach Wochentag', data: series.weekdays, date: false },
+      ].map((chart) => (
+        <section
+          key={chart.title}
+          className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 sm:p-6"
+        >
+          <h2 className="text-lg font-semibold">{chart.title}</h2>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">
+            Nur durchgeführte Einsätze mit positiver Einsatzzeit. Durchschnitt pro Person und
+            Einsatztag; Tage ohne Einsatz zählen nicht mit.
+            {chart.date && series.monthly
+              ? ' Bei langen Zeiträumen: Monatsdurchschnitt der Einsatztage.'
+              : ''}
+          </p>
+          <div className="mt-4 h-72 min-w-0" role="img" aria-label={chart.title}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chart.data} margin={{ left: 0, right: 12, bottom: 12 }}>
+                <CartesianGrid vertical={false} stroke="var(--border-subtle)" />
+                <XAxis
+                  dataKey="name"
+                  minTickGap={24}
+                  tick={{ fontSize: 11, fill: 'var(--text-secondary)' }}
+                  tickFormatter={(value) =>
+                    chart.date
+                      ? series.monthly
+                        ? `${value.slice(5, 7)}.${value.slice(0, 4)}`
+                        : `${value.slice(8, 10)}.${value.slice(5, 7)}.`
+                      : value
+                  }
+                />
+                <YAxis
+                  width={42}
+                  tick={{ fontSize: 11, fill: 'var(--text-secondary)' }}
+                  tickFormatter={(value) => `${value} h`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--surface-1)',
+                    borderColor: 'var(--border-subtle)',
+                    borderRadius: 12,
+                  }}
+                  formatter={(value: number) => [
+                    `${value.toLocaleString('de-DE', { maximumFractionDigits: 2 })} Std.`,
+                    'Einsatzzeit',
+                  ]}
+                />
+                <Bar
+                  dataKey="hours"
+                  fill="var(--viridian)"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={36}
+                  isAnimationActive={false}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
 
 function TeamTypeChart({ rows }: { rows: TeamRow[] }) {
   const data = Object.entries(types).map(([type, name]) => ({
@@ -189,7 +258,7 @@ function TeamTypeChart({ rows }: { rows: TeamRow[] }) {
       <div
         className="mt-4 h-[420px] w-full min-w-0"
         role="img"
-        aria-label="Balkendiagramm der Personenstunden nach Aktivitätstyp und Status. Genaue Werte unter Werte nach Typ anzeigen."
+        aria-label="Balkendiagramm der Personenstunden nach Aktivitätstyp und Status."
       >
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
@@ -282,46 +351,6 @@ export function TeamMemberChips({
             {expanded ? 'Weniger anzeigen' : `${people.length - visible.length} weitere anzeigen`}
           </Button>
         )}
-      </div>
-    </section>
-  );
-}
-
-function Breakdown({
-  title,
-  groups,
-}: {
-  title: string;
-  groups: Array<{ key: string; label: string; rows: TeamRow[] }>;
-}) {
-  return (
-    <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 sm:p-6">
-      <h2 className="text-lg font-semibold mb-4">{title}</h2>
-      <div className="space-y-4">
-        {groups
-          .filter((group) => group.rows.length)
-          .map((group) => (
-            <div
-              key={group.key}
-              className="border-b border-[var(--border-subtle)] pb-4 last:border-0"
-            >
-              <h3 className="font-medium mb-2">{group.label}</h3>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {statuses.map((status) => {
-                  const matching = group.rows.filter((row) => row.status === status.key);
-                  return (
-                    <div key={status.key} className="flex justify-between gap-2 sm:block">
-                      <span className="text-sm text-[var(--text-secondary)]">{status.label}</span>
-                      <p>
-                        {hours(sum(matching, 'minutes'))} Std. · {sum(matching, 'assignments')}{' '}
-                        Einsätze
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
       </div>
     </section>
   );

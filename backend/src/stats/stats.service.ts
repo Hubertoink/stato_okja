@@ -219,7 +219,7 @@ export class StatsService {
     const qb = await this.createFilteredActivityQuery(scope.from, scope.to, scope.orgId, scope.orgIds, scope.projectId, scope.type, undefined, scope.weekdays, scope.closureState);
     // Team planning includes future assignments; visitor statistics retain their existing status rules.
     qb.setParameter('executionStatuses', ['completed', 'planned', 'cancelled']);
-    const activities = await qb.select(['activity.id', 'activity.type', 'activity.executionStatus', 'activity.durationMinutes', 'activity.staffTimes'])
+    const activities = await qb.select(['activity.id', 'activity.date', 'activity.type', 'activity.executionStatus', 'activity.durationMinutes', 'activity.staffTimes'])
       .leftJoinAndSelect('activity.staff', 'staff').getMany();
     return aggregateTeamStatistics(activities);
   }

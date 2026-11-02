@@ -20,8 +20,10 @@ describe('staff time editor', () => {
     expect(screen.getByText('11:30 – 15:30 Uhr')).toBeInTheDocument();
     expect(screen.getByText('Gesamtdauer: 4 Std. 0 Min.')).toBeInTheDocument();
     expect(screen.getByText('Ehrenamtliche')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Aktivitätsdauer übernehmen' })).toBeDisabled();
     expect(screen.getByLabelText('Anna: Stunden')).toHaveValue(4);
     fireEvent.change(screen.getByLabelText('Anna: Stunden'), { target: { value: '2' } });
+    expect(screen.getByRole('button', { name: 'Aktivitätsdauer übernehmen' })).toBeEnabled();
     expect(onChange).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Übernehmen' }));
     expect(onChange).toHaveBeenCalledWith([{ staffId: 'anna', minutes: 120 }]);

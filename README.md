@@ -126,7 +126,7 @@ App-Fenster; Anmeldung, Datenhaltung und Updates der Oberfläche bleiben auf dem
 
 Entwicklung: `npm run desktop:install`, danach `npm run desktop:dev`.
 Windows-Installer: `npm run desktop:build` (auf Windows).
-Download: [StatO Desktop 1.21.0 – Windows](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.21.0).
+Download: [StatO Desktop 1.21.1 – Windows](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.21.1).
 Details zu Verbindung, Installation und Tests: [Desktop-App](desktop/README.md).
 
 ## Projektstatus und Roadmap

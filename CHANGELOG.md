@@ -9,6 +9,9 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+### Changed
+- Mobile Aktivitätskarten zeigen „Geplant“ und „Ausgefallen“ zusammen mit der Dauer in einer kompakten Kombi-Badge.
+
 ## [1.21.0] - 2026-11-02
 
 ### Added

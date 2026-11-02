@@ -1193,7 +1193,7 @@ export default function Activities() {
               <div className="activity-mobile-backdrop" aria-hidden="true" style={{ backgroundColor: a.project?.color || colorForActivityType(a.type) }}>
                 {a.project?.imageUrl && <ProtectedImage src={a.project.imageUrl} alt="" className="h-full w-full object-cover" />}
               </div>
-              <div className="activity-mobile-content">
+              <div className={`activity-mobile-content${!isCompletedActivity(a.executionStatus) ? ' activity-mobile-content--status' : ''}`}>
                 <div className="activity-mobile-details">
                   <h2 className="activity-mobile-title">{a.title?.trim() || a.project?.title || activityTypeLabels[a.type] || a.type}</h2>
                   {a.title?.trim() && a.project?.title && a.title.trim() !== a.project.title.trim() && (
@@ -1223,7 +1223,7 @@ export default function Activities() {
                 ))}
               </div>
                 </div>
-                <div className="activity-mobile-attendance" aria-label={t('table.participants')}>
+                <div className="activity-mobile-attendance" aria-label={isCompletedActivity(a.executionStatus) ? t('table.participants') : undefined}>
                   <div className="activity-mobile-duration">
                 {(() => {
                   const duration =
@@ -1239,15 +1239,17 @@ export default function Activities() {
                       const e = parse(a.endTime);
                       return s !== undefined && e !== undefined && e >= s ? e - s : undefined;
                     })();
+                  if (!isCompletedActivity(a.executionStatus)) {
+                    return <ActivityExecutionStatusBadge status={a.executionStatus} combined
+                      durationLabel={duration ? `${duration}${autoT('ui_b6c935d4f3c7')}` : undefined} />;
+                  }
                   return duration ? (
                     <span className="text-xs px-2 py-1 bg-viridian text-white rounded">
                       {duration}{autoT('ui_b6c935d4f3c7')}</span>
                   ) : null;
                 })()}
                   </div>
-                  {!isCompletedActivity(a.executionStatus) ? (
-                    <ActivityExecutionStatusBadge status={a.executionStatus} />
-                  ) : (() => {
+                  {isCompletedActivity(a.executionStatus) ? (() => {
                     const m = a.countMale ?? 0;
                     const w = a.countFemale ?? 0;
                     const d = a.countDiverse ?? 0;
@@ -1261,7 +1263,7 @@ export default function Activities() {
                         <span>D <b>{formatNumber(d)}</b></span>
                       </div>
                     </div>;
-                  })()}
+                  })() : null}
                 </div>
               </div>
               {a.notes && (

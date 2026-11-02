@@ -1,6 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { TeamStatistics } from './TeamStatistics';
+import { cloneElement, useState, type ReactElement } from 'react';
+import { TeamStatistics, TeamMemberChips, useTeamStatisticsQuery } from './TeamStatistics';
+
+// jsdom has no layout/ResizeObserver; keep the actual chart with a fixed viewport.
+vi.mock('recharts', async (importOriginal) => ({
+  ...await importOriginal<typeof import('recharts')>(),
+  ResponsiveContainer: ({ children }: { children: ReactElement<{ width: number; height: number }> }) => cloneElement(children, { width: 600, height: 420 }),
+}));
 
 vi.mock('@/lib/orgScope', () => ({
   useOrgScopedQueryState: () => ({ scope: 'org-a', scopeKey: 'org-a', ready: true }),
@@ -37,14 +44,43 @@ vi.mock('@tanstack/react-query', () => ({
 }));
 
 describe('team statistics view', () => {
+  it('keeps the selected member visible in a collapsed chip list', () => {
+    const onChange = vi.fn();
+    render(<TeamMemberChips people={Array.from({ length: 12 }, (_, index) => [String(index), `Person ${index}`])} selectedId="11" onChange={onChange} />);
+    expect(screen.getByRole('button', { name: 'Person 11' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('button', { name: 'Person 10' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '3 weitere anzeigen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Person 10' }));
+    expect(onChange).toHaveBeenCalledWith('10');
+  });
   it('shows separate status totals and updates both breakdowns when selecting a person', () => {
-    render(<TeamStatistics params={{ from: '2026-11-01', to: '2026-11-30' }} />);
-    expect(screen.getByRole('heading', { name: 'Nach Typ' })).toBeInTheDocument();
+    function Harness() {
+      const params = { from: '2026-11-01', to: '2026-11-30' };
+      const query = useTeamStatisticsQuery(params);
+      const [staffId, setStaffId] = useState('');
+      return (
+        <>
+          <TeamMemberChips
+            people={[
+              ['anna', 'Anna'],
+              ['max', 'Max'],
+            ]}
+            selectedId={staffId}
+            onChange={setStaffId}
+          />
+          <TeamStatistics params={params} query={query} staffId={staffId} />
+        </>
+      );
+    }
+    render(<Harness />);
+    expect(screen.getByRole('heading', { name: 'Personenstunden nach Typ' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Nach Team-Mitglied' })).toBeInTheDocument();
     expect(screen.getByText('1,5 Std.')).toBeInTheDocument();
     expect(screen.getByText('1 Std.')).toBeInTheDocument();
     expect(screen.getByText('0,5 Std.')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Team-Mitglied'), { target: { value: 'anna' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Anna' }));
+    expect(screen.getByRole('button', { name: 'Anna' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByText('Werte nach Typ anzeigen'));
     expect(screen.getByText('0 Std.')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Max' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Offene Tür' })).toBeInTheDocument();

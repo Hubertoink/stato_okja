@@ -10,13 +10,16 @@ import type { Activity } from '@/lib/activities';
 vi.mock('./Modal', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div role="dialog">{children}</div>,
 }));
-const staff = [{ id: 'anna', name: 'Anna' }];
+const staff = [{ id: 'anna', name: 'Anna', role: 'volunteer' as const }];
 const form = { start: '11:30', end: '15:30', staffIds: ['anna'] };
 describe('staff time editor', () => {
   it('defaults to activity duration and only applies when confirmed', () => {
     const onChange = vi.fn();
     render(<StaffTimesButton form={form} staff={staff} onChange={onChange} />);
     fireEvent.click(screen.getByRole('button', { name: 'Einsatzzeiten anpassen' }));
+    expect(screen.getByText('11:30 – 15:30 Uhr')).toBeInTheDocument();
+    expect(screen.getByText('Gesamtdauer: 4 Std. 0 Min.')).toBeInTheDocument();
+    expect(screen.getByText('Ehrenamtliche')).toBeInTheDocument();
     expect(screen.getByLabelText('Anna: Stunden')).toHaveValue(4);
     fireEvent.change(screen.getByLabelText('Anna: Stunden'), { target: { value: '2' } });
     expect(onChange).not.toHaveBeenCalled();

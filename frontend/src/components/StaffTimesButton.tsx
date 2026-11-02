@@ -4,6 +4,8 @@ import Modal from './Modal';
 import { Input } from './ui/Field';
 import { Button } from './ui/Button';
 import type { ActivityFormState } from '@/pages/activityEditorShared';
+import type { StaffMember } from '@/lib/staff';
+import { STAFF_ROLE_LABEL } from './settings/EntityFormModals';
 
 export function activityFormMinutes(form: Pick<ActivityFormState, 'start' | 'end'>): number | null {
   if (!form.start || !form.end) return null;
@@ -21,7 +23,7 @@ export function StaffTimesButton({
   onChange,
 }: {
   form: ActivityFormState;
-  staff: Array<{ id: string; name: string }>;
+  staff: StaffMember[];
   onChange: (times: NonNullable<ActivityFormState['staffTimes']>) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -54,14 +56,27 @@ export function StaffTimesButton({
       {open && (
         <Modal open={open} onClose={() => setOpen(false)} title="Einsatzzeiten" variant="form">
           <div className="space-y-4 p-4">
-            <p className="text-sm text-[var(--text-secondary)]">
+            <section
+              aria-label="Zeitraum der Aktivität"
+              className="rounded-xl border border-[var(--interactive-soft-border)] bg-[var(--interactive-soft)] p-4"
+            >
+              <p className="text-xs font-medium text-[var(--text-secondary)]">Aktivitätszeitraum</p>
+              {duration === null ? (
+                <p className="mt-1">Bitte zuerst Start und Ende der Aktivität eingeben.</p>
+              ) : (
+                <>
+                  <p className="mt-1 text-xl font-semibold tabular-nums">
+                    {form.start?.slice(0, 5)} – {form.end?.slice(0, 5)} Uhr
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                    Gesamtdauer: {Math.floor(duration / 60)} Std. {duration % 60} Min.
+                  </p>
+                </>
+              )}
+            </section>
+            <p className="text-xs text-[var(--text-secondary)]">
               Ohne Anpassung gilt die volle Aktivitätsdauer. Änderungen werden mit der Aktivität
               gespeichert.
-            </p>
-            <p className="font-medium">
-              {duration === null
-                ? 'Bitte zuerst Start und Ende der Aktivität eingeben.'
-                : `Aktivitätsdauer: ${Math.floor(duration / 60)} Std. ${duration % 60} Min.`}
             </p>
             {!selected.length && <p>Bitte zuerst Team-Mitglieder auswählen.</p>}
             {selected.map((member) => {
@@ -72,9 +87,22 @@ export function StaffTimesButton({
                   key={member.id}
                   className="rounded-xl border border-[var(--border-subtle)] p-3 space-y-3"
                 >
-                  <div className="flex justify-between gap-2">
-                    <strong>{member.name}</strong>
-                    <span className="text-sm">{override ? 'Angepasst' : 'Automatisch'}</span>
+                  <div className="flex flex-wrap items-start justify-between gap-2 border-b border-[var(--border-subtle)] pb-3">
+                    <div className="min-w-0">
+                      <strong className="block break-words">{member.name}</strong>
+                      <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                        {(Array.isArray(member.roles)
+                          ? member.roles
+                          : [member.role || member.roles]
+                        )
+                          .filter(Boolean)
+                          .map((role) => STAFF_ROLE_LABEL[role!] || role)
+                          .join(' · ') || 'Team-Mitglied'}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-[var(--surface-2)] px-2 py-1 text-xs text-[var(--text-secondary)]">
+                      {override ? 'Angepasst' : 'Automatisch'}
+                    </span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <label className="text-sm">

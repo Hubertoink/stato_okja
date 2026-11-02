@@ -1,3 +1,4 @@
+import { useStaff } from '@/lib/staff';
 import { DataTransition } from '@/components/ui/DataTransition';
 import { MonthActivityIndicator, monthlyActivityCounts } from './statistics/MonthActivityIndicator';
 import { useStatisticsMonthCounts } from './statistics/useStatisticsOverview';
@@ -5,7 +6,7 @@ import { StatisticsTabs } from '@/components/AnnualTargetCards';
 import { formatStatisticsReportPeriod } from './statistics/reportPeriod';
 import { useTranslation } from 'react-i18next';
 import { useActiveOrganizationName } from '@/lib/useActiveOrganizationName';
-import { TeamStatistics, type TeamStatisticsHandle } from './statistics/TeamStatistics';
+import { TeamStatistics, TeamMemberChips, useTeamStatisticsQuery, type TeamStatisticsHandle } from './statistics/TeamStatistics';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   ResponsiveContainer,
@@ -147,6 +148,7 @@ function getActivityTypeLabel(type?: string | null) {
 
 export default function Statistics() {
   const teamStatisticsRef = useRef<TeamStatisticsHandle>(null);
+  const [selectedTeamMember, setSelectedTeamMember] = useState('');
   const [audience, setAudience] = useState<'visitors' | 'team'>('visitors');
   const { t } = useTranslation('common');
   const organizationName = useActiveOrganizationName();
@@ -267,6 +269,19 @@ export default function Statistics() {
       selectedWeekdays,
     ],
   );
+  const teamQuery = useTeamStatisticsQuery(statsParams, audience === 'team');
+  const { data: teamMembers = [] } = useStaff();
+  const teamPeople = useMemo(
+    () => [...new Map([
+      ...teamMembers.map(member => [member.id, member.name] as [string, string]),
+      ...(teamQuery.data || []).map(row => [row.staffId, row.name] as [string, string]),
+    ]).entries()].sort((a, b) => a[1].localeCompare(b[1])),
+    [teamMembers, teamQuery.data],
+  );
+  useEffect(() => { setSelectedTeamMember(''); }, [scopeKey]);
+  const teamMemberFilter = audience === 'team' ? (
+    <TeamMemberChips people={teamPeople} selectedId={selectedTeamMember} onChange={setSelectedTeamMember} />
+  ) : null;
   const activitiesParams = useMemo(
     () => ({
       from: from || undefined,
@@ -1556,6 +1571,8 @@ export default function Statistics() {
                       </div>
                     </section>
 
+                    {teamMemberFilter}
+
                     {projectsAll.length > 0 && (
                       <section className="space-y-3">
                         <div className="flex items-center justify-between gap-3">
@@ -1870,6 +1887,8 @@ export default function Statistics() {
                 </div>
               </div>
 
+              {teamMemberFilter}
+
               {projectsAll.length > 0 && (
                 <div className="mt-5">
                   <div className="text-sm font-medium text-gray-700 mb-2">
@@ -1987,7 +2006,7 @@ export default function Statistics() {
         })()}
       </SurfaceCard>
 
-      {audience === 'team' ? <TeamStatistics ref={teamStatisticsRef} params={statsParams} /> : <DataTransition variant="statistics" pending={overviewQ.isPending || overviewQ.isPlaceholderData}
+      {audience === 'team' ? <TeamStatistics ref={teamStatisticsRef} params={statsParams} query={teamQuery} staffId={selectedTeamMember} /> : <DataTransition variant="statistics" pending={overviewQ.isPending || overviewQ.isPlaceholderData}
         refreshing={overviewQ.isFetching} error={overviewQ.isError}
         label={`Statistik für ${formatRangeDisplay(MONTH_NAMES)} wird geladen …`}
         onRetry={() => { void overviewQ.refetch(); }}>

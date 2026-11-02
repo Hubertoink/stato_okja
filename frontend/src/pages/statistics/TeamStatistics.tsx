@@ -2,9 +2,9 @@ import { forwardRef, useImperativeHandle, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useOrgScopedQueryState } from '@/lib/orgScope';
-import { Select } from '@/components/ui/Field';
 import { Button } from '@/components/ui/Button';
 import type { StatisticsOverviewParams } from './types';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 type TeamRow = {
   staffId: string;
@@ -32,12 +32,8 @@ const hours = (minutes: number) =>
 const sum = (rows: TeamRow[], key: 'minutes' | 'assignments') =>
   rows.reduce((total, row) => total + row[key], 0);
 
-export const TeamStatistics = forwardRef<
-  TeamStatisticsHandle,
-  { params: StatisticsOverviewParams }
->(function TeamStatistics({ params }, ref) {
+export function useTeamStatisticsQuery(params: StatisticsOverviewParams, enabled = true) {
   const { scope, scopeKey, ready } = useOrgScopedQueryState();
-  const [staffId, setStaffId] = useState('');
   const queryParams = {
     from: params.from,
     to: params.to,
@@ -47,12 +43,22 @@ export const TeamStatistics = forwardRef<
     closureState: params.closureState,
     orgId: scope === null ? '' : scope,
   };
-  const query = useQuery<TeamRow[]>({
+  return useQuery<TeamRow[]>({
     queryKey: ['stats:team', scopeKey, queryParams],
-    enabled: ready,
+    enabled: ready && enabled,
     queryFn: async () => (await api.get('/stats/team', { params: queryParams })).data,
     refetchOnWindowFocus: true,
   });
+}
+
+export const TeamStatistics = forwardRef<
+  TeamStatisticsHandle,
+  {
+    params: StatisticsOverviewParams;
+    query: ReturnType<typeof useTeamStatisticsQuery>;
+    staffId?: string;
+  }
+>(function TeamStatistics({ params, query, staffId = '' }, ref) {
   const all = query.data || [];
   const people = [...new Map(all.map((row) => [row.staffId, row.name])).entries()];
   const rows = all.filter((row) => !staffId || row.staffId === staffId);
@@ -95,19 +101,6 @@ export const TeamStatistics = forwardRef<
     );
   return (
     <div className="space-y-6">
-      <div className="max-w-md">
-        <label className="block text-sm font-medium">
-          Team-Mitglied
-          <Select value={staffId} onChange={(e) => setStaffId(e.target.value)}>
-            <option value="">Alle Team-Mitglieder</option>
-            {people.map(([id, name]) => (
-              <option key={id} value={id}>
-                {name}
-              </option>
-            ))}
-          </Select>
-        </label>
-      </div>
       <p className="text-sm text-[var(--text-secondary)]">
         Personenstunden zählen die Einsatzzeit jeder zugeordneten Person. Ohne individuelle
         Anpassung gilt die volle Aktivitätsdauer. Die Team-Ansicht zeigt alle drei Status getrennt.
@@ -132,14 +125,18 @@ export const TeamStatistics = forwardRef<
         <p>Keine zugeordneten Team-Einsätze für diese Auswahl.</p>
       ) : (
         <>
-          <Breakdown
-            title="Nach Typ"
-            groups={Object.entries(types).map(([key, label]) => ({
-              key,
-              label,
-              rows: rows.filter((row) => row.type === key),
-            }))}
-          />
+          <TeamTypeChart rows={rows} />
+          <details>
+            <summary className="cursor-pointer text-sm">Werte nach Typ anzeigen</summary>
+            <Breakdown
+              title="Nach Typ"
+              groups={Object.entries(types).map(([key, label]) => ({
+                key,
+                label,
+                rows: rows.filter((row) => row.type === key),
+              }))}
+            />
+          </details>
           <Breakdown
             title="Nach Team-Mitglied"
             groups={people
@@ -155,6 +152,140 @@ export const TeamStatistics = forwardRef<
     </div>
   );
 });
+
+const statusColors = ['var(--viridian)', '#3b82f6', '#f59e0b'];
+
+function TeamTypeChart({ rows }: { rows: TeamRow[] }) {
+  const data = Object.entries(types).map(([type, name]) => ({
+    name,
+    ...Object.fromEntries(
+      statuses.map((status) => [
+        status.key,
+        sum(
+          rows.filter((row) => row.type === type && row.status === status.key),
+          'minutes',
+        ) / 60,
+      ]),
+    ),
+  }));
+  return (
+    <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 sm:p-6">
+      <h2 className="text-lg font-semibold">Personenstunden nach Typ</h2>
+      <p className="mt-1 text-sm text-[var(--text-secondary)]">
+        Einsatzzeiten im ausgewählten Zeitraum
+      </p>
+      <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs">
+        {statuses.map((status, index) => (
+          <span key={status.key} className="inline-flex items-center gap-2">
+            <span
+              aria-hidden
+              className="h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: statusColors[index] }}
+            />
+            {status.label}
+          </span>
+        ))}
+      </div>
+      <div
+        className="mt-4 h-[420px] w-full min-w-0"
+        role="img"
+        aria-label="Balkendiagramm der Personenstunden nach Aktivitätstyp und Status. Genaue Werte unter Werte nach Typ anzeigen."
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={data}
+            layout="vertical"
+            margin={{ top: 8, right: 16, left: 0, bottom: 12 }}
+            barGap={3}
+          >
+            <CartesianGrid horizontal={false} stroke="var(--border-subtle)" />
+            <XAxis
+              type="number"
+              tick={{ fontSize: 12, fill: 'var(--text-secondary)' }}
+              tickFormatter={(value) => `${Number(value).toLocaleString('de-DE')} h`}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={116}
+              tick={{ fontSize: 11, fill: 'var(--text-secondary)' }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip
+              cursor={{ fill: 'var(--surface-2)' }}
+              contentStyle={{
+                backgroundColor: 'var(--surface-1)',
+                borderColor: 'var(--border-subtle)',
+                borderRadius: 12,
+                color: 'var(--text-primary)',
+              }}
+              formatter={(value: number) =>
+                `${value.toLocaleString('de-DE', { maximumFractionDigits: 2 })} Std.`
+              }
+            />
+            {statuses.map((status, index) => (
+              <Bar
+                key={status.key}
+                dataKey={status.key}
+                name={status.label}
+                fill={statusColors[index]}
+                radius={[0, 4, 4, 0]}
+                maxBarSize={14}
+                isAnimationActive={false}
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </section>
+  );
+}
+
+export function TeamMemberChips({
+  people,
+  selectedId,
+  onChange,
+}: {
+  people: Array<[string, string]>;
+  selectedId: string;
+  onChange: (id: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded
+    ? people
+    : people.filter(([id], index) => index < 8 || id === selectedId);
+  return (
+    <section className="mt-5 space-y-2" aria-label="Team-Mitglieder auswählen">
+      <h3 className="text-sm font-medium text-[var(--text-secondary)]">Team-Mitglieder</h3>
+      <div className="flex flex-wrap gap-2">
+        {[['', 'Alle Team-Mitglieder'], ...visible].map(([id, name]) => (
+          <Button
+            key={id}
+            variant={id === selectedId ? 'primary' : 'secondary'}
+            className="rounded-full max-w-full text-left"
+            aria-pressed={id === selectedId}
+            onClick={() => onChange(id)}
+          >
+            <span className="break-words min-w-0">{name}</span>
+          </Button>
+        ))}
+        {people.length > 8 && (
+          <Button
+            variant="ghost"
+            className="rounded-full border-dashed"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((value) => !value)}
+          >
+            {expanded ? 'Weniger anzeigen' : `${people.length - visible.length} weitere anzeigen`}
+          </Button>
+        )}
+      </div>
+    </section>
+  );
+}
 
 function Breakdown({
   title,

@@ -47,7 +47,38 @@ test('release discovery paginates and surfaces HTTP failures', async () => {
   });
   assert.equal(selected.version, '1.17.0');
   assert.equal(calls, 2);
-  await assert.rejects(discoverDesktopRelease(async () => ({ ok: false, status: 403 })), /403/);
+  await assert.rejects(discoverDesktopRelease(async () => ({ ok: false, status: 403 })), { status: 403 });
+});
+
+test('default discovery uses the updater Chromium session with an abort deadline', async () => {
+  const f = fixture({ discover: undefined });
+  let calls = 0;
+  f.updater.netSession = { async fetch(url, options) {
+    calls += 1;
+    assert.match(url, /^https:\/\/api.github.com\/repos\/Hubertoink\/stato_okja\/releases\?/);
+    assert.ok(options.signal instanceof AbortSignal);
+    assert.equal(options.signal.aborted, false);
+    return { ok: true, json: async () => [release('1.17.0')] };
+  } };
+  assert.equal((await f.controller.check()).status, 'available');
+  assert.equal(calls, 1);
+});
+
+test('network failures and empty release lists are errors, and checks can recover', async () => {
+  for (const [error, message] of [
+    [Object.assign(new Error(), { name: 'TimeoutError' }), /zu lange/],
+    [Object.assign(new Error(), { status: 403 }), /begrenzt oder blockiert/],
+    [Object.assign(new Error(), { status: 407 }), /Anmeldung/],
+    [new Error('net::ERR_PROXY_CONNECTION_FAILED'), /VPN und Proxy/],
+  ]) {
+    const f = fixture({ discover: undefined });
+    f.updater.netSession = { fetch: async () => { throw error; } };
+    assert.equal((await f.controller.check()).status, 'error');
+    assert.match(f.controller.getState().message, message);
+    f.updater.netSession.fetch = async () => ({ ok: true, json: async () => [release('1.17.0')] });
+    assert.equal((await f.controller.check()).status, 'available');
+  }
+  assert.equal((await fixture({ discover: async () => null }).controller.check()).status, 'error');
 });
 
 test('checking never downloads; only explicit download and install advance the update', async () => {

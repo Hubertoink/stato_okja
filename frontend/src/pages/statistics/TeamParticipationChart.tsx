@@ -24,7 +24,8 @@ export function TeamParticipationChart({ rows }: { rows: Parameters<typeof teamP
                   stroke="var(--surface-1)" strokeWidth={2} isAnimationActive={false}>
                   {data.map((member, index) => <Cell key={member.staffId} fill={colors[index % colors.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: 'var(--surface-1)', borderColor: 'var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }}
+                <Tooltip wrapperStyle={{ zIndex: 10 }}
+                  contentStyle={{ backgroundColor: 'var(--surface-1)', borderColor: 'var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }}
                   itemStyle={{ color: 'var(--text-primary)' }}
                   formatter={(value: number) => [`${value.toLocaleString('de-DE')} Einsätze · ${percent(value)}`, 'Durchgeführt']} />
               </PieChart>

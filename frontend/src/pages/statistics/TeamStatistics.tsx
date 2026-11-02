@@ -1,3 +1,5 @@
+import { formatStatisticsAggregationTooltipLabel } from '../statisticsHelpers';
+import { autoT } from '@/i18n/auto';
 import { TeamChartCard } from './TeamChartCard';
 import { KpiCard } from './StatisticsKpis';
 import { teamTimeSeries } from './teamTimeSeries';
@@ -197,15 +199,26 @@ function TeamDayCharts({ rows, singleMember }: { rows: TeamRow[]; singleMember: 
                   tickFormatter={(value) => `${value} h`}
                 />
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--surface-1)',
-                    borderColor: 'var(--border-subtle)',
-                    borderRadius: 12,
+                  wrapperStyle={{ zIndex: 10 }}
+                  cursor={{ fill: 'var(--border-subtle)', fillOpacity: 0.35 }}
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length || label == null) return null;
+                    const prefix = chart.date
+                      ? series.monthly ? 'Monat:' : autoT('ui_1ae0fe72e0f6', { value0: '' }).trim()
+                      : 'Wochentag:';
+                    const formatted = chart.date
+                      ? formatStatisticsAggregationTooltipLabel(String(label), series.monthly ? 'month' : 'day')
+                      : ({ Mo: 'Montag', Di: 'Dienstag', Mi: 'Mittwoch', Do: 'Donnerstag', Fr: 'Freitag', Sa: 'Samstag', So: 'Sonntag' }[String(label)] || String(label));
+                    const dateValue = formatted.startsWith(prefix) ? formatted.slice(prefix.length).trimStart() : formatted;
+                    const value = Number(payload[0].value ?? 0).toLocaleString('de-DE', { maximumFractionDigits: 2 });
+                    return (
+                      <div className="rounded-xl px-3 py-2.5 text-sm text-[var(--text-primary)]"
+                        style={{ backgroundColor: 'var(--surface-1)', boxShadow: '0 8px 26px rgba(76, 79, 105, 0.1)' }}>
+                        <p className="m-0 text-[var(--text-secondary)]"><strong>{prefix}</strong> {dateValue}</p>
+                        <p className="mb-0 mt-1.5"><strong>{singleMember && chart.date && !series.monthly ? 'Einsatzzeit' : 'Ø Einsatzzeit'}:</strong> {value} Std.</p>
+                      </div>
+                    );
                   }}
-                  formatter={(value: number) => [
-                    `${value.toLocaleString('de-DE', { maximumFractionDigits: 2 })} Std.`,
-                    'Einsatzzeit',
-                  ]}
                 />
                 <Bar
                   dataKey="hours"

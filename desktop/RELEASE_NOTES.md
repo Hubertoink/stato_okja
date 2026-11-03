@@ -2,8 +2,8 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Noch nicht aktivierte Konten sind in der Benutzerliste mit „Einladung offen“ gekennzeichnet.
-- Administratoren können Einladungen direkt erneut senden, auch mobil. Rollen und Organisationszugänge bleiben erhalten.
+- Einladungs- und Passwort-Reset-Seiten erhalten einen Schutz vor veralteten Formularen aus dem Offline-Cache.
+- Fehlende Zustimmung sowie ungültige oder bereits angenommene Einladungen werden verständlich erklärt.
 - Für diese Änderungen den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren.
 
 ### Installation und einmaliger Umstieg

@@ -9,8 +9,15 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.22.3] - 2026-11-03
+
 ### Added
 - Die Benutzerliste kennzeichnet noch nicht aktivierte Konten mit „Einladung offen“. Administratoren können Einladungen direkt erneut versenden, auch mobil und nach einer Rollenänderung. Bestehende Rollen und Zugänge bleiben erhalten.
+
+### Upgrade-Hinweise
+- Server, Backup-Image und Windows-Desktop verwenden Version 1.22.3. Für Einladungsstatus und erneuten Versand den verbundenen Server aktualisieren.
+- Mittwald: Backend und Backup auf `1.22.3`, Frontend auf `stack-1.22.3` aktualisieren. Der Demo-Tag bleibt `demo`.
+- Keine Datenbankmigration nötig. Bestehende offene Einladungen werden automatisch erkannt.
 
 ## [1.22.2] - 2026-11-03
 

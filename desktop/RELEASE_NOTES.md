@@ -2,8 +2,8 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Aktivitäten ohne Projekt-Zeitvorgaben starten mit leeren Uhrzeitfeldern; Start und Ende müssen angegeben werden.
-- Benutzer können Tags anlegen. Der Einladungsdialog erklärt die Unterschiede zwischen Benutzer, Editor und Administrator.
+- Noch nicht aktivierte Konten sind in der Benutzerliste mit „Einladung offen“ gekennzeichnet.
+- Administratoren können Einladungen direkt erneut senden, auch mobil. Rollen und Organisationszugänge bleiben erhalten.
 - Für diese Änderungen den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren.
 
 ### Installation und einmaliger Umstieg

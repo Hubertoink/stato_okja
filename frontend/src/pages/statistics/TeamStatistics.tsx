@@ -1,3 +1,4 @@
+import { TeamStatisticsSkeleton } from './TeamStatisticsSkeleton';
 import { formatStatisticsAggregationTooltipLabel } from '../statisticsHelpers';
 import { autoT } from '@/i18n/auto';
 import { TeamChartCard } from './TeamChartCard';
@@ -99,7 +100,7 @@ export const TeamStatistics = forwardRef<
       })();
     },
   }));
-  if (query.isPending) return <p role="status">Team-Auswertung wird geladen …</p>;
+  if (query.isPending || query.isPlaceholderData) return <TeamStatisticsSkeleton participation={Boolean(params.projectId || params.type)} activities={Boolean(staffId)} />;
   if (query.isError)
     return (
       <div role="alert">
@@ -109,10 +110,6 @@ export const TeamStatistics = forwardRef<
     );
   return (
     <div className="space-y-6">
-      <p className="text-sm text-[var(--text-secondary)]">
-        Personenstunden zählen die Einsatzzeit jeder zugeordneten Person. Ohne individuelle
-        Anpassung gilt die volle Aktivitätsdauer. Die Team-Ansicht zeigt alle drei Status getrennt.
-      </p>
       {exportError && <p role="alert">Der Export ist fehlgeschlagen. Bitte erneut versuchen.</p>}
       <div className="statistics-kpi-grid">
         {statuses.map((status) => {
@@ -163,20 +160,15 @@ function TeamDayCharts({ rows, singleMember }: { rows: TeamRow[]; singleMember: 
     <div className="grid gap-6 xl:grid-cols-2">
       {[
         {
-          title: singleMember ? 'Stunden je Einsatztag' : 'Ø Stunden je Einsatztag und Person',
+          title: series.monthly
+            ? singleMember ? 'Ø Stunden je Monat' : 'Ø Stunden je Monat und Person'
+            : singleMember ? 'Stunden je Einsatztag' : 'Ø Stunden je Einsatztag und Person',
           data: series.timeline,
           date: true,
         },
         { title: 'Ø Stunden nach Wochentag', data: series.weekdays, date: false },
       ].map((chart) => (
         <TeamChartCard key={chart.title} title={chart.title}>
-          <p className="mt-1 text-xs text-[var(--text-secondary)]">
-            Nur durchgeführte Einsätze mit positiver Einsatzzeit. Durchschnitt pro Person und
-            Einsatztag; Tage ohne Einsatz zählen nicht mit.
-            {chart.date && series.monthly
-              ? ' Bei langen Zeiträumen: Monatsdurchschnitt der Einsatztage.'
-              : ''}
-          </p>
           <div className="mt-4 h-72 min-w-0" role="img" aria-label={chart.title}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chart.data} margin={{ left: 0, right: 12, bottom: 12 }}>
@@ -251,9 +243,6 @@ function TeamTypeChart({ rows }: { rows: TeamRow[] }) {
   }));
   return (
     <TeamChartCard title="Personenstunden nach Typ">
-      <p className="mt-1 text-sm text-[var(--text-secondary)]">
-        Einsatzzeiten im ausgewählten Zeitraum
-      </p>
       <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs">
         {statuses.map((status, index) => (
           <span key={status.key} className="inline-flex items-center gap-2">

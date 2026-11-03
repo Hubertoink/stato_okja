@@ -127,3 +127,43 @@ describe('team statistics view', () => {
 });
 
 vi.mock('@/components/Toast', () => ({ useToast: () => ({ showToast: vi.fn() }), useProgressToast: vi.fn() }));
+
+it('shows placeholders while loading and removes them when team data arrives', () => {
+  function Harness({ pending, placeholder = false }: { pending: boolean; placeholder?: boolean }) {
+    const query = useTeamStatisticsQuery({});
+    return <TeamStatistics params={{ type: 'event' }} staffId="anna" query={{ ...query, isPending: pending, isPlaceholderData: placeholder } as typeof query} />;
+  }
+  const view = render(<Harness pending />);
+  expect(screen.getByLabelText('Team-Statistik')).toHaveAttribute('aria-busy', 'true');
+  expect(view.container.querySelectorAll('.skeleton-shimmer').length).toBeGreaterThan(10);
+  expect(screen.queryByText('Team-Auswertung wird geladen …')).not.toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Personenstunden nach Typ' })).not.toBeInTheDocument();
+  view.rerender(<Harness pending={false} placeholder />);
+  expect(screen.getByLabelText('Team-Statistik')).toHaveAttribute('aria-busy', 'true');
+  view.rerender(<Harness pending={false} />);
+  expect(view.container.querySelector('.skeleton-shimmer')).toBeNull();
+  expect(screen.getByRole('heading', { name: 'Personenstunden nach Typ' })).toBeInTheDocument();
+  expect(screen.queryByText(/Personenstunden zählen/)).not.toBeInTheDocument();
+});
+
+it('labels monthly aggregation dynamically for the team and individual members', () => {
+  function Harness({ days, staffId }: { days: number; staffId?: string }) {
+    const query = useTeamStatisticsQuery({});
+    const data = Array.from({ length: days }, (_, index) => ({
+      date: new Date(Date.UTC(2026, 0, index + 1)).toISOString().slice(0, 10),
+      staffId: 'anna', name: 'Anna', type: 'event', status: 'completed', minutes: 120, assignments: 1,
+    }));
+    return <TeamStatistics params={{ type: 'event' }} staffId={staffId} query={{ ...query, data } as typeof query} />;
+  }
+  const view = render(<Harness days={63} />);
+  expect(screen.getByRole('heading', { name: 'Ø Stunden je Monat und Person' })).toBeInTheDocument();
+  expect(screen.queryByText(/Nur durchgeführte Einsätze/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Beteiligung an den Aktivitäten/)).not.toBeInTheDocument();
+  expect(screen.queryByText('Einsatzzeiten im ausgewählten Zeitraum')).not.toBeInTheDocument();
+  view.rerender(<Harness days={63} staffId="anna" />);
+  expect(screen.getByRole('heading', { name: 'Ø Stunden je Monat' })).toBeInTheDocument();
+  view.rerender(<Harness days={62} staffId="anna" />);
+  expect(screen.getByRole('heading', { name: 'Stunden je Einsatztag' })).toBeInTheDocument();
+  view.rerender(<Harness days={62} />);
+  expect(screen.getByRole('heading', { name: 'Ø Stunden je Einsatztag und Person' })).toBeInTheDocument();
+});

@@ -10,11 +10,6 @@ export function TeamParticipationChart({ rows }: { rows: Parameters<typeof teamP
   const percent = (value: number) => `${(value / total * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`;
   return (
     <TeamChartCard title="Durchgeführte Einsätze nach Teammitglied">
-      <p className="mt-1 text-sm text-[var(--text-secondary)]">
-        Beteiligung an den Aktivitäten der aktuellen Auswahl. Pro Aktivität zählt jede zugeordnete
-        Person einmal. Gemeinsame Aktivitäten ergeben mehrere Team-Einsätze; geplante und
-        ausgefallene Aktivitäten zählen nicht mit.
-      </p>
       {!total ? <p className="mt-4 text-sm text-[var(--text-secondary)]">Keine durchgeführten Team-Einsätze für diese Auswahl.</p> : (
         <div className="mt-4 grid min-w-0 items-center gap-6 md:grid-cols-2">
           <div className="relative h-64 min-w-0" role="img" aria-label={`Ringdiagramm: ${total.toLocaleString('de-DE')} durchgeführte Team-Einsätze. Werte je Person in der folgenden Tabelle.`}>

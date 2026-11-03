@@ -9,9 +9,20 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.22.2] - 2026-11-03
+
+### Changed
+- Benutzer können eigene Tags anlegen, auch direkt bei Aktivitäten und Projekten. Organisationsvorgaben für eigene Tags bleiben wirksam; Bearbeiten, Archivieren und Löschen bleiben Editor und Administrator vorbehalten.
+- Der Einladungsdialog erklärt die Berechtigungen von Benutzer, Editor und Administrator.
+
 ### Fixed
 - Aktivitäten ohne Projekt-Zeitvorgaben erhalten keine erfundenen Start-/Endzeiten mehr. Start und Ende sind in Kalenderdialog, Anlegen und Bearbeiten erforderlich; konfigurierte Projektzeiten bleiben als Vorgaben erhalten.
 - Die API verlangt Start und Ende beim Anlegen und verhindert das Leeren vorhandener Zeiten bei Teilaktualisierungen.
+
+### Upgrade-Hinweise
+- Server, Backup-Image und Windows-Desktop verwenden Version 1.22.2. Die Änderungen an Formularen und Berechtigungen benötigen das Serverupdate.
+- Mittwald: Backend und Backup auf `1.22.2`, Frontend auf `stack-1.22.2` aktualisieren.
+- API-Integrationen müssen beim Anlegen von Aktivitäten Start- und Endzeit explizit senden. Bestehende Aktivitäten werden nicht verändert.
 
 ## [1.22.1] - 2026-11-03
 

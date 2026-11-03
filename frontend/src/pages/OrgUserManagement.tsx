@@ -16,6 +16,7 @@ import {
   KeyRound,
   Users,
   Shield,
+  Pencil,
   User as UserIcon,
   Building2,
   Mail,
@@ -526,13 +527,19 @@ export default function OrgUserManagement() {
           {/* Role explanation */}
           <div className="rounded-lg bg-[var(--surface-2)] p-3 text-sm text-[var(--text-secondary)]">
             <div className="flex items-start gap-2 mb-2">
-              <UserIcon className="mt-0.5 h-4 w-4 text-[var(--text-muted)]" />
+              <UserIcon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-muted)]" />
               <div>
                 <strong>{autoT('ui_e8321efba4c2')}</strong> {autoT('ui_c9319abe9cdf')}
               </div>
             </div>
+            <div className="flex items-start gap-2 mb-2">
+              <Pencil className="mt-0.5 h-4 w-4 shrink-0 text-viridian" />
+              <div>
+                <strong>Editor:</strong> {autoT('role_editor_description')}
+              </div>
+            </div>
             <div className="flex items-start gap-2">
-              <Shield className="w-4 h-4 mt-0.5 text-viridian" />
+              <Shield className="w-4 h-4 mt-0.5 shrink-0 text-viridian" />
               <div>
                 <strong>{autoT('ui_9e2aeb7aa5cc')}</strong> {autoT('ui_32a6e772e5c4')}
               </div>

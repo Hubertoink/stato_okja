@@ -309,6 +309,7 @@ function handleRequest(method: string, path: string, params: Record<string, unkn
   if (method === 'patch' && segments[0] === 'users' && segments[1]) return ok({ ok: true });
   if (method === 'delete' && segments[0] === 'users' && segments[1]) return noContent();
 
+  if (method === 'get' && path === '/stats/team') return ok(demo.getDemoTeamStats(params));
   if (method === 'get' && path === '/stats/summary') return ok(demo.getDemoStatsSummary(params));
   if (method === 'get' && path === '/stats/overview') return ok(demo.getDemoStatsOverview(params));
   if (method === 'get' && path === '/stats/participants-timeseries') {

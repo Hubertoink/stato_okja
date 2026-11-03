@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { randomBytes, randomInt } from 'crypto';
 import { SUPPORTED_LOCALES, type SupportedLocale, SUPPORTED_THEME_MODES, type ThemeMode, SUPPORTED_NAVIGATION_LAYOUTS, type NavigationLayout, SUPPORTED_VIEW_DENSITIES, type ViewDensity, User } from '../users/entities/user.entity';
 import { OrganizationMembership } from '../users/entities/organization-membership.entity';
@@ -1012,10 +1012,24 @@ export class AuthService {
     if ((decoded.version ?? 0) !== (user.inviteTokenVersion ?? 0)) {
       throw invalidInvite();
     }
-    await this.savePassword(user, password, { mustChangePassword: false, bumpResetVersion: false });
-    user.termsAcceptedVersion = await this.legalContent.getTermsOfUseVersion();
-    user.termsAcceptedAt = new Date();
-    await this.users.save(user);
+    if (user.role !== 'superadmin' && !(await this.memberships.count({ where: { userId: user.id, status: 'active' } }))) {
+      throw invalidInvite();
+    }
+    if (!isStrongPassword(password)) throw new BadRequestException(PASSWORD_POLICY_MESSAGE);
+    const activation = {
+      passwordHash: await bcrypt.hash(password, 10),
+      mustChangePassword: false,
+      termsAcceptedVersion: await this.legalContent.getTermsOfUseVersion(),
+      termsAcceptedAt: new Date(),
+    };
+    // Do not recreate a deleted account or activate a concurrently revoked link.
+    const result = await this.users.update(
+      { id: user.id, passwordHash: IsNull(), inviteTokenVersion: decoded.version ?? 0 },
+      activation,
+    );
+    if (result.affected !== 1) throw invalidInvite();
+    Object.assign(user, activation);
+    await this.revokeAllRefreshSessionsForUser(user.id);
     return this.login(user, metadata);
   }
 

@@ -9,6 +9,16 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.22.5] - 2026-11-03
+
+### Fixed
+- Das Entziehen eines Organisationszugangs widerruft offene Einladungslinks. Einladungen ohne aktiven Organisationszugang können kein Konto mehr aktivieren; auch während der Annahme widerrufene oder gelöschte Konten werden nicht reaktiviert.
+
+### Upgrade-Hinweise
+- Server, Backup-Image und Windows-Desktop verwenden Version 1.22.5. Die Prüfung zurückgezogener Einladungen benötigt das Backend-Update.
+- Mittwald: Backend und Backup auf `1.22.5`, Frontend auf `stack-1.22.5` aktualisieren. Der Demo-Tag bleibt `demo`.
+- Bereits früher entzogene Einladungen ohne aktiven Organisationszugang werden ebenfalls abgelehnt. Es ist keine Datenbankmigration nötig.
+
 ## [1.22.4] - 2026-11-03
 
 ### Fixed

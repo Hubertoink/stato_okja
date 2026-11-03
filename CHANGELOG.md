@@ -9,6 +9,11 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+### Fixed
+- Einladungs- und Passwort-Reset-Seiten werden nach Aktualisierung des Service Workers nicht mehr aus dem Offline-App-Shell-Cache geladen.
+- Fehlende Zustimmung zu den Nutzungsbedingungen sowie abgelaufene, ersetzte und bereits angenommene Einladungslinks erhalten verständliche Fehlermeldungen.
+- Der Ablauf Löschen, erneutes Einladen derselben E-Mail-Adresse und Annehmen der neuen Einladung ist durch einen Datenbanktest abgesichert.
+
 ## [1.22.3] - 2026-11-03
 
 ### Added

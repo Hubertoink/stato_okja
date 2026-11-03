@@ -15,6 +15,8 @@ const userSchema = new EntitySchema<User>({
     passwordHash: { type: String, nullable: true },
     inviteTokenVersion: { type: Number, default: 0 },
     mustChangePassword: { type: Boolean, default: false },
+    termsAcceptedVersion: { type: String, nullable: true },
+    termsAcceptedAt: { type: Date, nullable: true },
   },
 });
 const membershipSchema = new EntitySchema<OrganizationMembership>({
@@ -59,7 +61,7 @@ describe('user account lifecycle', () => {
 
     const jwt = { signAsync: jest.fn().mockResolvedValue('new-invite'), verifyAsync: jest.fn().mockResolvedValue({ sub: old.id, purpose: 'invite', version: 1 }) };
     const email = { sendInviteEmail: jest.fn().mockResolvedValue({ queued: true }) };
-    const auth = new AuthService(db.getRepository(User), {} as never, db.getRepository(OrganizationMembership), {} as never, {} as never, jwt as never, email as never, {} as never, {} as never);
+    const auth = new AuthService(db.getRepository(User), {} as never, db.getRepository(OrganizationMembership), {} as never, db.getRepository('SessionFixture') as never, jwt as never, email as never, {} as never, { getTermsOfUseVersion: async () => 'current-terms' } as never);
     const result = await auth.inviteUser({ email: ' Person@Example.org ', name: 'New Person', orgId: 'new-org', role: 'user' });
     expect(result.user.id).not.toBe(old.id);
     expect(result.user.email).toBe('person@example.org');
@@ -68,7 +70,15 @@ describe('user account lifecycle', () => {
       expect.objectContaining({ userId: result.user.id, orgId: 'new-org', status: 'active' }),
     ]);
     expect((await db.getRepository(User).findOneByOrFail({ id: result.user.id })).passwordHash).toBeNull();
-    await expect(auth.acceptInvite('old-invite', 'StrongPassword1!', true)).rejects.toThrow('User not found');
+    await expect(auth.acceptInvite('old-invite', 'StrongPassword1!', true)).rejects.toMatchObject({ status: 400 });
+    // The new identity can accept its own fresh invitation, independently of
+    // the deleted account. Keep actual password hashing and database writes.
+    jwt.verifyAsync.mockResolvedValueOnce({ sub: result.user.id, purpose: 'invite', version: 1 });
+    jest.spyOn(auth, 'login').mockResolvedValue({ access_token: 'new-session' } as never);
+    await expect(auth.acceptInvite('new-invite', 'StrongPassword1!', true)).resolves.toMatchObject({ access_token: 'new-session' });
+    const activated = await db.getRepository(User).findOneByOrFail({ id: result.user.id });
+    expect(activated.passwordHash).toBeTruthy();
+    expect(activated.termsAcceptedVersion).toBe('current-terms');
   });
 
   it('preserves an account that is the last active admin of any organization', async () => {

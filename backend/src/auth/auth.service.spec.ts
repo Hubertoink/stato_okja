@@ -2,7 +2,7 @@ import { ConflictException, ForbiddenException, UnauthorizedException } from '@n
 import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 import { ValidationPipe } from '@nestjs/common';
-import { UpdateMeDto } from './dto/auth.dto';
+import { AcceptInviteDto, UpdateMeDto } from './dto/auth.dto';
 
 describe('AuthService invitations', () => {
   function createService(options: {
@@ -79,6 +79,24 @@ describe('AuthService invitations', () => {
     if (throws) email.sendInviteEmail.mockRejectedValueOnce(new Error('SMTP rejected'));
     await expect(service.resendInvite('pending', 'superadmin', null)).rejects.toMatchObject({ status: 503 });
     expect(users.update).toHaveBeenLastCalledWith({ id: 'pending', inviteTokenVersion: 3 }, { inviteTokenVersion: 2 });
+  });
+
+  it('explains missing consent from an old client without allowing implicit consent', async () => {
+    const pipe = new ValidationPipe({ whitelist: true });
+    const metadata = { type: 'body' as const, metatype: AcceptInviteDto };
+    for (const termsAccepted of [undefined, 'true', null]) {
+      await expect(pipe.transform({ token: 'test', password: 'StrongPassword1!', termsAccepted }, metadata))
+        .rejects.toMatchObject({ response: { message: [expect.stringContaining('Einladungsseite neu')] } });
+    }
+    await expect(pipe.transform({ token: 'test', password: 'StrongPassword1!', termsAccepted: true }, metadata)).resolves.toMatchObject({ termsAccepted: true });
+  });
+
+  it('returns actionable client errors for expired or replaced invite links', async () => {
+    const { service, jwt } = createService({ existingUser: { id: 'pending', passwordHash: null, inviteTokenVersion: 2 } });
+    jwt.verifyAsync.mockRejectedValueOnce(new Error('jwt expired'));
+    await expect(service.acceptInvite('expired', 'StrongPassword1!', true)).rejects.toMatchObject({ status: 400 });
+    jwt.verifyAsync.mockResolvedValueOnce({ sub: 'pending', purpose: 'invite', version: 1 });
+    await expect(service.acceptInvite('replaced', 'StrongPassword1!', true)).rejects.toMatchObject({ status: 400 });
   });
 
   it('saves and returns the account view density without changing other profile fields', async () => {

@@ -998,15 +998,19 @@ export class AuthService {
 
   async acceptInvite(token: string, password: string, termsAccepted: boolean, metadata?: RefreshSessionMetadata) {
     if (termsAccepted !== true) throw new BadRequestException('Bitte stimme den Nutzungsbedingungen zu.');
-    const decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string; version?: number }>(token, {
-      secret: getJwtSecret(),
-    });
-    if (!decoded || decoded.purpose !== 'invite') throw new Error('Invalid invite token');
+    const invalidInvite = () => new BadRequestException('Dieser Einladungslink ist abgelaufen oder nicht mehr gültig. Bitte verwende die neueste Einladung oder bitte deine Administration um eine neue.');
+    let decoded: { sub: string; purpose?: string; version?: number };
+    try {
+      decoded = await this.jwt.verifyAsync(token, { secret: getJwtSecret() });
+    } catch {
+      throw invalidInvite();
+    }
+    if (!decoded || !decoded.sub || decoded.purpose !== 'invite') throw invalidInvite();
     const user = await this.users.findOne({ where: { id: decoded.sub } });
-    if (!user) throw new Error('User not found');
-    if (user.passwordHash) throw new Error('Invite already accepted');
+    if (!user) throw invalidInvite();
+    if (user.passwordHash) throw new ConflictException('Die Einladung wurde bereits angenommen. Bitte melde dich mit deinem bestehenden Passwort an.');
     if ((decoded.version ?? 0) !== (user.inviteTokenVersion ?? 0)) {
-      throw new Error('Invite token wurde ersetzt oder ist nicht mehr gültig');
+      throw invalidInvite();
     }
     await this.savePassword(user, password, { mustChangePassword: false, bumpResetVersion: false });
     user.termsAcceptedVersion = await this.legalContent.getTermsOfUseVersion();

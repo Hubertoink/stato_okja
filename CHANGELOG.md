@@ -9,13 +9,28 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.22.0] - 2026-11-03
+
+### Added
+- Team-Statistik mit getrennten Personenstunden für durchgeführte, geplante und ausgefallene Einsätze, Tages-/Monatsverlauf und Wochentagsauswertung.
+- Bei Projekt- oder Typauswahl zeigt ein Ringdiagramm die durchgeführten Einsätze je Teammitglied mit Anzahl und Anteil. Einzelne Teammitglieder erhalten eine gefilterte Aktivitätstabelle.
+- PNG-Export für alle Team-Diagramme sowie vollständiger CSV-/Excel-Export der Team-Aktivitäten inklusive individueller Einsatzzeit und Status.
+- Individuelle Einsatzzeiten je Teammitglied mit Schieberegler, Viertelstunden-Schritten, seitlichen Pfeilen und Anzeige in Stunden und Minuten. Die volle Aktivitätsdauer bleibt auch bei abweichender Länge erreichbar.
+
+### Changed
+- Statistikfilter ohne doppelte Auswahl: Desktop verwendet Typ- und Projekt-Badges, Mobile die bestehenden Auswahldialoge.
+- Team-Statistik mit Ladeplatzhaltern, übersichtlichen Diagrammen ohne Untertexte und passenden Tages-/Monatsüberschriften.
+- Team-Tooltips mit lesbaren Datumsangaben und korrigierter Darstellung über dem Ringdiagramm.
+
 ### Fixed
 - Individuelle Einsatzzeiten erhalten ein dezentes Uhrsymbol am Personen-Badge. Die volle Aktivitätsdauer gilt wieder als automatisch und wird nicht als Anpassung gespeichert.
 - Der Aktualisierungshinweis der Statistik erscheint als Toast unten rechts und verschwindet nach Abschluss.
+- Die Datenbankmigration für Einsatzzeiten berücksichtigt bereits vorhandene Spalten bei Neuinstallationen.
 
-### Changed
-- Team-Statistik: Bei Projekt- oder Typauswahl zeigt ein Ringdiagramm die durchgeführten Einsätze je Teammitglied, mit Anzahl und Anteil.
-- Statistikfilter ohne doppelte Auswahl: Desktop verwendet Typ- und Projekt-Badges, Mobile die bestehenden Auswahldialoge.
+### Upgrade-Hinweise
+- Server, Backup-Image und Windows-Desktop verwenden Version 1.22.0. Für die neuen Funktionen den verbundenen Server aktualisieren.
+- Die Backend-Migration ergänzt individuelle Einsatzzeiten an Aktivitäten. Vor dem Update ein Datenbank- und Upload-Backup erstellen; bestehende Daten und Zuordnungen bleiben erhalten.
+- Mittwald: Backend und Backup auf `1.22.0`, Frontend auf `stack-1.22.0` aktualisieren. Bestehende Volumes, Umgebungsvariablen und Backup-Cronjobs beibehalten.
 
 ## [1.21.1] - 2026-11-02
 

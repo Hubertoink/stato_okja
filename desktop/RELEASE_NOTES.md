@@ -2,8 +2,9 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Mobile Aktivitätskarten zeigen Status und Dauer gemeinsam in einer kompakten Kombi-Badge.
-- Die mobile Detailansicht verwendet dieselbe Badge im Kopfbereich; die separate Status-Karte darunter entfällt.
+- Team-Statistik mit Diagrammen, individuellen Einsatzzeiten und PNG-, CSV- und Excel-Exporten.
+- Einsatzzeiten bequem mit einem Schieberegler in Viertelstunden-Schritten anpassen; die volle Dauer gilt automatisch.
+- Verbesserte Statistikfilter, Ladeplatzhalter und Tooltips.
 - Für diese Änderungen den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren.
 
 ### Installation und einmaliger Umstieg

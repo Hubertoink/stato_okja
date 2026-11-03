@@ -877,6 +877,38 @@ export class AuthService {
     }
   }
 
+  async resendInvite(userId: string, actorRole: string, orgId?: string | null) {
+    if (actorRole !== 'superadmin' && actorRole !== 'org_admin') throw new ForbiddenException('Nicht erlaubt');
+    // Only the explicit global superadmin view may resend without an org scope.
+    if (!(actorRole === 'superadmin' && orgId === null)) {
+      if (!orgId) throw new ForbiddenException('Organisation ist erforderlich');
+      const membership = await this.memberships.findOne({ where: { userId, orgId, status: 'active' } });
+      if (!membership) throw new ForbiddenException('Kein Zugriff auf dieses Benutzerkonto');
+    }
+    const user = await this.users.findOne({ where: { id: userId } });
+    if (!user) throw new BadRequestException('Benutzerkonto nicht gefunden');
+    if (user.passwordHash) throw new ConflictException('Die Einladung wurde bereits angenommen. Bitte die Benutzerliste aktualisieren.');
+
+    const previousVersion = user.inviteTokenVersion ?? 0;
+    const nextVersion = previousVersion + 1;
+    // Update only the token version; never overwrite a changed role or password.
+    await this.users.update({ id: userId }, { inviteTokenVersion: nextVersion });
+    try {
+      const token = await this.jwt.signAsync(
+        { sub: userId, purpose: 'invite', version: nextVersion },
+        { expiresIn: this.getInviteTokenExpirationSeconds() },
+      );
+      const origin = process.env.APP_ORIGIN || 'http://localhost:5173';
+      const result = await this.email.sendInviteEmail(user.email, user.name || user.email, `${origin}/accept-invite?token=${token}`);
+      if (!result.queued) throw new HttpException({ code: 'SMTP_NOT_CONFIGURED', message: 'Die Einladungs-E-Mail konnte nicht gesendet werden: Der E-Mail-Versand (SMTP) ist nicht konfiguriert.' }, HttpStatus.SERVICE_UNAVAILABLE);
+      return { invitationSent: true, emailQueued: true, outcome: 'resent' };
+    } catch (error) {
+      await this.users.update({ id: userId, inviteTokenVersion: nextVersion }, { inviteTokenVersion: previousVersion });
+      if (error instanceof HttpException) throw error;
+      throw new HttpException({ code: 'INVITE_DELIVERY_FAILED', message: 'Die Einladungs-E-Mail konnte nicht zugestellt werden. Bitte erneut versuchen.' }, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+  }
+
   async createLocalUser(payload: {
     email: string;
     name: string;

@@ -348,6 +348,17 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard, OrgScopeGuard, RolesGuard)
+  @Roles('superadmin', 'org_admin')
+  @Throttle(AUTH_RATE_LIMIT)
+  @Post('users/:id/resend-invite')
+  resendInvite(
+    @Param('id') id: string,
+    @Req() req: { user: { role: string }; effectiveOrgId?: string | null },
+  ) {
+    return this.auth.resendInvite(id, req.user.role, req.effectiveOrgId);
+  }
+
+  @UseGuards(JwtAuthGuard, OrgScopeGuard, RolesGuard)
   @Roles('superadmin','org_admin')
   @Throttle(AUTH_RATE_LIMIT)
   @Post('local-user')

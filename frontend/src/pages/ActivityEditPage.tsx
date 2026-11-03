@@ -165,7 +165,7 @@ export default function ActivityEditPage() {
   const countsLocked = isPlannedActivity(form.executionStatus) || isFutureActivityDate(form.date);
   const isCohortValueChanged = (cohortId: string, gender: GenderKey, value: number) =>
     (initialCohortCountsRef.current[cohortId]?.[gender] || 0) !== value;
-  const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end);
+  const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end, true);
   const timeRangeError = timeRangeIssue
     ? t(
         timeRangeIssue === 'incomplete'
@@ -410,6 +410,7 @@ export default function ActivityEditPage() {
                 <input
                   id="start-time-edit"
                   type="time"
+                  required
                   value={form.start || ''}
                   onChange={(e) => setForm({ ...form, start: e.target.value })}
                   aria-invalid={Boolean(timeRangeError)}
@@ -426,6 +427,7 @@ export default function ActivityEditPage() {
                 <input
                   id="end-time-edit"
                   type="time"
+                  required
                   value={form.end || ''}
                   onChange={(e) => setForm({ ...form, end: e.target.value })}
                   aria-invalid={Boolean(timeRangeError)}

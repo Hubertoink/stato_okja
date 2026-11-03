@@ -17,3 +17,11 @@ describe('getTimeRangeValidationIssue', () => {
     expect(getTimeRangeValidationIssue('14:15', '13:45')).toBe('endNotAfterStart');
   });
 });
+
+it('requires both times when used for an activity, while project times remain optional', () => {
+  expect(getTimeRangeValidationIssue('', '', true)).toBe('incomplete');
+  expect(getTimeRangeValidationIssue('14:00', '', true)).toBe('incomplete');
+  expect(getTimeRangeValidationIssue('', '16:00', true)).toBe('incomplete');
+  expect(getTimeRangeValidationIssue('14:00', '16:00', true)).toBeUndefined();
+  expect(getTimeRangeValidationIssue('', '')).toBeUndefined();
+});

@@ -117,7 +117,7 @@ export default function ActivityCreatePage() {
   const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
   const countsLocked = isPlannedActivity(form.executionStatus) || isFutureActivityDate(form.date);
-  const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end);
+  const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end, true);
   const timeRangeError = timeRangeIssue
     ? t(
         timeRangeIssue === 'incomplete'
@@ -156,11 +156,11 @@ export default function ActivityCreatePage() {
   // Default times; if project provided, prefill from defaults
   useEffect(() => {
     setForm((f) => ({
-      start: f.start || selectedProject?.defaultStartTime || '15:00',
-      end: f.end || selectedProject?.defaultEndTime || '17:00',
+      ...f,
+      start: f.start ?? selectedProject?.defaultStartTime ?? undefined,
+      end: f.end ?? selectedProject?.defaultEndTime ?? undefined,
       projectId: f.projectId || qpProjectId,
       date: (f.date || qpDate || activityToday()).slice(0, 10),
-      ...f,
     }));
   }, [selectedProject, qpProjectId, qpDate]);
 
@@ -470,6 +470,7 @@ export default function ActivityCreatePage() {
                 <input
                   id="start-time"
                   type="time"
+                  required
                   value={form.start || ''}
                   onChange={(e) => setForm({ ...form, start: e.target.value })}
                   aria-invalid={Boolean(timeRangeError)}
@@ -486,6 +487,7 @@ export default function ActivityCreatePage() {
                 <input
                   id="end-time"
                   type="time"
+                  required
                   value={form.end || ''}
                   onChange={(e) => setForm({ ...form, end: e.target.value })}
                   aria-invalid={Boolean(timeRangeError)}
@@ -945,8 +947,8 @@ export default function ActivityCreatePage() {
                 p.type === 'open_door'
                   ? []
                   : mergeActivityCategoryDefaults(prev.categoryIds, getProjectCategoryIds(p), categoryMode),
-              start: prev.start || p.defaultStartTime || '15:00',
-              end: prev.end || p.defaultEndTime || '17:00',
+              start: prev.start || p.defaultStartTime || '',
+              end: prev.end || p.defaultEndTime || '',
             }));
             setValidationErrors((errors) => ({ ...errors, project: undefined }));
             setPicker(false);

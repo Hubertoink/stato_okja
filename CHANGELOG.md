@@ -9,6 +9,10 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+### Fixed
+- Aktivitäten ohne Projekt-Zeitvorgaben erhalten keine erfundenen Start-/Endzeiten mehr. Start und Ende sind in Kalenderdialog, Anlegen und Bearbeiten erforderlich; konfigurierte Projektzeiten bleiben als Vorgaben erhalten.
+- Die API verlangt Start und Ende beim Anlegen und verhindert das Leeren vorhandener Zeiten bei Teilaktualisierungen.
+
 ## [1.22.1] - 2026-11-03
 
 ### Fixed

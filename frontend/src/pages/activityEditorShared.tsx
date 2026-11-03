@@ -230,8 +230,8 @@ export function buildActivitySavePayload({
   durationMinutesOverride?: number | null;
 }): Partial<Activity> & Record<string, unknown> {
   const cohortSums = getCohortSums(form.cohortCounts);
-  const startMinutes = toMinutes(form.start || selectedProject?.defaultStartTime || null);
-  const endMinutes = toMinutes(form.end || selectedProject?.defaultEndTime || null);
+  const startMinutes = toMinutes(form.start || null);
+  const endMinutes = toMinutes(form.end || null);
   const computedDurationMinutes =
     startMinutes !== undefined && endMinutes !== undefined && endMinutes >= startMinutes
       ? endMinutes - startMinutes

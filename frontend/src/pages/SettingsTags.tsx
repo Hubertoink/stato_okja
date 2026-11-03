@@ -29,7 +29,7 @@ export default function SettingsTags() {
 
   const tags = data || [];
   const canManageTaxonomy = canManageSettingsDestructiveActions(user?.role);
-  const canCreateOwn = canManageTaxonomy && (access?.tags.canCreateOwn ?? true);
+  const canCreateOwn = Boolean(user) && (access?.tags.canCreateOwn ?? false);
   const canDeleteTaxonomy = canManageTaxonomy;
 
   return (

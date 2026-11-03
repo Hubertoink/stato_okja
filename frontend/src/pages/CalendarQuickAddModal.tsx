@@ -125,8 +125,8 @@ export default function ActivityQuickAdd({
       const activityForm = getActivityFormStateFromActivity(activity, {
         date: dateISO,
         projectId: initialProject?.id,
-        start: initialProject?.defaultStartTime || '15:00',
-        end: initialProject?.defaultEndTime || '17:00',
+        start: initialProject?.defaultStartTime || '',
+        end: initialProject?.defaultEndTime || '',
       });
       return {
         ...activityForm,
@@ -174,7 +174,7 @@ export default function ActivityQuickAdd({
   const countsLocked = isPlannedActivity(form.executionStatus) || isFutureActivityDate(form.date);
   const isCohortValueChanged = (cohortId: string, gender: GenderKey, value: number) =>
     Boolean(activity) && (initialCohortCountsRef.current[cohortId]?.[gender] || 0) !== value;
-  const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end);
+  const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end, true);
   const timeRangeError = timeRangeIssue
     ? t(
         timeRangeIssue === 'incomplete'
@@ -249,11 +249,11 @@ export default function ActivityQuickAdd({
   useEffect(() => {
     // Default times; if project provided, prefill from defaults
     setForm((f: ActivityFormState) => ({
-      start: f.start || initialProject?.defaultStartTime || '15:00',
-      end: f.end || initialProject?.defaultEndTime || '17:00',
+      ...f,
+      start: f.start ?? initialProject?.defaultStartTime ?? undefined,
+      end: f.end ?? initialProject?.defaultEndTime ?? undefined,
       projectId: f.projectId || initialProject?.id,
       date: f.date || (dateISO || '').slice(0, 10),
-      ...f,
     }));
   }, [initialProject]);
   // Prefill tags from project defaults when creating (not editing) and when none selected yet
@@ -300,12 +300,12 @@ export default function ActivityQuickAdd({
     if (activity) return;
     // Default times; if project provided, prefill from defaults
     setForm((f: ActivityFormState) => ({
-      start: f.start || initialProject?.defaultStartTime || '15:00',
-      end: f.end || initialProject?.defaultEndTime || '17:00',
+      ...f,
+      start: f.start ?? initialProject?.defaultStartTime ?? undefined,
+      end: f.end ?? initialProject?.defaultEndTime ?? undefined,
       projectId: f.projectId || initialProject?.id,
       date: f.date || (dateISO || '').slice(0, 10),
       executionStatus: f.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
-      ...f,
     }));
   }, [initialProject, activity]);
 
@@ -595,6 +595,7 @@ export default function ActivityQuickAdd({
                   <input
                     id="start-time"
                     type="time"
+                    required
                     value={form.start || ''}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       setForm({ ...form, start: e.target.value })
@@ -613,6 +614,7 @@ export default function ActivityQuickAdd({
                   <input
                     id="end-time"
                     type="time"
+                    required
                     value={form.end || ''}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       setForm({ ...form, end: e.target.value })
@@ -1082,8 +1084,8 @@ export default function ActivityQuickAdd({
                 ...prev,
                 projectId: p.id,
                 tagIds: prev.tagIds && prev.tagIds.length > 0 ? prev.tagIds : defaultTagIds,
-                start: prev.start || p.defaultStartTime || '15:00',
-                end: prev.end || p.defaultEndTime || '17:00',
+                start: prev.start || p.defaultStartTime || '',
+                end: prev.end || p.defaultEndTime || '',
                 // Prefill the single project category
                 categoryIds:
                   p.type === 'open_door'

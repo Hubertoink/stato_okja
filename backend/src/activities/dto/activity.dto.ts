@@ -16,7 +16,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { PartialType } from '@nestjs/swagger';
+import { OmitType, PartialType } from '@nestjs/swagger';
 import { ActivityExecutionStatus, ActivityType } from '../../common/enums';
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/;
@@ -68,15 +68,11 @@ export class CreateActivityDto {
   @IsEnum(ActivityType)
   type!: ActivityType;
 
-  @IsOptional()
-  @ValidateIf((_object, value) => value !== null)
-  @Matches(TIME_PATTERN)
-  startTime?: string | null;
+  @Matches(TIME_PATTERN, { message: 'Start- und Endzeit müssen angegeben werden (HH:mm).' })
+  startTime!: string;
 
-  @IsOptional()
-  @ValidateIf((_object, value) => value !== null)
-  @Matches(TIME_PATTERN)
-  endTime?: string | null;
+  @Matches(TIME_PATTERN, { message: 'Start- und Endzeit müssen angegeben werden (HH:mm).' })
+  endTime!: string;
 
   @IsOptional()
   @IsEnum(ActivityExecutionStatus)
@@ -166,7 +162,15 @@ export class CreateActivityDto {
   cohorts?: ActivityCohortDto[];
 }
 
-export class UpdateActivityDto extends PartialType(CreateActivityDto) {
+export class UpdateActivityDto extends PartialType(OmitType(CreateActivityDto, ['startTime', 'endTime'] as const)) {
+  @ValidateIf((_object, value) => value !== undefined)
+  @Matches(TIME_PATTERN)
+  startTime?: string;
+
+  @ValidateIf((_object, value) => value !== undefined)
+  @Matches(TIME_PATTERN)
+  endTime?: string;
+
   @IsOptional()
   @IsInt()
   @Min(0)

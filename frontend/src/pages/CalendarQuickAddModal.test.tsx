@@ -134,7 +134,7 @@ describe('planned activity workflow', () => {
   const future = '2099-11-19';
   const plan = () => ({ ...activity(1, 0), date: future, executionStatus: 'planned', cohorts: [] }) as Activity;
   it('opens a future calendar entry as planned with disabled counts and saves that status', () => {
-    render(<ActivityQuickAdd dateISO={future} project={{ id: 'project-1', title: 'Sport', type: 'event' } as never} onClose={vi.fn()} />);
+    render(<ActivityQuickAdd dateISO={future} project={{ id: 'project-1', title: 'Sport', type: 'event', defaultStartTime: '15:00', defaultEndTime: '17:00' } as never} onClose={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Geplant' })).toBeInTheDocument();
     expect(screen.getByLabelText('6-9 Jahre W')).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Geplant' }));
@@ -181,4 +181,42 @@ describe('planned activity workflow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     expect(state.mutate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ executionStatus: 'cancelled', countTotal: 0 }) }), expect.anything());
   });
+});
+
+it('leaves missing project times empty and requires both before saving', () => {
+  render(<ActivityQuickAdd dateISO="2026-11-03" project={{ id: 'project-1', title: 'Ohne Zeiten', type: 'event' } as import('@/lib/projects').Project} onClose={vi.fn()} />);
+  expect(screen.getByLabelText('Start')).toHaveValue('');
+  expect(screen.getByLabelText('Ende')).toHaveValue('');
+  expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Start'), { target: { value: '10:00' } });
+  expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Ende'), { target: { value: '12:00' } });
+  expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+  expect(state.mutate).toHaveBeenCalledWith(expect.objectContaining({ startTime: '10:00', endTime: '12:00', durationMinutes: 120 }), expect.anything());
+});
+
+it('uses configured project times but keeps manually cleared fields empty', () => {
+  render(<ActivityQuickAdd dateISO="2026-11-03" project={{ id: 'project-1', title: 'Mit Zeiten', type: 'event', defaultStartTime: '09:30', defaultEndTime: '11:45' } as import('@/lib/projects').Project} onClose={vi.fn()} />);
+  expect(screen.getByLabelText('Start')).toHaveValue('09:30');
+  expect(screen.getByLabelText('Ende')).toHaveValue('11:45');
+  fireEvent.change(screen.getByLabelText('Start'), { target: { value: '' } });
+  fireEvent.change(screen.getByLabelText('Ende'), { target: { value: '' } });
+  expect(screen.getByLabelText('Start')).toHaveValue('');
+  expect(screen.getByLabelText('Ende')).toHaveValue('');
+  expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+});
+
+it('requires times on the standalone activity create and edit pages', () => {
+  const view = render(<MemoryRouter><ActivityCreatePage /></MemoryRouter>);
+  expect(screen.getByLabelText('Start')).toHaveValue('');
+  expect(screen.getByLabelText('Ende')).toHaveValue('');
+  expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+  view.unmount();
+  state.activity = activity(1, 0);
+  render(<MemoryRouter><ActivityEditPage /></MemoryRouter>);
+  fireEvent.change(screen.getByLabelText('Start'), { target: { value: '' } });
+  fireEvent.change(screen.getByLabelText('Ende'), { target: { value: '' } });
+  expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+  expect(state.mutate).not.toHaveBeenCalled();
 });

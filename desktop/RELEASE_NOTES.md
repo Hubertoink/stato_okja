@@ -2,9 +2,9 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Lange Teamlisten im Einsatzzeiten-Dialog sind scrollbar; Abbrechen und Übernehmen bleiben sichtbar.
-- Die Korrektur gilt auch für kleine Fenster und mobile Ansichten.
-- Für diese Änderung den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren.
+- Aktivitäten ohne Projekt-Zeitvorgaben starten mit leeren Uhrzeitfeldern; Start und Ende müssen angegeben werden.
+- Benutzer können Tags anlegen. Der Einladungsdialog erklärt die Unterschiede zwischen Benutzer, Editor und Administrator.
+- Für diese Änderungen den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren.
 
 ### Installation und einmaliger Umstieg
 

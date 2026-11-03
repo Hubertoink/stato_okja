@@ -153,7 +153,7 @@ export class TaxonomyController {
     return this.taxonomyService.findOneTagScoped(id, this.getScopedUser(req));
   }
 
-  @Roles('superadmin', 'org_admin', 'editor')
+  @Roles('superadmin', 'org_admin', 'editor', 'user')
   @Post('tags')
   @ApiOperation({ summary: 'Neues Tag anlegen' })
   async createTag(@Body() data: CreateTagDto, @Req() req: TaxonomyRequest) {

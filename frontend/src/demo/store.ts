@@ -1,3 +1,4 @@
+import { customStaffTimes } from '../lib/staffTimes';
 import { activityStatusForDate, isFutureActivityDate, isPlannedActivity } from '@/lib/activityExecutionStatus';
 import { DEMO_ORG_ID, DEMO_USER_ID, demoUser } from './config';
 import type { Activity, PagedActivitiesResult } from '../lib/activities';
@@ -1618,6 +1619,7 @@ function normalizeActivityPayload(data: Partial<Activity> & Record<string, unkno
     categoryIds,
     tagIds,
     staffIds,
+    staffTimes: customStaffTimes(data.staffTimes ?? fallback?.staffTimes ?? [], staffIds, readNumber(data.durationMinutes) ?? durationMinutes(startTime, endTime)),
     ...counts,
     cohorts: Array.isArray(data.cohorts) ? data.cohorts : fallback?.cohorts ?? cohortBreakdown(counts, `${fallback?.id || 'new'}:${Date.now()}`),
   };
@@ -1659,6 +1661,22 @@ export function setDemoActivityAck(activityId: string, done: boolean) {
 function participantValue(activity: Activity, field: 'countMale' | 'countFemale' | 'countDiverse' | 'countTotal'): number {
   if (activity.executionStatus === 'cancelled') return 0;
   return Number(activity[field] || 0);
+}
+
+export function getDemoTeamStats(params: DemoQueryParams = {}) {
+  const rows = new Map<string, { date: string; staffId: string; name: string; type: string; status: string; minutes: number; assignments: number }>();
+  for (const activity of filterActivityRecords(params).map(hydrateActivity)) {
+    for (const member of activity.staff || []) {
+      const status = activity.executionStatus || 'completed';
+      const key = JSON.stringify([activity.date, member.id, activity.type, status]);
+      const row = rows.get(key) || { date: activity.date, staffId: member.id, name: member.name, type: activity.type, status, minutes: 0, assignments: 0 };
+      row.minutes += Math.min(activity.durationMinutes || 0, Math.max(0,
+        activity.staffTimes?.find((entry) => entry.staffId === member.id)?.minutes ?? activity.durationMinutes ?? 0));
+      row.assignments++;
+      rows.set(key, row);
+    }
+  }
+  return [...rows.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function getDemoStatsSummary(params: DemoQueryParams = {}) {

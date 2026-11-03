@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createDemoActivity, getDemoProcessAccess, getDemoStatsOverview, listDemoProcesses, resetDemoStore } from './store';
+import { getDemoTeamStats, listDemoStaff, updateDemoActivity, createDemoActivity, getDemoProcessAccess, getDemoStatsOverview, listDemoProcesses, resetDemoStore } from './store';
 
 describe('demo statistics', () => {
   beforeEach(() => resetDemoStore());
@@ -35,4 +35,20 @@ describe('demo statistics', () => {
     expect(planningStep?.data.startCondition).toBeTruthy();
     expect(planningStep?.data.completionCriterion).toBeTruthy();
   });
+});
+
+it('provides filtered team statistics and retains individual staff times', () => {
+  resetDemoStore();
+  const member = listDemoStaff()[0];
+  const activity = createDemoActivity({ date: '2001-01-15', type: 'event', startTime: '10:00', endTime: '12:00', staffIds: [member.id], staffTimes: [{ staffId: member.id, minutes: 45 }] });
+  const params = { from: '2001-01-15', to: '2001-01-15', type: 'event', projectId: activity.projectId };
+  expect(activity.staffTimes).toEqual([{ staffId: member.id, minutes: 45 }]);
+  expect(getDemoTeamStats(params)).toEqual([expect.objectContaining({ staffId: member.id, minutes: 45, assignments: 1, status: 'completed' })]);
+  expect(getDemoTeamStats({ ...params, type: 'open_door' })).toEqual([]);
+  updateDemoActivity(activity.id, { type: 'event', staffTimes: [{ staffId: member.id, minutes: 120 }] });
+  expect(getDemoTeamStats(params)[0].minutes).toBe(120);
+  updateDemoActivity(activity.id, { type: 'event', executionStatus: 'cancelled' });
+  expect(getDemoTeamStats(params)[0].status).toBe('cancelled');
+  const planned = createDemoActivity({ date: '2099-11-19', type: 'event', startTime: '10:00', endTime: '12:00', executionStatus: 'planned', staffIds: [member.id] });
+  expect(getDemoTeamStats({ from: planned.date, to: planned.date })[0]).toEqual(expect.objectContaining({ status: 'planned', minutes: 120 }));
 });

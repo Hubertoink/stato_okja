@@ -102,6 +102,21 @@ export class StatsController {
     return [from, to, orgId, orgIds, projectId, undefined, parseWeekdays(weekdaysCsv)];
   }
 
+  @Get('team')
+  async getTeamStatistics(
+    @Req() req: ReqWithScope,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('projectId') projectId?: string,
+    @Query('type') type?: string,
+    @Query('orgId') orgIdQuery?: string,
+    @Query('weekdays') weekdaysCsv?: string,
+    @Query('closureState') closureState?: string,
+  ) {
+    const { orgId, orgIds } = await this.resolveOrgFilter(req, orgIdQuery);
+    return this.statsService.getTeamStatistics({ from, to, projectId, type, orgId, orgIds, weekdays: parseWeekdays(weekdaysCsv), closureState: parseClosureState(closureState) });
+  }
+
   @Get('overview')
   @ApiOperation({ summary: 'Gebündelte Statistikdaten für die Statistikansicht' })
   @ApiBaseStatsQueries()

@@ -118,6 +118,9 @@ export class Activity {
   })
   staff: Staff[];
 
+  @Column({ type: 'simple-json', nullable: true })
+  staffTimes: Array<{ staffId: string; minutes: number }> | null;
+
   // Notizen & Dokumentation
   @Column({ type: 'text', nullable: true })
   notes: string;

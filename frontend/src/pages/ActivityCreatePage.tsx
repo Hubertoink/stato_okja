@@ -1,3 +1,4 @@
+import { StaffTimesButton, StaffTimeIndicator } from '@/components/StaffTimesButton';
 import ActivityPlanningNotice from '@/components/ActivityPlanningNotice';
 import { usePublicConfig } from '@/lib/publicConfig';
 import {
@@ -759,6 +760,7 @@ export default function ActivityCreatePage() {
                           {t('quickAdd.add')}
                         </button>
                       ) : null}
+                      <StaffTimesButton form={form} staff={allStaff ?? staff ?? []} onChange={staffTimes => setForm(current => ({ ...current, staffTimes }))} />
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {employeeStaff.map((s) => {
@@ -778,6 +780,7 @@ export default function ActivityCreatePage() {
                             }`}
                           >
                             {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
+                          <StaffTimeIndicator form={form} staffId={s.id} />
                           </button>
                         );
                       })}
@@ -801,6 +804,7 @@ export default function ActivityCreatePage() {
                           {t('quickAdd.add')}
                         </button>
                       ) : null}
+                      <StaffTimesButton form={form} staff={allStaff ?? staff ?? []} onChange={staffTimes => setForm(current => ({ ...current, staffTimes }))} />
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {volunteerStaff.map((s) => {
@@ -820,6 +824,7 @@ export default function ActivityCreatePage() {
                             }`}
                           >
                             {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
+                          <StaffTimeIndicator form={form} staffId={s.id} />
                           </button>
                         );
                       })}
@@ -843,6 +848,7 @@ export default function ActivityCreatePage() {
                           {t('quickAdd.add')}
                         </button>
                       ) : null}
+                      <StaffTimesButton form={form} staff={allStaff ?? staff ?? []} onChange={staffTimes => setForm(current => ({ ...current, staffTimes }))} />
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {helperStaff.map((s) => {
@@ -864,6 +870,7 @@ export default function ActivityCreatePage() {
                             }`}
                           >
                             {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
+                          <StaffTimeIndicator form={form} staffId={s.id} />
                           </button>
                         );
                       })}

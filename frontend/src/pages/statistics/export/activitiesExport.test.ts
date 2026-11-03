@@ -66,3 +66,16 @@ describe('activitiesExport helpers', () => {
     );
   });
 });
+
+it('includes individual minutes, automatic fallback and all statuses in team CSV', () => {
+  const activities = ['completed', 'planned', 'cancelled'].map((executionStatus, index) => ({
+    id: String(index), durationMinutes: 120, executionStatus,
+    staffTimes: index === 0 ? [{ staffId: 'anna', minutes: 45 }, { staffId: 'max', minutes: 10 }] : [],
+  } as Activity));
+  const csv = serializeActivitiesAsCsv(activities, () => 'Veranstaltung', 'anna');
+  expect(csv).toContain('"Einsatzzeit (min)";"Status"');
+  expect(csv).toContain('"120";"45";"Durchgeführt"');
+  expect(csv).toContain('"120";"120";"Geplant"');
+  expect(csv).toContain('"120";"120";"Ausgefallen"');
+  expect(serializeActivitiesAsCsv(activities, () => 'Veranstaltung')).not.toContain('Einsatzzeit');
+});

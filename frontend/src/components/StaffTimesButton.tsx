@@ -58,7 +58,7 @@ export function StaffTimesButton({
       </Button>
       {open && (
         <Modal open={open} onClose={() => setOpen(false)} title="Einsatzzeiten" variant="form">
-          <div className="space-y-4 p-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-4 p-4" role="region" aria-label="Einsatzzeiten der Teammitglieder">
             <section
               aria-label="Zeitraum der Aktivität"
               className="rounded-xl border border-[var(--interactive-soft-border)] bg-[var(--interactive-soft)] p-4"
@@ -174,7 +174,8 @@ export function StaffTimesButton({
                 Die Einsatzzeit muss zwischen 0 und {duration ?? 0} Minuten liegen.
               </p>
             )}
-            <div className="flex justify-end gap-2">
+          </div>
+          <div className="flex shrink-0 justify-end gap-2 border-t border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-4 pb-safe">
               <Button variant="secondary" onClick={() => setOpen(false)}>
                 Abbrechen
               </Button>
@@ -187,7 +188,6 @@ export function StaffTimesButton({
               >
                 Übernehmen
               </Button>
-            </div>
           </div>
         </Modal>
       )}

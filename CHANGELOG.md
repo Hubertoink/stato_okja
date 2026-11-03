@@ -9,6 +9,9 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+### Added
+- Die Benutzerliste kennzeichnet noch nicht aktivierte Konten mit „Einladung offen“. Administratoren können Einladungen direkt erneut versenden, auch mobil und nach einer Rollenänderung. Bestehende Rollen und Zugänge bleiben erhalten.
+
 ## [1.22.2] - 2026-11-03
 
 ### Changed

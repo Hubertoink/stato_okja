@@ -30,6 +30,7 @@ describe('UsersController global directory', () => {
       },
     ]),
     findById: jest.fn(),
+    findByMembershipOrg: jest.fn(),
     findMembership: jest.fn(),
     countActiveMembershipAdmins: jest.fn(),
     addMembership: jest.fn(),
@@ -65,6 +66,20 @@ describe('UsersController global directory', () => {
       }),
     ]);
     expect(result[0]).not.toHaveProperty('passwordHash');
+    expect(result[0]).toHaveProperty('accountStatus', 'active');
+  });
+
+  it('distinguishes pending invitations from activated accounts without exposing credentials', async () => {
+    service.findByMembershipOrg.mockResolvedValueOnce([
+      { id: 'pending', name: 'Pending', email: 'pending@example.org', role: 'user', passwordHash: null, inviteTokenVersion: 3 },
+      { id: 'active', name: 'Active', email: 'active@example.org', role: 'user', passwordHash: 'secret-hash' },
+    ]);
+    const result = await controller.list({ user: { role: 'org_admin' }, effectiveOrgId: 'org-1' });
+    expect(result.map((u) => u.accountStatus)).toEqual(['invited', 'active']);
+    for (const user of result) {
+      expect(user).not.toHaveProperty('passwordHash');
+      expect(user).not.toHaveProperty('inviteTokenVersion');
+    }
   });
 
   it('rejects the global directory outside the superadmin area', async () => {

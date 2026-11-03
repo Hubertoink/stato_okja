@@ -6,6 +6,7 @@ export interface UserDto {
   email: string;
   name: string;
   role: Role;
+  accountStatus?: 'active' | 'invited';
   orgId?: string | null;
   org?: { id: string; name: string } | null;
 }
@@ -20,6 +21,10 @@ export type UserOrganizationMembership = {
 export async function fetchUsers(): Promise<UserDto[]> {
   const res = await api.get<UserDto[]>('/users');
   return res.data;
+}
+
+export async function resendUserInvitation(userId: string): Promise<void> {
+  await api.post(`/auth/users/${userId}/resend-invite`);
 }
 
 export async function fetchGlobalUsers(): Promise<UserDto[]> {

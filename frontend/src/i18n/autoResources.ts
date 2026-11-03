@@ -1,5 +1,11 @@
 export const autoResources = {
   "de": {
+    "invitation_pending": "Einladung offen",
+    "invitation_pending_hint": "Die Einladung wurde noch nicht angenommen und das Konto noch nicht aktiviert.",
+    "invitation_resend": "Erneut einladen",
+    "invitation_sending": "Wird gesendet …",
+    "invitation_resent": "Einladung erneut gesendet. Frühere Einladungslinks sind jetzt ungültig.",
+    "invitation_resend_error": "Die Einladung konnte nicht erneut gesendet werden.",
     "ui_001ad20e7a3b": "Codeprüfung fehlgeschlagen",
     "ui_004acce76d13": "QR-Code drucken",
     "ui_006c7006dae2": "Standard-Kategorien sind gesperrt, solange lokale Kategorien in diesem Org-Kontext nicht erlaubt sind",
@@ -1631,6 +1637,12 @@ export const autoResources = {
     "ui_fffa2e061ddf": "bg-yellow-400/90"
   },
   "en": {
+    "invitation_pending": "Invitation pending",
+    "invitation_pending_hint": "The invitation has not been accepted and the account has not been activated yet.",
+    "invitation_resend": "Resend invitation",
+    "invitation_sending": "Sending …",
+    "invitation_resent": "Invitation resent. Previous invitation links are now invalid.",
+    "invitation_resend_error": "The invitation could not be resent.",
     "ui_001ad20e7a3b": "Code check failed",
     "ui_004acce76d13": "Print QR code",
     "ui_006c7006dae2": "Standard categories are locked as long as local categories are not allowed in this org context",

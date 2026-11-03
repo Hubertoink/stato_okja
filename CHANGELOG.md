@@ -9,10 +9,17 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.22.4] - 2026-11-03
+
 ### Fixed
 - Einladungs- und Passwort-Reset-Seiten werden nach Aktualisierung des Service Workers nicht mehr aus dem Offline-App-Shell-Cache geladen.
 - Fehlende Zustimmung zu den Nutzungsbedingungen sowie abgelaufene, ersetzte und bereits angenommene Einladungslinks erhalten verständliche Fehlermeldungen.
 - Der Ablauf Löschen, erneutes Einladen derselben E-Mail-Adresse und Annehmen der neuen Einladung ist durch einen Datenbanktest abgesichert.
+
+### Upgrade-Hinweise
+- Server, Backup-Image und Windows-Desktop verwenden Version 1.22.4. Für die Einladungs-Korrekturen den verbundenen Server aktualisieren.
+- Mittwald: Backend und Backup auf `1.22.4`, Frontend auf `stack-1.22.4` aktualisieren. Der Demo-Tag bleibt `demo`.
+- Bereits geöffnete alte Einladungsseiten gegebenenfalls mit Strg+F5 neu laden oder den neuesten Link in einem privaten Browserfenster öffnen. Die neue Cache-Regel greift nach Aktualisierung des Service Workers.
 
 ## [1.22.3] - 2026-11-03
 

@@ -9,6 +9,16 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.22.1] - 2026-11-03
+
+### Fixed
+- Der Einsatzzeiten-Dialog scrollt lange Teamlisten innerhalb der verfügbaren Bildschirmhöhe. Abbrechen und Übernehmen bleiben auch bei vielen Teammitgliedern und auf kleinen Displays erreichbar.
+- Die Demo unterstützt die Team-Statistik und speichert individuelle Einsatzzeiten bei Demo-Aktivitäten.
+
+### Upgrade-Hinweise
+- Server, Backup-Image und Windows-Desktop verwenden Version 1.22.1. Für die Dialogkorrektur den verbundenen Server aktualisieren.
+- Mittwald: Backend und Backup auf `1.22.1`, Frontend auf `stack-1.22.1` aktualisieren. Für die Demo den Tag `demo` erneut pullen.
+
 ## [1.22.0] - 2026-11-03
 
 ### Added

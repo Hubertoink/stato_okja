@@ -2,10 +2,9 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Team-Statistik mit Diagrammen, individuellen Einsatzzeiten und PNG-, CSV- und Excel-Exporten.
-- Einsatzzeiten bequem mit einem Schieberegler in Viertelstunden-Schritten anpassen; die volle Dauer gilt automatisch.
-- Verbesserte Statistikfilter, Ladeplatzhalter und Tooltips.
-- Für diese Änderungen den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren.
+- Lange Teamlisten im Einsatzzeiten-Dialog sind scrollbar; Abbrechen und Übernehmen bleiben sichtbar.
+- Die Korrektur gilt auch für kleine Fenster und mobile Ansichten.
+- Für diese Änderung den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren.
 
 ### Installation und einmaliger Umstieg
 

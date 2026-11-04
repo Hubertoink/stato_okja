@@ -129,6 +129,26 @@ export default function ActivitiesFilterDrawer({
   return (
     <ResponsiveFilterPanel
       desktopClassName="filter-popover--activities"
+      footer={
+        <div className="flex justify-end border-t border-[var(--border-subtle)] bg-[var(--surface-elevated)] pt-3">
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+              onClick={onClose}
+            >
+              {t('filterDrawer.close')}
+            </button>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors"
+              onClick={apply}
+            >
+              {t('filterDrawer.apply')}
+            </button>
+          </div>
+        </div>
+      }
       onClose={onClose}
       open={open}
       title={t('filterDrawer.title')}
@@ -504,26 +524,6 @@ export default function ActivitiesFilterDrawer({
             </div>
           </div>
         </details>
-
-        <div className="sticky bottom-0 flex flex-col gap-3 border-t border-[var(--border-subtle)] bg-[var(--surface-elevated)] py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div />
-          <div className="flex items-center justify-end gap-3">
-            <button
-              type="button"
-              className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
-              onClick={onClose}
-            >
-              {t('filterDrawer.close')}
-            </button>
-            <button
-              type="button"
-              className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors"
-              onClick={apply}
-            >
-              {t('filterDrawer.apply')}
-            </button>
-          </div>
-        </div>
       </div>
     </ResponsiveFilterPanel>
   );

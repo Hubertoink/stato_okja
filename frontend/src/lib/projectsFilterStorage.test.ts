@@ -5,15 +5,17 @@ describe('projectsFilterStorage', () => {
   afterEach(() => localStorage.clear());
 
   it('returns the default filters when nothing is stored', () => {
-    expect(loadProjectsFilters()).toEqual({ showArchived: false, types: [] });
+    expect(loadProjectsFilters()).toEqual({ showArchived: false, types: [], staffNames: [], categoryIds: [] });
   });
 
   it('stores and restores the archive and type filters', () => {
-    saveProjectsFilters({ showArchived: true, types: ['event', 'project_open'] });
+    saveProjectsFilters({ showArchived: true, types: ['event', 'project_open'], staffNames: ['Mara'], categoryIds: ['music'] });
 
     expect(loadProjectsFilters()).toEqual({
       showArchived: true,
       types: ['event', 'project_open'],
+      staffNames: ['Mara'],
+      categoryIds: ['music'],
     });
   });
 
@@ -23,6 +25,6 @@ describe('projectsFilterStorage', () => {
       types: ['event', 5, 'event'],
     }));
 
-    expect(loadProjectsFilters()).toEqual({ showArchived: false, types: ['event'] });
+    expect(loadProjectsFilters()).toEqual({ showArchived: false, types: ['event'], staffNames: [], categoryIds: [] });
   });
 });

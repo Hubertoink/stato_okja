@@ -19,14 +19,15 @@ function toMinutes(value?: string | null): number | undefined {
 }
 
 /**
- * Validates a same-day time range. A range can be omitted entirely, but a
- * supplied start or end time must always be paired and end after the start.
+ * Validates a same-day time range. Project defaults may be omitted; activity
+ * editors pass required=true. Supplied times must be paired and ordered.
  */
 export function getTimeRangeValidationIssue(
   start?: string | null,
   end?: string | null,
+  required = false,
 ): TimeRangeValidationIssue | undefined {
-  if (!start && !end) return undefined;
+  if (!start && !end) return required ? 'incomplete' : undefined;
   if (!start || !end) return 'incomplete';
 
   const startMinutes = toMinutes(start);

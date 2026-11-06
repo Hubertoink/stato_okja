@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 type ToastType = 'success' | 'error' | 'info';
@@ -10,7 +10,8 @@ interface Toast {
 }
 
 interface ToastContextValue {
-  showToast: (msg: string, opts?: { type?: ToastType; durationMs?: number }) => void;
+  showToast: (msg: string, opts?: { type?: ToastType; durationMs?: number }) => string;
+  dismissToast: (id: string) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
@@ -19,6 +20,20 @@ export function useToast() {
   const ctx = useContext(ToastContext);
   if (!ctx) throw new Error('useToast must be used within ToastProvider');
   return ctx;
+}
+
+/** One toast for the lifetime of a request, without flashing on fast updates. */
+export function useProgressToast(active: boolean, message: string) {
+  const { showToast, dismissToast } = useToast();
+  useEffect(() => {
+    if (!active) return;
+    let id: string | undefined;
+    const timer = setTimeout(() => { id = showToast(message, { type: 'info', durationMs: 0 }); }, 250);
+    return () => {
+      clearTimeout(timer);
+      if (id) dismissToast(id);
+    };
+  }, [active, message, showToast, dismissToast]);
 }
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -35,9 +50,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     if (toast.durationMs && toast.durationMs > 0) {
       setTimeout(() => remove(id), toast.durationMs);
     }
+    return id;
   }, [remove]);
 
-  const value = useMemo(() => ({ showToast }), [showToast]);
+  const value = useMemo(() => ({ showToast, dismissToast: remove }), [showToast, remove]);
   const toastLayer = (
     <div className="fixed right-4 z-[1000] space-y-2 pointer-events-none bottom-24 md:bottom-4">
       {toasts.map((t) => (

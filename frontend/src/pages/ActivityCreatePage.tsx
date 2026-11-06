@@ -1,3 +1,5 @@
+import { StaffTimesButton, StaffTimeIndicator } from '@/components/StaffTimesButton';
+import ActivityPlanningNotice from '@/components/ActivityPlanningNotice';
 import { usePublicConfig } from '@/lib/publicConfig';
 import {
   selectActivityCategory,
@@ -9,7 +11,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Boxes, Plus as PlusIcon, Save as SaveIcon } from 'lucide-react';
 import ActivityExecutionStatusControl from '@/components/ActivityExecutionStatusControl';
 import { useCreateActivity } from '@/lib/activities';
-import { DEFAULT_ACTIVITY_EXECUTION_STATUS } from '@/lib/activityExecutionStatus';
+import { activityStatusForDate, activityToday, isPlannedActivity, isFutureActivityDate } from '@/lib/activityExecutionStatus';
 import { useProjects, type Project } from '@/lib/projects';
 import { useLocations } from '@/lib/locations';
 import {
@@ -98,8 +100,8 @@ export default function ActivityCreatePage() {
   const projectFieldRef = useRef<HTMLButtonElement | null>(null);
   const [form, setForm] = useState<ActivityFormState>(() => ({
     cohortCounts: {},
-    date: (qpDate || new Date().toISOString()).slice(0, 10),
-    executionStatus: DEFAULT_ACTIVITY_EXECUTION_STATUS,
+    date: (qpDate || activityToday()).slice(0, 10),
+    executionStatus: activityStatusForDate(undefined, qpDate || activityToday()),
     projectId: qpProjectId,
   }));
   const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form, {
@@ -114,7 +116,8 @@ export default function ActivityCreatePage() {
   const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date, true), [form.date]);
   const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
-  const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end);
+  const countsLocked = isPlannedActivity(form.executionStatus) || isFutureActivityDate(form.date);
+  const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end, true);
   const timeRangeError = timeRangeIssue
     ? t(
         timeRangeIssue === 'incomplete'
@@ -153,11 +156,11 @@ export default function ActivityCreatePage() {
   // Default times; if project provided, prefill from defaults
   useEffect(() => {
     setForm((f) => ({
-      start: f.start || selectedProject?.defaultStartTime || '15:00',
-      end: f.end || selectedProject?.defaultEndTime || '17:00',
-      projectId: f.projectId || qpProjectId,
-      date: (f.date || qpDate || new Date().toISOString()).slice(0, 10),
       ...f,
+      start: f.start ?? selectedProject?.defaultStartTime ?? undefined,
+      end: f.end ?? selectedProject?.defaultEndTime ?? undefined,
+      projectId: f.projectId || qpProjectId,
+      date: (f.date || qpDate || activityToday()).slice(0, 10),
     }));
   }, [selectedProject, qpProjectId, qpDate]);
 
@@ -220,6 +223,10 @@ export default function ActivityCreatePage() {
   }, [categories, form, initialFormReady, locations, projects, reset, staff, tags]);
 
   const handleSave = () => {
+    if (countsLocked && cohortTotal > 0) {
+      setErrorOpen(t('common:executionStatus.clearCountsHint'));
+      return;
+    }
     if (categoryMode === 'single' && (form.categoryIds?.length ?? 0) > 1 && selectedProject?.type !== 'open_door') {
       showToast(SINGLE_CATEGORY_MESSAGE, { type: 'error' });
       return;
@@ -248,7 +255,7 @@ export default function ActivityCreatePage() {
     const payload = buildActivitySavePayload({
       form: {
         ...form,
-        executionStatus: form.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
+        executionStatus: activityStatusForDate(form.executionStatus, form.date),
       },
       selectedProject,
     });
@@ -312,6 +319,7 @@ export default function ActivityCreatePage() {
           actions={
             <ActivityExecutionStatusControl
               value={form.executionStatus}
+              date={form.date}
               onChange={(executionStatus) =>
                 setForm((current) => ({ ...current, executionStatus }))
               }
@@ -346,7 +354,7 @@ export default function ActivityCreatePage() {
                   type="date"
                   value={(form.date || '').slice(0, 10)}
                   onChange={(e) => {
-                    setForm({ ...form, date: e.target.value });
+                    setForm({ ...form, date: e.target.value, executionStatus: activityStatusForDate(form.executionStatus, e.target.value) });
                     setValidationErrors((errors) => ({ ...errors, date: undefined }));
                   }}
                   aria-invalid={Boolean(validationErrors.date)}
@@ -462,6 +470,7 @@ export default function ActivityCreatePage() {
                 <input
                   id="start-time"
                   type="time"
+                  required
                   value={form.start || ''}
                   onChange={(e) => setForm({ ...form, start: e.target.value })}
                   aria-invalid={Boolean(timeRangeError)}
@@ -478,6 +487,7 @@ export default function ActivityCreatePage() {
                 <input
                   id="end-time"
                   type="time"
+                  required
                   value={form.end || ''}
                   onChange={(e) => setForm({ ...form, end: e.target.value })}
                   aria-invalid={Boolean(timeRangeError)}
@@ -495,7 +505,10 @@ export default function ActivityCreatePage() {
             ) : null}
 
             {/* Cohort breakdown per gender */}
-            <div>
+            <ActivityPlanningNotice status={form.executionStatus} date={form.date} hasCounts={cohortTotal > 0}
+                onClearCounts={() => setForm((current) => ({ ...current, cohortCounts: {} }))}
+                onDocument={() => setForm((current) => ({ ...current, executionStatus: 'completed' }))} />
+            <fieldset disabled={countsLocked} className="min-w-0">
               <div className="mb-1 flex items-center justify-between gap-3">
                 <label className="block text-sm font-medium">{autoT('ui_4d34ac48c54e')}</label>
                 {isMobile && (
@@ -612,6 +625,7 @@ export default function ActivityCreatePage() {
                       </span>
                       {(['m', 'w', 'd'] as const).map((g) => (
                         <ActivityCohortCountField
+                          disabled={countsLocked}
                           key={g}
                           mode={tapModeEnabled ? 'tap' : 'input'}
                           value={entry[g] || 0}
@@ -638,7 +652,7 @@ export default function ActivityCreatePage() {
                   total={cohortTotal}
                 />
               </div>
-            </div>
+            </fieldset>
 
             <details className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 md:p-4">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-medium text-[var(--text-primary)]">
@@ -748,6 +762,7 @@ export default function ActivityCreatePage() {
                           {t('quickAdd.add')}
                         </button>
                       ) : null}
+                      <StaffTimesButton form={form} staff={allStaff ?? staff ?? []} onChange={staffTimes => setForm(current => ({ ...current, staffTimes }))} />
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {employeeStaff.map((s) => {
@@ -767,6 +782,7 @@ export default function ActivityCreatePage() {
                             }`}
                           >
                             {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
+                          <StaffTimeIndicator form={form} staffId={s.id} />
                           </button>
                         );
                       })}
@@ -790,6 +806,7 @@ export default function ActivityCreatePage() {
                           {t('quickAdd.add')}
                         </button>
                       ) : null}
+                      <StaffTimesButton form={form} staff={allStaff ?? staff ?? []} onChange={staffTimes => setForm(current => ({ ...current, staffTimes }))} />
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {volunteerStaff.map((s) => {
@@ -809,6 +826,7 @@ export default function ActivityCreatePage() {
                             }`}
                           >
                             {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
+                          <StaffTimeIndicator form={form} staffId={s.id} />
                           </button>
                         );
                       })}
@@ -832,6 +850,7 @@ export default function ActivityCreatePage() {
                           {t('quickAdd.add')}
                         </button>
                       ) : null}
+                      <StaffTimesButton form={form} staff={allStaff ?? staff ?? []} onChange={staffTimes => setForm(current => ({ ...current, staffTimes }))} />
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {helperStaff.map((s) => {
@@ -853,6 +872,7 @@ export default function ActivityCreatePage() {
                             }`}
                           >
                             {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
+                          <StaffTimeIndicator form={form} staffId={s.id} />
                           </button>
                         );
                       })}
@@ -927,8 +947,8 @@ export default function ActivityCreatePage() {
                 p.type === 'open_door'
                   ? []
                   : mergeActivityCategoryDefaults(prev.categoryIds, getProjectCategoryIds(p), categoryMode),
-              start: prev.start || p.defaultStartTime || '15:00',
-              end: prev.end || p.defaultEndTime || '17:00',
+              start: prev.start || p.defaultStartTime || '',
+              end: prev.end || p.defaultEndTime || '',
             }));
             setValidationErrors((errors) => ({ ...errors, project: undefined }));
             setPicker(false);

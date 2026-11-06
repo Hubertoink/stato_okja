@@ -2,15 +2,17 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Die aktive Organisation wird oben in der Seitenleiste hervorgehoben; Organisationskontext und Wechselmöglichkeiten sind klarer erkennbar.
-- Kompaktere Abstände und verständlichere Hinweise in der Organisationskarte.
-- Für die Änderungen an der Weboberfläche den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren.
+- Zurückgezogene Einladungen können kein Konto mehr aktivieren. Beim Entziehen eines Organisationszugangs werden offene Einladungslinks ungültig.
+- Auch während der Annahme entzogene Zugänge und gelöschte Konten werden berücksichtigt.
+- Für diese Korrektur den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren.
 
 ### Installation und einmaliger Umstieg
 
 1. `StatO-Setup-__VERSION__-x64.exe` herunterladen und installieren (Windows x64).
 2. StatO starten und die vollständige Serveradresse eingeben, zum Beispiel `https://stato.traeger.de`.
 3. Verbinden und mit dem vorhandenen StatO-Konto anmelden.
+
+**Falls die Update-Suche im Dienstnetz bisher fehlschlägt, diesen Installer einmal manuell installieren.** Erst danach steht der korrigierte Netzwerkzugriff zur Verfügung.
 
 **Desktop 1.16.0 und ältere Versionen benötigen diesen Installer einmalig manuell.** Danach können künftige Desktop-Updates innerhalb der App heruntergeladen und installiert werden.
 

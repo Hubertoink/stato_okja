@@ -39,7 +39,7 @@ function csvToExecutionStatuses(value?: string): string[] | undefined {
       value
         .split(',')
         .map((entry) => entry.trim())
-        .filter((entry) => entry === 'completed' || entry === 'cancelled'),
+        .filter((entry) => entry === 'completed' || entry === 'cancelled' || entry === 'planned'),
     ),
   );
   return statuses.length > 0 ? statuses : undefined;
@@ -81,7 +81,7 @@ export class ActivitiesController {
   @ApiQuery({ name: 'tagIds', required: false, description: 'CSV Liste' })
   @ApiQuery({ name: 'staffIds', required: false, description: 'CSV Liste' })
   @ApiQuery({ name: 'cohortIds', required: false, description: 'CSV Liste' })
-  @ApiQuery({ name: 'executionStatuses', required: false, description: 'CSV Liste (completed,cancelled)' })
+  @ApiQuery({ name: 'executionStatuses', required: false, description: 'CSV Liste (completed,cancelled,planned)' })
   @ApiQuery({ name: 'closureState', required: false, description: 'closed|open' })
   @ApiQuery({ name: 'weekdays', required: false, description: 'CSV Liste von Wochentagen (0=So bis 6=Sa)' })
   @ApiQuery({ name: 'hasNotes', required: false })

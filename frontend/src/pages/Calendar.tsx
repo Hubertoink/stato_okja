@@ -26,7 +26,7 @@ import { ArrowRight, Building2, CalendarDays, ChevronLeft, ChevronRight, Clock3,
 import ProtectedImage from '@/components/ProtectedImage';
 import CalendarClosureModal from '@/components/CalendarClosureModal';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
-import { ACTIVITY_EXECUTION_STATUS_SHORT_LABELS, isCancelledActivity } from '@/lib/activityExecutionStatus';
+import { ACTIVITY_EXECUTION_STATUS_SHORT_LABELS, isCancelledActivity, isPlannedActivity, isCompletedActivity } from '@/lib/activityExecutionStatus';
 import DemoHoverHint, { dismissActiveDemoHoverHint } from '@/demo/DemoHoverHint';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Button, IconButton } from '@/components/ui/Button';
@@ -187,7 +187,7 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
   if (!activity || !position) return null;
   
   const label = `${activity.project?.title || typeLabel[activity.type] || activity.type}${activity.title ? ` (${activity.title})` : ''}`;
-  const statusLabel = isCancelledActivity(activity.executionStatus) ? 'Ausgefallen' : null;
+  const statusLabel = !isCompletedActivity(activity.executionStatus) ? ACTIVITY_EXECUTION_STATUS_SHORT_LABELS[activity.executionStatus!] : null;
   const time = fmtTimeRange(activity.startTime, activity.endTime);
   const total = activity.countTotal ?? 0;
   const m = activity.countMale ?? 0;
@@ -205,7 +205,7 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
           ref={ref}
           className={panelClass}
         >
-          {statusLabel && <div className="mb-1 inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">{statusLabel}</div>}
+          {statusLabel && <ActivityExecutionStatusBadge status={activity.executionStatus} compact className="mb-1" />}
           <div className="font-semibold mb-1 text-viridian">{label}</div>
           {time && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">{autoT('ui_73fa39c5d9ea')}</span> {time}</div>}
           {!statusLabel && (
@@ -230,7 +230,7 @@ function ActivityTooltip({ activity, position, typeLabel, fmtTimeRange }: Activi
         ref={ref}
         className={`relative ${panelClass}`}
       >
-        {statusLabel && <div className="mb-1 inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">{statusLabel}</div>}
+        {statusLabel && <ActivityExecutionStatusBadge status={activity.executionStatus} compact className="mb-1" />}
         <div className="font-semibold mb-1 text-viridian">{label}</div>
         {time && <div className="calendar-tooltip-body"><span className="calendar-tooltip-meta">{autoT('ui_73fa39c5d9ea')}</span> {time}</div>}
         {!statusLabel && (
@@ -437,7 +437,7 @@ function layoutTimedActivities(activities: Activity[]): TimedActivityLayout[] {
 }
 
 function getTimedActivityMetrics(entries: TimedActivityLayout[]) {
-  const activeEntries = entries.filter((entry) => !isCancelledActivity(entry.activity.executionStatus));
+  const activeEntries = entries.filter((entry) => isCompletedActivity(entry.activity.executionStatus));
   const offeredMinutes = activeEntries.reduce((sum, entry) => sum + entry.end - entry.start, 0);
   const merged: Array<{ start: number; end: number }> = [];
   activeEntries
@@ -1188,9 +1188,10 @@ export default function Calendar() {
           const bgClass = isCancelledActivity(a.executionStatus)
             ? "bg-rose-600/35"
             : pickBgClass(a.project?.title || a.title || typeLabel[a.type] || '', a.type);
+          const planned = isPlannedActivity(a.executionStatus);
           const hasImg = Boolean(a.project?.imageUrl);
-          const compactStatusPrefix = isCancelledActivity(a.executionStatus)
-            ? `${ACTIVITY_EXECUTION_STATUS_SHORT_LABELS.cancelled} `
+          const compactStatusPrefix = !isCompletedActivity(a.executionStatus)
+            ? `${ACTIVITY_EXECUTION_STATUS_SHORT_LABELS[a.executionStatus!]} · `
             : '';
           return (
             <div key={i} className="group/activity relative">
@@ -1201,8 +1202,8 @@ export default function Calendar() {
                   openActivity(a);
                 }}
                 onMouseEnter={(e) => handleActivityMouseEnter(e, a)}
-                className={`relative w-full h-4 rounded overflow-hidden border border-black/10 px-1 text-left text-[9px] leading-4 truncate md:h-5 md:pl-6 md:pr-1 md:text-[10px] md:leading-5 ${bgClass}`}
-                aria-label={label}
+                className={`relative w-full h-4 rounded overflow-hidden border border-black/10 px-1 text-left text-[9px] leading-4 truncate md:h-5 md:pl-6 md:pr-1 md:text-[10px] md:leading-5 ${bgClass} ${planned ? 'calendar-event--planned' : ''}`}
+                aria-label={`${compactStatusPrefix}${label}`}
               >
                 {hasImg && a.project && (
                   <ProtectedImage
@@ -1215,7 +1216,7 @@ export default function Calendar() {
                 {hasImg && <div className="absolute inset-0 calendar-img-overlay" aria-hidden />}
                 <span
                   className={`relative z-10 font-medium ${
-                    hasImg ? "text-white drop-shadow-sm" : "text-gray-900"
+                    !planned && hasImg ? "text-white drop-shadow-sm" : "text-gray-900"
                   }`}
                 >
                   {compactStatusPrefix}{label}
@@ -1279,6 +1280,7 @@ export default function Calendar() {
           const m = a.countMale ?? 0;
           const w = a.countFemale ?? 0;
           const d = a.countDiverse ?? 0;
+          const planned = isPlannedActivity(a.executionStatus);
           const hasImg = Boolean(a.project?.imageUrl);
           return (
             <div key={i} className="group/activity relative">
@@ -1289,7 +1291,7 @@ export default function Calendar() {
                   openActivity(a);
                 }}
                 onMouseEnter={(e) => handleActivityMouseEnter(e, a)}
-                className={`relative w-full overflow-hidden rounded border border-black/10 px-2 py-1.5 text-left shadow-sm transition-shadow hover:shadow md:pl-8 ${bgClass}`}
+                className={`relative w-full overflow-hidden rounded border border-black/10 px-2 py-1.5 text-left shadow-sm transition-shadow hover:shadow md:pl-8 ${bgClass} ${planned ? 'calendar-event--planned' : ''}`}
               >
                 {hasImg && a.project && (
                   <ProtectedImage
@@ -1300,24 +1302,24 @@ export default function Calendar() {
                   />
                 )}
                 {hasImg && <div className="absolute inset-0 calendar-img-overlay" aria-hidden />}
-                {isCancelledActivity(a.executionStatus) && (
-                  <div className="relative z-10 mb-1 inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">{autoT('ui_af6ed3ac625b')}</div>
+                {!isCompletedActivity(a.executionStatus) && (
+                  <ActivityExecutionStatusBadge status={a.executionStatus} compact className="relative z-10 mb-1" />
                 )}
                 <div
-                  className={`relative z-10 text-[11px] font-medium truncate ${hasImg ? "text-white drop-shadow-sm" : "text-gray-800"}`}
+                  className={`relative z-10 text-[11px] font-medium truncate ${!planned && hasImg ? "text-white drop-shadow-sm" : "text-gray-800"}`}
                 >
                   {title}
                   {subtitle ? ` (${subtitle})` : ''}
                 </div>
                 {time && (
                   <div
-                    className={`relative z-10 text-[10px] ${hasImg ? "text-white drop-shadow-sm" : "text-gray-700"}`}
+                    className={`relative z-10 text-[10px] ${!planned && hasImg ? "text-white drop-shadow-sm" : "text-gray-700"}`}
                   >
                     {time}{autoT('ui_1c78be3b65a1')}</div>
                 )}
-                {!isCancelledActivity(a.executionStatus) && (
+                {isCompletedActivity(a.executionStatus) && (
                   <div
-                    className={`relative z-10 text-[10px] ${hasImg ? "text-white drop-shadow-sm" : "text-gray-700"}`}
+                    className={`relative z-10 text-[10px] ${!planned && hasImg ? "text-white drop-shadow-sm" : "text-gray-700"}`}
                   >
                     {counts}{' '}{autoT('ui_c2a30a5a251c')}{m}{autoT('ui_115f6e7d14bf')}{w}{autoT('ui_7578fb7a5a2f')}{d})
                   </div>
@@ -1747,6 +1749,8 @@ export default function Calendar() {
                       const subtitle = entry.activity.title ? ` · ${entry.activity.title}` : '';
                       const time = fmtTimeRange(entry.activity.startTime, entry.activity.endTime);
                       const cancelled = isCancelledActivity(entry.activity.executionStatus);
+                      const planned = isPlannedActivity(entry.activity.executionStatus);
+                      const statusPrefix = planned ? 'Geplant · ' : cancelled ? 'Ausgefallen · ' : '';
                       const isShort = entry.end - entry.start < 45;
                       const eventTimeLabel = isShort ? fmtTime(entry.activity.startTime) : time;
                       const isExpanded = expandedAnalysisActivityId === entry.activity.id;
@@ -1764,15 +1768,15 @@ export default function Calendar() {
                       return (
                         <div
                           key={entry.activity.id}
-                          className={`calendar-analysis-event calendar-analysis-event--${entry.activity.type} ${isExpanded ? 'is-expanded' : ''} ${isShort ? 'calendar-analysis-event-short' : ''} ${entry.columns > 1 && entry.end - entry.start >= 90 ? 'calendar-analysis-event-vertical' : ''} ${cancelled ? 'calendar-analysis-event-cancelled' : pickBgClass(activityLabel, entry.activity.type)}`}
+                          className={`calendar-analysis-event calendar-analysis-event--${entry.activity.type} ${isExpanded ? 'is-expanded' : ''} ${isShort ? 'calendar-analysis-event-short' : ''} ${entry.columns > 1 && entry.end - entry.start >= 90 ? 'calendar-analysis-event-vertical' : ''} ${cancelled ? 'calendar-analysis-event-cancelled' : pickBgClass(activityLabel, entry.activity.type)} ${planned ? 'calendar-event--planned' : ''}`}
                           style={{
                             top: `${((entry.start - analysisHours.start) / (analysisHours.end - analysisHours.start)) * 100}%`,
                             height: `${Math.max(3, ((entry.end - entry.start) / (analysisHours.end - analysisHours.start)) * 100)}%`,
                             left: `calc(${(entry.column / entry.columns) * 100}% + 3px)`,
                             width: `calc(${100 / entry.columns}% - 6px)`,
                           }}
-                          title={`${time} · ${activityLabel}${subtitle}${cancelled ? ' · Ausgefallen' : ''}`}
-                          aria-label={`${time}, ${activityLabel}${subtitle}${cancelled ? ', ausgefallen' : ''}`}
+                          title={`${time} · ${activityLabel}${subtitle}${planned ? ' · Geplant' : cancelled ? ' · Ausgefallen' : ''}`}
+                          aria-label={`${time}, ${activityLabel}${subtitle}${planned ? ', geplant' : cancelled ? ', ausgefallen' : ''}`}
                           tabIndex={0}
                           onClick={(event) => {
                             if (!isMobile) return;
@@ -1787,17 +1791,17 @@ export default function Calendar() {
                         >
                           <div className="calendar-analysis-event-time calendar-analysis-event-time-compact">{eventTimeLabel}</div>
                           {isShort && <div className="calendar-analysis-event-time calendar-analysis-event-time-full">{time}</div>}
-                          <div className="calendar-analysis-event-title">{cancelled ? 'Ausgefallen · ' : ''}{activityLabel}</div>
+                          <div className="calendar-analysis-event-title">{statusPrefix}{activityLabel}</div>
                           {entry.activity.title && <div className="calendar-analysis-event-subtitle">{entry.activity.title}</div>}
                           <div className="calendar-analysis-event-details">
-                            {typeof entry.activity.countTotal === 'number' && (
+                            {isCompletedActivity(entry.activity.executionStatus) && typeof entry.activity.countTotal === 'number' && (
                               <div className="calendar-analysis-event-visitors">
                                 <UsersRound aria-hidden="true" />
                                 <span>{entry.activity.countTotal} Besucher:innen</span>
                                 {!!genderSummary.length && <span className="calendar-analysis-event-genders">{genderSummary.map(([label, count]) => `${label} ${count}`).join(' · ')}</span>}
                               </div>
                             )}
-                            {!!cohortSummary.length && (
+                            {isCompletedActivity(entry.activity.executionStatus) && !!cohortSummary.length && (
                               <div className="calendar-analysis-event-cohorts">
                                 {cohortSummary.map((cohort) => <span key={cohort.name}>{cohort.name}: {cohort.total}</span>)}
                               </div>
@@ -1892,7 +1896,7 @@ export default function Calendar() {
                           )}
                         </td>
                         <td className="activities-col-participants whitespace-nowrap px-2 py-4 text-sm lg:px-4">
-                          {isCancelledActivity(activity.executionStatus) ? (
+                          {!isCompletedActivity(activity.executionStatus) ? (
                             <ActivityExecutionStatusBadge status={activity.executionStatus} />
                           ) : (
                             <>

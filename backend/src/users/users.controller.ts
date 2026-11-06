@@ -24,6 +24,10 @@ import { toPublicUser } from '../common/public-response';
 
 type ManageableUserRole = 'superadmin' | 'org_admin' | 'editor' | 'user';
 
+function toManagedUser(user: Parameters<typeof toPublicUser>[0] & { passwordHash?: string | null }) {
+  return { ...toPublicUser(user), accountStatus: user.passwordHash ? 'active' : 'invited' };
+}
+
 @UseGuards(JwtAuthGuard, OrgScopeGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
@@ -96,7 +100,7 @@ export class UsersController {
         org: null,
         role: user.role === 'superadmin' ? 'superadmin' : 'user',
       }));
-    return [...membershipUsers, ...standaloneUsers].map(toPublicUser);
+    return [...membershipUsers, ...standaloneUsers].map(toManagedUser);
   }
 
   @Roles('org_admin', 'superadmin')
@@ -117,7 +121,7 @@ export class UsersController {
       effectiveOrgId: orgId,
       visibleCount: users.length,
     });
-    return users.map(toPublicUser);
+    return users.map(toManagedUser);
   }
 
   /**

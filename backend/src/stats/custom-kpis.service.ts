@@ -26,7 +26,7 @@ type ResultParams = {
 };
 
 const VALID_ACTIVITY_TYPES = new Set<string>(Object.values(ActivityType));
-const VALID_EXECUTION_STATUSES = new Set<string>(Object.values(ActivityExecutionStatus));
+const VALID_EXECUTION_STATUSES = new Set<string>([ActivityExecutionStatus.COMPLETED, ActivityExecutionStatus.CANCELLED]);
 
 @Injectable()
 export class CustomKpisService {

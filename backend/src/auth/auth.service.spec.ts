@@ -2,7 +2,7 @@ import { ConflictException, ForbiddenException, UnauthorizedException } from '@n
 import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 import { ValidationPipe } from '@nestjs/common';
-import { UpdateMeDto } from './dto/auth.dto';
+import { AcceptInviteDto, UpdateMeDto } from './dto/auth.dto';
 
 describe('AuthService invitations', () => {
   function createService(options: {
@@ -14,6 +14,7 @@ describe('AuthService invitations', () => {
       create: jest.fn((data) => ({ id: 'user-1', ...data })),
       save: jest.fn(async (user) => user),
       delete: jest.fn().mockResolvedValue(undefined),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     const jwt = {
       signAsync: jest.fn().mockResolvedValue('invite-token'),
@@ -41,6 +42,62 @@ describe('AuthService invitations', () => {
     );
     return { service, users, memberships, jwt, email, refreshSessions };
   }
+
+  it('resends a pending invitation after a membership role change without modifying access', async () => {
+    const { service, users, memberships, jwt, email } = createService({ existingUser: {
+      id: 'pending', email: 'pending@example.org', name: 'Pending', role: 'user', orgId: 'old-org', passwordHash: null, inviteTokenVersion: 2,
+    } });
+    memberships.findOne.mockResolvedValue({ role: 'editor', status: 'active' });
+    await expect(service.resendInvite('pending', 'org_admin', 'current-org')).resolves.toMatchObject({ outcome: 'resent', emailQueued: true });
+    expect(memberships.findOne).toHaveBeenCalledWith({ where: { userId: 'pending', orgId: 'current-org', status: 'active' } });
+    expect(users.update).toHaveBeenCalledWith({ id: 'pending' }, { inviteTokenVersion: 3 });
+    expect(jwt.signAsync).toHaveBeenCalledWith({ sub: 'pending', purpose: 'invite', version: 3 }, expect.any(Object));
+    expect(email.sendInviteEmail).toHaveBeenCalledTimes(1);
+    expect(memberships.save).not.toHaveBeenCalled();
+    expect(users.save).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['user', 'org-1'], ['org_admin', undefined], ['org_admin', null], ['org_admin', 'other-org'], ['superadmin', 'other-org'],
+  ])('rejects invitation resends without access (%s, %s)', async (role, orgId) => {
+    const { service, email } = createService();
+    await expect(service.resendInvite('pending', role as string, orgId)).rejects.toThrow(ForbiddenException);
+    expect(email.sendInviteEmail).not.toHaveBeenCalled();
+  });
+
+  it('does not resend invitations for an activated account', async () => {
+    const { service, email, users } = createService({ existingUser: { id: 'active', passwordHash: 'hash' } });
+    await expect(service.resendInvite('active', 'superadmin', null)).rejects.toThrow(ConflictException);
+    expect(email.sendInviteEmail).not.toHaveBeenCalled();
+    expect(users.update).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('keeps the previous link valid when resend delivery fails (throws: %s)', async (throws) => {
+    const { service, email, users } = createService({ existingUser: {
+      id: 'pending', email: 'pending@example.org', passwordHash: null, inviteTokenVersion: 2,
+    }, emailResult: { queued: false } });
+    if (throws) email.sendInviteEmail.mockRejectedValueOnce(new Error('SMTP rejected'));
+    await expect(service.resendInvite('pending', 'superadmin', null)).rejects.toMatchObject({ status: 503 });
+    expect(users.update).toHaveBeenLastCalledWith({ id: 'pending', inviteTokenVersion: 3 }, { inviteTokenVersion: 2 });
+  });
+
+  it('explains missing consent from an old client without allowing implicit consent', async () => {
+    const pipe = new ValidationPipe({ whitelist: true });
+    const metadata = { type: 'body' as const, metatype: AcceptInviteDto };
+    for (const termsAccepted of [undefined, 'true', null]) {
+      await expect(pipe.transform({ token: 'test', password: 'StrongPassword1!', termsAccepted }, metadata))
+        .rejects.toMatchObject({ response: { message: [expect.stringContaining('Einladungsseite neu')] } });
+    }
+    await expect(pipe.transform({ token: 'test', password: 'StrongPassword1!', termsAccepted: true }, metadata)).resolves.toMatchObject({ termsAccepted: true });
+  });
+
+  it('returns actionable client errors for expired or replaced invite links', async () => {
+    const { service, jwt } = createService({ existingUser: { id: 'pending', passwordHash: null, inviteTokenVersion: 2 } });
+    jwt.verifyAsync.mockRejectedValueOnce(new Error('jwt expired'));
+    await expect(service.acceptInvite('expired', 'StrongPassword1!', true)).rejects.toMatchObject({ status: 400 });
+    jwt.verifyAsync.mockResolvedValueOnce({ sub: 'pending', purpose: 'invite', version: 1 });
+    await expect(service.acceptInvite('replaced', 'StrongPassword1!', true)).rejects.toMatchObject({ status: 400 });
+  });
 
   it('saves and returns the account view density without changing other profile fields', async () => {
     const { service, users } = createService({ existingUser: {

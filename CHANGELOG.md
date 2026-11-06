@@ -9,6 +9,109 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.22.5] - 2026-11-03
+
+### Fixed
+- Das Entziehen eines Organisationszugangs widerruft offene Einladungslinks. Einladungen ohne aktiven Organisationszugang können kein Konto mehr aktivieren; auch während der Annahme widerrufene oder gelöschte Konten werden nicht reaktiviert.
+
+### Upgrade-Hinweise
+- Server, Backup-Image und Windows-Desktop verwenden Version 1.22.5. Die Prüfung zurückgezogener Einladungen benötigt das Backend-Update.
+- Mittwald: Backend und Backup auf `1.22.5`, Frontend auf `stack-1.22.5` aktualisieren. Der Demo-Tag bleibt `demo`.
+- Bereits früher entzogene Einladungen ohne aktiven Organisationszugang werden ebenfalls abgelehnt. Es ist keine Datenbankmigration nötig.
+
+## [1.22.4] - 2026-11-03
+
+### Fixed
+- Einladungs- und Passwort-Reset-Seiten werden nach Aktualisierung des Service Workers nicht mehr aus dem Offline-App-Shell-Cache geladen.
+- Fehlende Zustimmung zu den Nutzungsbedingungen sowie abgelaufene, ersetzte und bereits angenommene Einladungslinks erhalten verständliche Fehlermeldungen.
+- Der Ablauf Löschen, erneutes Einladen derselben E-Mail-Adresse und Annehmen der neuen Einladung ist durch einen Datenbanktest abgesichert.
+
+### Upgrade-Hinweise
+- Server, Backup-Image und Windows-Desktop verwenden Version 1.22.4. Für die Einladungs-Korrekturen den verbundenen Server aktualisieren.
+- Mittwald: Backend und Backup auf `1.22.4`, Frontend auf `stack-1.22.4` aktualisieren. Der Demo-Tag bleibt `demo`.
+- Bereits geöffnete alte Einladungsseiten gegebenenfalls mit Strg+F5 neu laden oder den neuesten Link in einem privaten Browserfenster öffnen. Die neue Cache-Regel greift nach Aktualisierung des Service Workers.
+
+## [1.22.3] - 2026-11-03
+
+### Added
+- Die Benutzerliste kennzeichnet noch nicht aktivierte Konten mit „Einladung offen“. Administratoren können Einladungen direkt erneut versenden, auch mobil und nach einer Rollenänderung. Bestehende Rollen und Zugänge bleiben erhalten.
+
+### Upgrade-Hinweise
+- Server, Backup-Image und Windows-Desktop verwenden Version 1.22.3. Für Einladungsstatus und erneuten Versand den verbundenen Server aktualisieren.
+- Mittwald: Backend und Backup auf `1.22.3`, Frontend auf `stack-1.22.3` aktualisieren. Der Demo-Tag bleibt `demo`.
+- Keine Datenbankmigration nötig. Bestehende offene Einladungen werden automatisch erkannt.
+
+## [1.22.2] - 2026-11-03
+
+### Changed
+- Benutzer können eigene Tags anlegen, auch direkt bei Aktivitäten und Projekten. Organisationsvorgaben für eigene Tags bleiben wirksam; Bearbeiten, Archivieren und Löschen bleiben Editor und Administrator vorbehalten.
+- Der Einladungsdialog erklärt die Berechtigungen von Benutzer, Editor und Administrator.
+
+### Fixed
+- Aktivitäten ohne Projekt-Zeitvorgaben erhalten keine erfundenen Start-/Endzeiten mehr. Start und Ende sind in Kalenderdialog, Anlegen und Bearbeiten erforderlich; konfigurierte Projektzeiten bleiben als Vorgaben erhalten.
+- Die API verlangt Start und Ende beim Anlegen und verhindert das Leeren vorhandener Zeiten bei Teilaktualisierungen.
+
+### Upgrade-Hinweise
+- Server, Backup-Image und Windows-Desktop verwenden Version 1.22.2. Die Änderungen an Formularen und Berechtigungen benötigen das Serverupdate.
+- Mittwald: Backend und Backup auf `1.22.2`, Frontend auf `stack-1.22.2` aktualisieren.
+- API-Integrationen müssen beim Anlegen von Aktivitäten Start- und Endzeit explizit senden. Bestehende Aktivitäten werden nicht verändert.
+
+## [1.22.1] - 2026-11-03
+
+### Fixed
+- Der Einsatzzeiten-Dialog scrollt lange Teamlisten innerhalb der verfügbaren Bildschirmhöhe. Abbrechen und Übernehmen bleiben auch bei vielen Teammitgliedern und auf kleinen Displays erreichbar.
+- Die Demo unterstützt die Team-Statistik und speichert individuelle Einsatzzeiten bei Demo-Aktivitäten.
+
+### Upgrade-Hinweise
+- Server, Backup-Image und Windows-Desktop verwenden Version 1.22.1. Für die Dialogkorrektur den verbundenen Server aktualisieren.
+- Mittwald: Backend und Backup auf `1.22.1`, Frontend auf `stack-1.22.1` aktualisieren. Für die Demo den Tag `demo` erneut pullen.
+
+## [1.22.0] - 2026-11-03
+
+### Added
+- Team-Statistik mit getrennten Personenstunden für durchgeführte, geplante und ausgefallene Einsätze, Tages-/Monatsverlauf und Wochentagsauswertung.
+- Bei Projekt- oder Typauswahl zeigt ein Ringdiagramm die durchgeführten Einsätze je Teammitglied mit Anzahl und Anteil. Einzelne Teammitglieder erhalten eine gefilterte Aktivitätstabelle.
+- PNG-Export für alle Team-Diagramme sowie vollständiger CSV-/Excel-Export der Team-Aktivitäten inklusive individueller Einsatzzeit und Status.
+- Individuelle Einsatzzeiten je Teammitglied mit Schieberegler, Viertelstunden-Schritten, seitlichen Pfeilen und Anzeige in Stunden und Minuten. Die volle Aktivitätsdauer bleibt auch bei abweichender Länge erreichbar.
+
+### Changed
+- Statistikfilter ohne doppelte Auswahl: Desktop verwendet Typ- und Projekt-Badges, Mobile die bestehenden Auswahldialoge.
+- Team-Statistik mit Ladeplatzhaltern, übersichtlichen Diagrammen ohne Untertexte und passenden Tages-/Monatsüberschriften.
+- Team-Tooltips mit lesbaren Datumsangaben und korrigierter Darstellung über dem Ringdiagramm.
+
+### Fixed
+- Individuelle Einsatzzeiten erhalten ein dezentes Uhrsymbol am Personen-Badge. Die volle Aktivitätsdauer gilt wieder als automatisch und wird nicht als Anpassung gespeichert.
+- Der Aktualisierungshinweis der Statistik erscheint als Toast unten rechts und verschwindet nach Abschluss.
+- Die Datenbankmigration für Einsatzzeiten berücksichtigt bereits vorhandene Spalten bei Neuinstallationen.
+
+### Upgrade-Hinweise
+- Server, Backup-Image und Windows-Desktop verwenden Version 1.22.0. Für die neuen Funktionen den verbundenen Server aktualisieren.
+- Die Backend-Migration ergänzt individuelle Einsatzzeiten an Aktivitäten. Vor dem Update ein Datenbank- und Upload-Backup erstellen; bestehende Daten und Zuordnungen bleiben erhalten.
+- Mittwald: Backend und Backup auf `1.22.0`, Frontend auf `stack-1.22.0` aktualisieren. Bestehende Volumes, Umgebungsvariablen und Backup-Cronjobs beibehalten.
+
+## [1.21.1] - 2026-11-02
+
+### Changed
+- Die mobile Aktivitätsdetailansicht zeigt Status und Dauer ebenfalls in der Kombi-Badge im Kopfbereich; die separate Status-Karte entfällt.
+- Mobile Aktivitätskarten zeigen „Geplant“ und „Ausgefallen“ zusammen mit der Dauer in einer kompakten Kombi-Badge.
+
+### Upgrade-Hinweise
+- Server und Windows-Desktop verwenden Version 1.21.1. Für die neue Darstellung der Aktivitäten den verbundenen Server aktualisieren.
+
+## [1.21.0] - 2026-11-02
+
+### Added
+- Zukünftige Aktivitäten erhalten den Status „Geplant“. Im Kalender erscheinen sie mit gestricheltem Rand und verblasstem Hintergrund, in Aktivitäten mit einem eigenen Badge.
+- Besucherzahlen können erst bei der Dokumentation einer durchgeführten Aktivität erfasst werden. Planungen bleiben bis zur manuellen Dokumentation geplant und fließen nicht in Ist-Auswertungen ein.
+
+### Fixed
+- Icons in der eingeklappten Seitenleiste sind mittig ausgerichtet.
+- Desktop-Update-Suche verwendet wie der Download Electrons Netzwerkzugriff mit Windows-Systemproxy/PAC statt Node-fetch. Netzwerkfehler zeigen Hinweise zu VPN, Proxy oder Zugriffsbeschränkungen.
+
+### Upgrade-Hinweise
+- Server und Windows-Desktop verwenden Version 1.21.0. Für die Aktivitätsplanung den Server aktualisieren; die Datenbankmigration ergänzt den Status „Geplant“.
+- Wenn ältere Desktop-Versionen im Dienstnetz keine Updates finden, den Installer 1.21.0 einmal manuell installieren. Künftige Suchen verwenden dann den korrigierten Netzwerkzugriff.
+
 ## [1.20.5] - 2026-11-01
 
 ### Changed

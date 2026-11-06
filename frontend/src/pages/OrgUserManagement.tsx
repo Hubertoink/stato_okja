@@ -6,6 +6,7 @@ import {
   fetchGlobalUsers,
   fetchUsers,
   removeUserMembershipApi,
+  resendUserInvitation,
   updateUserApi,
   type UserDto,
 } from '@/lib/users';
@@ -16,6 +17,7 @@ import {
   KeyRound,
   Users,
   Shield,
+  Pencil,
   User as UserIcon,
   Building2,
   Mail,
@@ -526,13 +528,19 @@ export default function OrgUserManagement() {
           {/* Role explanation */}
           <div className="rounded-lg bg-[var(--surface-2)] p-3 text-sm text-[var(--text-secondary)]">
             <div className="flex items-start gap-2 mb-2">
-              <UserIcon className="mt-0.5 h-4 w-4 text-[var(--text-muted)]" />
+              <UserIcon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-muted)]" />
               <div>
                 <strong>{autoT('ui_e8321efba4c2')}</strong> {autoT('ui_c9319abe9cdf')}
               </div>
             </div>
+            <div className="flex items-start gap-2 mb-2">
+              <Pencil className="mt-0.5 h-4 w-4 shrink-0 text-viridian" />
+              <div>
+                <strong>Editor:</strong> {autoT('role_editor_description')}
+              </div>
+            </div>
             <div className="flex items-start gap-2">
-              <Shield className="w-4 h-4 mt-0.5 text-viridian" />
+              <Shield className="w-4 h-4 mt-0.5 shrink-0 text-viridian" />
               <div>
                 <strong>{autoT('ui_9e2aeb7aa5cc')}</strong> {autoT('ui_32a6e772e5c4')}
               </div>
@@ -622,7 +630,7 @@ export default function OrgUserManagement() {
 }
 
 // Individual user row component
-function UserRow({
+export function UserRow({
   userData,
   currentUser,
   deleteAccount = false,
@@ -648,6 +656,40 @@ function UserRow({
   const isSuperadmin = userData.role === 'superadmin';
   const [roleModalOpen, setRoleModalOpen] = useState(false);
   const [roleHelpOpen, setRoleHelpOpen] = useState(false);
+  const [resending, setResending] = useState(false);
+  const resendLock = useRef(false);
+  const isInvited = userData.accountStatus === 'invited';
+  const invitationStatus = isInvited ? (
+    <span className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-2 py-0.5 text-xs text-[var(--status-warning-text)]"
+      title={autoT('invitation_pending_hint')}>
+      <Mail className="h-3 w-3 shrink-0" />{autoT('invitation_pending')}
+    </span>
+  ) : null;
+  const resendButton = isInvited && !isCurrentUser && (currentUser.role === 'superadmin' || currentUser.role === 'org_admin') ? (
+    <Button variant="secondary" size={isMobile ? 'lg' : 'sm'}
+      className={isMobile ? 'col-span-2' : ''} disabled={resending}
+      onClick={async () => {
+        if (resendLock.current) return;
+        resendLock.current = true;
+        setResending(true);
+        try {
+          await resendUserInvitation(userData.id);
+          showToast(autoT('invitation_resent'), { type: 'success' });
+          onReload();
+        } catch (error: unknown) {
+          const response = (error as { response?: { status?: number; data?: { message?: string | string[] } } }).response;
+          const message = response?.data?.message;
+          showToast(Array.isArray(message) ? message.join(', ') : message || autoT('invitation_resend_error'), { type: 'error' });
+          if (response?.status === 409) onReload();
+        } finally {
+          resendLock.current = false;
+          setResending(false);
+        }
+      }}>
+      <Mail className="h-4 w-4 shrink-0" />
+      {autoT(resending ? 'invitation_sending' : 'invitation_resend')}
+    </Button>
+  ) : null;
   const currentSelectableRole: Exclude<Role, 'superadmin'> =
     userData.role === 'org_admin' ? 'org_admin' : userData.role === 'editor' ? 'editor' : 'user';
   const [pendingRole, setPendingRole] =
@@ -704,6 +746,7 @@ function UserRow({
               )}
             </div>
             <div className="mt-1 break-all text-sm text-gray-600">{userData.email}</div>
+            {invitationStatus}
             {userData.org?.name && (
               <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full bg-gray-50 px-2.5 py-1 text-xs text-gray-500">
                 <Building2 className="w-3 h-3 shrink-0" />
@@ -714,6 +757,7 @@ function UserRow({
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
+          {resendButton}
           {!isSuperadmin && !isCurrentUser && !!userData.orgId && (
             <button
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
@@ -785,6 +829,7 @@ function UserRow({
               )}
             </div>
             <div className="text-sm text-gray-500 truncate">{userData.email}</div>
+            {invitationStatus}
             {userData.org?.name && (
               <div className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
                 <Building2 className="w-3 h-3" />
@@ -795,7 +840,8 @@ function UserRow({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {resendButton}
           {/* Role badge */}
           <span className={`text-xs px-2 py-1 rounded-full ${roleBadgeClass}`}>{roleLabel}</span>
 

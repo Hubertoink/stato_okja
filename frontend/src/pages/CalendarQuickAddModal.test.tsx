@@ -4,6 +4,7 @@ import type { Activity } from '@/lib/activities';
 import type { StaffMember } from '@/lib/staff';
 import ActivityQuickAdd from './CalendarQuickAddModal';
 import ActivityEditPage from './ActivityEditPage';
+import ActivityCreatePage from './ActivityCreatePage';
 import { MemoryRouter } from 'react-router-dom';
 
 const state = vi.hoisted(() => ({ activity: undefined as Activity | undefined, mutate: vi.fn(), empty: [], categoryMode: 'multiple', categories: [{ id: 'c1', name: 'Sport' }, { id: 'c2', name: 'Musik' }], staff: [] as StaffMember[] }));
@@ -15,7 +16,15 @@ vi.mock('@/lib/activities', () => ({
 }));
 vi.mock('@/lib/publicConfig', () => ({ usePublicConfig: () => ({ data: { activityCategoryMode: state.categoryMode } }) }));
 vi.mock('@/lib/projects', () => ({ useProjects: () => ({ data: state.empty }) }));
-vi.mock('@/lib/staff', () => ({ useStaff: (params?: { active?: boolean }) => ({ data: params?.active ? state.staff.filter((s) => s.active !== false) : state.staff }), useCreateStaff: () => ({}) }));
+vi.mock('@/lib/staff', async () => {
+  const { useMemo } = await import('react');
+  return {
+    useStaff: (params?: { active?: boolean }) => ({
+      data: useMemo(() => params?.active ? state.staff.filter((s) => s.active !== false) : state.staff, [params?.active]),
+    }),
+    useCreateStaff: () => ({}),
+  };
+});
 vi.mock('@/lib/locations', () => ({ useLocations: () => ({ data: state.empty }) }));
 vi.mock('@/lib/taxonomy', () => ({
   useTags: () => ({ data: state.empty }), useCategories: () => ({ data: state.categories }),
@@ -25,12 +34,11 @@ vi.mock('@/lib/taxonomy', () => ({
 }));
 vi.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { role: 'editor' } }) }));
 vi.mock('@/components/Toast', () => ({ useToast: () => ({ showToast: vi.fn() }) }));
-vi.mock('@/components/Modal', () => ({ useModalHistory: () => ({ dismiss: vi.fn() }) }));
+vi.mock('@/components/Modal', () => ({ useModalHistory: () => ({ dismiss: vi.fn(), dismissWithoutCallback: vi.fn() }) }));
 vi.mock('@/lib/useActivityModalCountMode', () => ({ useActivityModalCountMode: () => ({ isMobile: false, tapModeEnabled: false }) }));
 vi.mock('./useActivityInlineCreation', () => ({ useActivityInlineCreation: () => ({}) }));
 vi.mock('./ProjectPickerModal', () => ({ default: () => null }));
 vi.mock('@/components/ProtectedImage', () => ({ default: () => null }));
-vi.mock('@/components/ConfirmModal', () => ({ default: () => null }));
 
 function activity(version: number, youngWomen: number): Activity {
   return {
@@ -119,4 +127,96 @@ describe('activity editor refresh', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     expect(state.mutate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ expectedVersion: 1 }) }), expect.anything());
   });
+});
+
+
+describe('planned activity workflow', () => {
+  const future = '2099-11-19';
+  const plan = () => ({ ...activity(1, 0), date: future, executionStatus: 'planned', cohorts: [] }) as Activity;
+  it('opens a future calendar entry as planned with disabled counts and saves that status', () => {
+    render(<ActivityQuickAdd dateISO={future} project={{ id: 'project-1', title: 'Sport', type: 'event', defaultStartTime: '15:00', defaultEndTime: '17:00' } as never} onClose={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Geplant' })).toBeInTheDocument();
+    expect(screen.getByLabelText('6-9 Jahre W')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Geplant' }));
+    expect(screen.queryByRole('menuitemradio', { name: 'Stattgefunden' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Geplant' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(state.mutate).toHaveBeenCalledWith(expect.objectContaining({ executionStatus: 'planned', countTotal: 0, cohorts: [] }), expect.anything());
+  });
+  it('uses the same planning default on the standalone create page', () => {
+    render(<MemoryRouter initialEntries={['/activities/new?date=' + future]}><ActivityCreatePage /></MemoryRouter>);
+    expect(screen.getByRole('button', { name: 'Geplant' })).toBeInTheDocument();
+    expect(screen.getByLabelText('6-9 Jahre W')).toBeDisabled();
+  });
+  it('keeps overdue plans pending and unlocks counts only when documenting', () => {
+    const initial = { ...plan(), date: '2020-11-01' };
+    render(<ActivityQuickAdd dateISO={initial.date} activity={initial} onClose={vi.fn()} />);
+    expect(screen.getByText('Dokumentation offen')).toBeInTheDocument();
+    expect(screen.getByLabelText('6-9 Jahre W')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Durchführung dokumentieren' }));
+    expect(screen.getByLabelText('6-9 Jahre W')).toBeEnabled();
+    fireEvent.change(screen.getByLabelText('6-9 Jahre W'), { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(state.mutate).toHaveBeenCalledWith(expect.objectContaining({ id: initial.id, data: expect.objectContaining({ executionStatus: 'completed', countTotal: 7 }) }), expect.anything());
+  });
+  it('does not silently discard attendance when an existing event is moved into the future', () => {
+    const initial = activity(1, 4);
+    render(<ActivityQuickAdd dateISO={initial.date} activity={initial} onClose={vi.fn()} />);
+    fireEvent.change(document.querySelector('input[type="date"]')!, { target: { value: future } });
+    expect(screen.getByLabelText('6-9 Jahre W')).toHaveValue(4);
+    expect(screen.getByLabelText('6-9 Jahre W')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(state.mutate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Besucherzahlen entfernen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(state.mutate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ executionStatus: 'planned', countTotal: 0, cohorts: [] }) }), expect.anything());
+  });
+  it('can cancel a future plan without entering attendance', () => {
+    const initial = plan();
+    render(<ActivityQuickAdd dateISO={future} activity={initial} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Geplant' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Ausgefallen' }));
+    expect(screen.getByLabelText('6-9 Jahre W')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(state.mutate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ executionStatus: 'cancelled', countTotal: 0 }) }), expect.anything());
+  });
+});
+
+it('leaves missing project times empty and requires both before saving', () => {
+  render(<ActivityQuickAdd dateISO="2026-11-03" project={{ id: 'project-1', title: 'Ohne Zeiten', type: 'event' } as import('@/lib/projects').Project} onClose={vi.fn()} />);
+  expect(screen.getByLabelText('Start')).toHaveValue('');
+  expect(screen.getByLabelText('Ende')).toHaveValue('');
+  expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Start'), { target: { value: '10:00' } });
+  expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Ende'), { target: { value: '12:00' } });
+  expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+  expect(state.mutate).toHaveBeenCalledWith(expect.objectContaining({ startTime: '10:00', endTime: '12:00', durationMinutes: 120 }), expect.anything());
+});
+
+it('uses configured project times but keeps manually cleared fields empty', () => {
+  render(<ActivityQuickAdd dateISO="2026-11-03" project={{ id: 'project-1', title: 'Mit Zeiten', type: 'event', defaultStartTime: '09:30', defaultEndTime: '11:45' } as import('@/lib/projects').Project} onClose={vi.fn()} />);
+  expect(screen.getByLabelText('Start')).toHaveValue('09:30');
+  expect(screen.getByLabelText('Ende')).toHaveValue('11:45');
+  fireEvent.change(screen.getByLabelText('Start'), { target: { value: '' } });
+  fireEvent.change(screen.getByLabelText('Ende'), { target: { value: '' } });
+  expect(screen.getByLabelText('Start')).toHaveValue('');
+  expect(screen.getByLabelText('Ende')).toHaveValue('');
+  expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+});
+
+it('requires times on the standalone activity create and edit pages', () => {
+  const view = render(<MemoryRouter><ActivityCreatePage /></MemoryRouter>);
+  expect(screen.getByLabelText('Start')).toHaveValue('');
+  expect(screen.getByLabelText('Ende')).toHaveValue('');
+  expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+  view.unmount();
+  state.activity = activity(1, 0);
+  render(<MemoryRouter><ActivityEditPage /></MemoryRouter>);
+  fireEvent.change(screen.getByLabelText('Start'), { target: { value: '' } });
+  fireEvent.change(screen.getByLabelText('Ende'), { target: { value: '' } });
+  expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+  expect(state.mutate).not.toHaveBeenCalled();
 });

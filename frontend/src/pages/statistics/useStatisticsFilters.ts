@@ -64,8 +64,6 @@ export function useStatisticsFilters() {
   const [tempTo, setTempTo] = useState(to);
   const [desktopProjectFilterExpanded, setDesktopProjectFilterExpanded] = useState(false);
   const [mobileFiltersExpanded, setMobileFiltersExpanded] = useState(false);
-  const [mobileTypeFilterExpanded, setMobileTypeFilterExpanded] = useState(false);
-  const [mobileProjectFilterExpanded, setMobileProjectFilterExpanded] = useState(false);
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
   const [tempSelectedWeekdays, setTempSelectedWeekdays] = useState<number[]>([]);
   const [selectedExecutionStatuses, setSelectedExecutionStatuses] = useState<
@@ -265,10 +263,6 @@ export function useStatisticsFilters() {
     setDesktopProjectFilterExpanded,
     mobileFiltersExpanded,
     setMobileFiltersExpanded,
-    mobileTypeFilterExpanded,
-    setMobileTypeFilterExpanded,
-    mobileProjectFilterExpanded,
-    setMobileProjectFilterExpanded,
     selectedWeekdays,
     setSelectedWeekdays,
     tempSelectedWeekdays,

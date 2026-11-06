@@ -155,6 +155,7 @@ describe('Annual targets: persisted lifecycle, calculations and HTTP access', ()
         countFemale: 72,
       },
       { ...row, id: 'cancelled', date: '2025-03-01', executionStatus: 'cancelled' },
+      { ...row, id: 'planned', date: '2025-03-01', executionStatus: 'planned' },
       { ...row, id: 'foreign', date: '2025-03-01', orgId: FOREIGN },
       { ...row, id: 'old', date: '2024-12-31' },
       { ...row, id: 'next', date: '2026-01-01' },

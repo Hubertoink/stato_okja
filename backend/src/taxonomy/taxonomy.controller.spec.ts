@@ -2,6 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TaxonomyController } from './taxonomy.controller';
 import { TaxonomyService } from './taxonomy.service';
 import { OrgsService } from '../orgs/orgs.service';
+import { ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { RolesGuard } from '../auth/roles.guard';
 
 describe('TaxonomyController org scoping', () => {
   let controller: TaxonomyController;
@@ -51,6 +54,32 @@ describe('TaxonomyController org scoping', () => {
     await controller.findAllTags({ user: { role: 'superadmin', orgId: null }, effectiveOrgId: 'org-1' }, undefined, undefined);
     expect(orgs.getSubtreeOrgIds).not.toHaveBeenCalled();
     expect(service.findAllTags).toHaveBeenCalledWith(undefined, undefined, 'org-1');
+  });
+
+  it('allows users to create tags through the role guard in their own organization', async () => {
+    const guard = new RolesGuard(new Reflector());
+    const request = { user: { id: 'u', role: 'user', orgId: 'own' } };
+    const contextFor = (handler: (...args: never[]) => unknown) => ({
+      getHandler: () => handler,
+      getClass: () => TaxonomyController,
+      switchToHttp: () => ({ getRequest: () => request }),
+    }) as unknown as ExecutionContext;
+
+    expect(guard.canActivate(contextFor(controller.createTag))).toBe(true);
+    for (const handler of [controller.updateTag, controller.removeTag, controller.createCategory, controller.createCohort]) {
+      expect(guard.canActivate(contextFor(handler))).toBe(false);
+    }
+    await controller.createTag({ name: 'Ausflug', orgId: 'other' } as any, request);
+    expect(service.createTag).toHaveBeenCalledWith(
+      { name: 'Ausflug', orgId: 'own' }, expect.objectContaining({ id: 'u' }),
+    );
+  });
+
+  it('users still respect the organization lock when creating tags', async () => {
+    (orgs.canCreateOwnTaxonomy as jest.Mock).mockResolvedValueOnce(false);
+    await expect(controller.createTag({ name: 'Ausflug' }, { user: { role: 'user', orgId: 'own' } }))
+      .rejects.toThrow();
+    expect(service.createTag).not.toHaveBeenCalled();
   });
 
   it('cohorts: create sets orgId from scope and ignores body orgId', async () => {

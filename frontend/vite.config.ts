@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { readFileSync } from 'fs';
 import path from 'path';
+import { networkOnlyNavigationPatterns } from './src/lib/pwaNavigation';
 
 const appVersion = process.env.VITE_APP_VERSION || readFileSync(path.resolve(__dirname, '../VERSION'), 'utf8').trim();
 const MANUAL_CHUNK_RULES: Array<{ match: string; chunk: string }> = [
@@ -46,11 +47,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      // Public QR links must always receive the current app shell from the
-      // network. Otherwise an older cached shell can miss the public route and
-      // render the login screen once before its service worker updates.
+      // Public links must receive the current app shell from the network.
+      // Cached invitation forms can otherwise omit newly required consent fields.
       workbox: {
-        navigateFallbackDenylist: [/^\/survey\//],
+        navigateFallbackDenylist: networkOnlyNavigationPatterns,
       },
       includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
       manifest: {

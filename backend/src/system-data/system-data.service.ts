@@ -1717,7 +1717,7 @@ export class SystemDataService {
 
     const normalizedRow = { ...row };
     if (Object.prototype.hasOwnProperty.call(table.columnTypes, 'executionStatus')) {
-      normalizedRow.executionStatus = normalizedRow.executionStatus === 'cancelled' ? 'cancelled' : 'completed';
+      normalizedRow.executionStatus = normalizedRow.executionStatus === 'planned' ? 'planned' : normalizedRow.executionStatus === 'cancelled' ? 'cancelled' : 'completed';
     }
     normalizeActivityMetrics(normalizedRow);
     return normalizedRow;

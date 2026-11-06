@@ -242,6 +242,8 @@ describe('Organization scope and activity relation regression (HTTP)', () => {
       date: '2026-08-13',
       type: ActivityType.EVENT,
       title: 'Relation test',
+      startTime: '10:00',
+      endTime: '12:00',
       projectId: CHILD_PROJECT_ID,
       locationId: CHILD_LOCATION_ID,
       staffIds: [CHILD_STAFF_ID],
@@ -264,10 +266,23 @@ describe('Organization scope and activity relation regression (HTTP)', () => {
   });
 
   it('applies DTO validation before a mutation reaches the service layer', async () => {
+    for (const times of [
+      {},
+      { startTime: '10:00' },
+      { endTime: '12:00' },
+      { startTime: '', endTime: '' },
+    ]) {
+      expect(
+        (await request('/activities', {
+          method: 'POST',
+          body: JSON.stringify({ date: '2026-08-13', type: ActivityType.EVENT, ...times }),
+        })).status,
+      ).toBe(400);
+    }
     expect(
       (await request('/activities', {
         method: 'POST',
-        body: JSON.stringify({ date: '2026-08-13', type: ActivityType.EVENT, unexpected: 'must not be persisted' }),
+        body: JSON.stringify({ date: '2026-08-13', type: ActivityType.EVENT, startTime: '10:00', endTime: '12:00', unexpected: 'must not be persisted' }),
       })).status,
     ).toBe(400);
     expect(
@@ -276,6 +291,8 @@ describe('Organization scope and activity relation regression (HTTP)', () => {
         body: JSON.stringify({
           date: '2026-08-13',
           type: ActivityType.EVENT,
+          startTime: '10:00',
+          endTime: '12:00',
           cohorts: [{ cohortId: '80000000-0000-4000-8000-000000000001', m: -1 }],
         }),
       })).status,

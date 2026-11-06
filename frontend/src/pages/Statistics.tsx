@@ -1,4 +1,5 @@
 import { useStaff } from '@/lib/staff';
+import { StatisticsEmptyState } from './statistics/StatisticsEmptyState';
 import { DataTransition } from '@/components/ui/DataTransition';
 import { MonthActivityIndicator, monthlyActivityCounts } from './statistics/MonthActivityIndicator';
 import { useStatisticsMonthCounts } from './statistics/useStatisticsOverview';
@@ -1744,10 +1745,14 @@ export default function Statistics() {
         })()}
       </SurfaceCard>
 
-      {audience === 'team' ? <TeamStatistics ref={teamStatisticsRef} params={statsParams} query={teamQuery} staffId={selectedTeamMember} /> : <DataTransition variant="statistics" showStatus={false} pending={overviewQ.isPending || overviewQ.isPlaceholderData}
+      {audience === 'team' ? <TeamStatistics ref={teamStatisticsRef} params={statsParams} query={teamQuery} staffId={selectedTeamMember}
+        firstActivity={overviewQ.isSuccess && !overviewQ.isPlaceholderData && activityYears.length === 0} /> : <DataTransition variant="statistics" showStatus={false} pending={overviewQ.isPending || overviewQ.isPlaceholderData}
         refreshing={overviewQ.isFetching} error={overviewQ.isError}
         label={`Statistik für ${formatRangeDisplay(MONTH_NAMES)} wird geladen …`}
         onRetry={() => { void overviewQ.refetch(); }}>
+        {overviewQ.isSuccess && !overviewQ.isPlaceholderData && summary?.totalActivities === 0 ? (
+          <StatisticsEmptyState firstActivity={activityYears.length === 0} />
+        ) : <>
         <StatisticsKpis
           showAverage={showAverage}
           onShowAverageChange={setShowAverage}
@@ -2146,6 +2151,7 @@ export default function Statistics() {
             </div>
           </div>
         </div>
+        </>}
       </DataTransition>}
 
       <ResponsiveFilterPanel

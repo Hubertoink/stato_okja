@@ -5,7 +5,7 @@ import ProjectsFilterDrawer from './ProjectsFilterDrawer';
 afterEach(cleanup);
 
 describe('project filter selection', () => {
-  it('applies drafts explicitly and can reset all advanced filters', () => {
+  it('applies drafts explicitly and allows deselecting filters', () => {
     const onApply = vi.fn();
     const onClose = vi.fn();
     render(<ProjectsFilterDrawer anchorRef={{ current: null }} archivedCount={1}
@@ -21,7 +21,10 @@ describe('project filter selection', () => {
     expect(onApply).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Übernehmen' }));
     expect(onApply).toHaveBeenLastCalledWith({ staffNames: ['Lea'], categoryIds: ['music'], showArchived: true });
-    fireEvent.click(screen.getByRole('button', { name: 'Zurücksetzen' }));
+    expect(screen.queryByRole('button', { name: 'Zurücksetzen' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Lea'));
+    fireEvent.click(screen.getByRole('button', { name: 'Musik' }));
+    fireEvent.click(screen.getByLabelText('Archivierte Projekte einblenden (1)'));
     fireEvent.click(screen.getByRole('button', { name: 'Übernehmen' }));
     expect(onApply).toHaveBeenLastCalledWith({ staffNames: [], categoryIds: [], showArchived: false });
     fireEvent.click(screen.getAllByRole('button', { name: 'Schließen' }).at(-1)!);

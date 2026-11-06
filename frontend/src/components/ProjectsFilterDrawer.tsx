@@ -29,12 +29,11 @@ export default function ProjectsFilterDrawer({ anchorRef, projects, categories, 
   };
 
   return <ResponsiveFilterPanel
-    open anchorRef={anchorRef} title="Projekte filtern" desktopClassName="filter-popover--logbook" onClose={onClose}
-    footer={<div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-3">
-      <Button size="sm" variant="ghost" onClick={() => setFilters({ staffNames: [], categoryIds: [], showArchived: false })}>Zurücksetzen</Button>
+    open anchorRef={anchorRef} title="Filter" desktopClassName="filter-popover--activities" onClose={onClose}
+    footer={<div className="flex items-center justify-end gap-3 border-t border-[var(--border-subtle)] pt-3">
       <div className="flex gap-3">
-        <Button size="sm" variant="secondary" onClick={onClose}>Schließen</Button>
-        <Button size="sm" onClick={() => onApply(filters)}>Übernehmen</Button>
+        <Button size="sm" variant="secondary" className="!min-h-0 !rounded-lg !border-transparent !bg-gray-100 !text-gray-700 !px-4 !py-2 !font-normal hover:!bg-gray-200" onClick={onClose}>Schließen</Button>
+        <Button size="sm" className="!min-h-0 !rounded-lg !border-transparent !px-4 !py-2 !font-normal" onClick={() => onApply(filters)}>Übernehmen</Button>
       </div>
     </div>}
   >

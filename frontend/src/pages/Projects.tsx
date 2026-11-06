@@ -19,6 +19,7 @@ import {
 } from '@/lib/projects';
 import {
   Layers,
+  X,
   Users,
   Pencil,
   Plus,
@@ -2443,6 +2444,14 @@ function toProjectUpsertPayload(values: Partial<Project> | undefined): Partial<P
   return out as Partial<Project>;
 }
 
+function ProjectActiveFilterBadge({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return <Button size="sm" variant="ghost" onClick={onRemove}
+    aria-label={`${label}: Filter entfernen`} title={`${label}: Filter entfernen`}
+    className="min-w-0 max-w-full !min-h-0 !rounded-full !bg-azure-web !px-2 !py-1 !font-normal !text-viridian">
+    <span className="truncate">{label}</span><X aria-hidden="true" className="shrink-0 !h-3 !w-3" />
+  </Button>;
+}
+
 export default function Projects() {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -2591,6 +2600,20 @@ export default function Projects() {
         mobileTitle={autoT('ui_3930f79f07e5')}
         className="mb-4"
         title={autoT('ui_44772dcbbde7')}
+        titleAddon={(projectStaffFilters.length > 0 || projectCategoryFilters.length > 0 || showArchived) ? (
+          <div className="flex min-w-0 max-w-full flex-wrap gap-2" role="group" aria-label="Gesetzte Projektfilter">
+            {projectStaffFilters.map(name => <ProjectActiveFilterBadge key={`staff-${name}`} label={`Mitarbeitende: ${name}`}
+              onRemove={() => setProjectStaffFilters(current => current.filter(entry => entry !== name))} />)}
+            {projectCategoryFilters.map(id => {
+              const name = categoryMap.get(id)?.name
+                || [...projects, ...(archivedOnly || [])].flatMap(project => project.categories || []).find(category => category.id === id)?.name
+                || 'Kategorie';
+              return <ProjectActiveFilterBadge key={`category-${id}`} label={`Kategorie: ${name}`}
+                onRemove={() => setProjectCategoryFilters(current => current.filter(entry => entry !== id))} />;
+            })}
+            {showArchived && <ProjectActiveFilterBadge label="Archivierte Projekte" onRemove={() => setShowArchived(false)} />}
+          </div>
+        ) : undefined}
         actions={
           <div className="flex flex-wrap justify-end gap-2">
             <HeaderSearchAction

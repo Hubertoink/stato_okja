@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { randomBytes, randomInt } from 'crypto';
 import { SUPPORTED_LOCALES, type SupportedLocale, SUPPORTED_THEME_MODES, type ThemeMode, SUPPORTED_NAVIGATION_LAYOUTS, type NavigationLayout, SUPPORTED_VIEW_DENSITIES, type ViewDensity, User } from '../users/entities/user.entity';
 import { OrganizationMembership } from '../users/entities/organization-membership.entity';
@@ -877,6 +877,38 @@ export class AuthService {
     }
   }
 
+  async resendInvite(userId: string, actorRole: string, orgId?: string | null) {
+    if (actorRole !== 'superadmin' && actorRole !== 'org_admin') throw new ForbiddenException('Nicht erlaubt');
+    // Only the explicit global superadmin view may resend without an org scope.
+    if (!(actorRole === 'superadmin' && orgId === null)) {
+      if (!orgId) throw new ForbiddenException('Organisation ist erforderlich');
+      const membership = await this.memberships.findOne({ where: { userId, orgId, status: 'active' } });
+      if (!membership) throw new ForbiddenException('Kein Zugriff auf dieses Benutzerkonto');
+    }
+    const user = await this.users.findOne({ where: { id: userId } });
+    if (!user) throw new BadRequestException('Benutzerkonto nicht gefunden');
+    if (user.passwordHash) throw new ConflictException('Die Einladung wurde bereits angenommen. Bitte die Benutzerliste aktualisieren.');
+
+    const previousVersion = user.inviteTokenVersion ?? 0;
+    const nextVersion = previousVersion + 1;
+    // Update only the token version; never overwrite a changed role or password.
+    await this.users.update({ id: userId }, { inviteTokenVersion: nextVersion });
+    try {
+      const token = await this.jwt.signAsync(
+        { sub: userId, purpose: 'invite', version: nextVersion },
+        { expiresIn: this.getInviteTokenExpirationSeconds() },
+      );
+      const origin = process.env.APP_ORIGIN || 'http://localhost:5173';
+      const result = await this.email.sendInviteEmail(user.email, user.name || user.email, `${origin}/accept-invite?token=${token}`);
+      if (!result.queued) throw new HttpException({ code: 'SMTP_NOT_CONFIGURED', message: 'Die Einladungs-E-Mail konnte nicht gesendet werden: Der E-Mail-Versand (SMTP) ist nicht konfiguriert.' }, HttpStatus.SERVICE_UNAVAILABLE);
+      return { invitationSent: true, emailQueued: true, outcome: 'resent' };
+    } catch (error) {
+      await this.users.update({ id: userId, inviteTokenVersion: nextVersion }, { inviteTokenVersion: previousVersion });
+      if (error instanceof HttpException) throw error;
+      throw new HttpException({ code: 'INVITE_DELIVERY_FAILED', message: 'Die Einladungs-E-Mail konnte nicht zugestellt werden. Bitte erneut versuchen.' }, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+  }
+
   async createLocalUser(payload: {
     email: string;
     name: string;
@@ -966,20 +998,38 @@ export class AuthService {
 
   async acceptInvite(token: string, password: string, termsAccepted: boolean, metadata?: RefreshSessionMetadata) {
     if (termsAccepted !== true) throw new BadRequestException('Bitte stimme den Nutzungsbedingungen zu.');
-    const decoded = await this.jwt.verifyAsync<{ sub: string; purpose?: string; version?: number }>(token, {
-      secret: getJwtSecret(),
-    });
-    if (!decoded || decoded.purpose !== 'invite') throw new Error('Invalid invite token');
-    const user = await this.users.findOne({ where: { id: decoded.sub } });
-    if (!user) throw new Error('User not found');
-    if (user.passwordHash) throw new Error('Invite already accepted');
-    if ((decoded.version ?? 0) !== (user.inviteTokenVersion ?? 0)) {
-      throw new Error('Invite token wurde ersetzt oder ist nicht mehr gültig');
+    const invalidInvite = () => new BadRequestException('Dieser Einladungslink ist abgelaufen oder nicht mehr gültig. Bitte verwende die neueste Einladung oder bitte deine Administration um eine neue.');
+    let decoded: { sub: string; purpose?: string; version?: number };
+    try {
+      decoded = await this.jwt.verifyAsync(token, { secret: getJwtSecret() });
+    } catch {
+      throw invalidInvite();
     }
-    await this.savePassword(user, password, { mustChangePassword: false, bumpResetVersion: false });
-    user.termsAcceptedVersion = await this.legalContent.getTermsOfUseVersion();
-    user.termsAcceptedAt = new Date();
-    await this.users.save(user);
+    if (!decoded || !decoded.sub || decoded.purpose !== 'invite') throw invalidInvite();
+    const user = await this.users.findOne({ where: { id: decoded.sub } });
+    if (!user) throw invalidInvite();
+    if (user.passwordHash) throw new ConflictException('Die Einladung wurde bereits angenommen. Bitte melde dich mit deinem bestehenden Passwort an.');
+    if ((decoded.version ?? 0) !== (user.inviteTokenVersion ?? 0)) {
+      throw invalidInvite();
+    }
+    if (user.role !== 'superadmin' && !(await this.memberships.count({ where: { userId: user.id, status: 'active' } }))) {
+      throw invalidInvite();
+    }
+    if (!isStrongPassword(password)) throw new BadRequestException(PASSWORD_POLICY_MESSAGE);
+    const activation = {
+      passwordHash: await bcrypt.hash(password, 10),
+      mustChangePassword: false,
+      termsAcceptedVersion: await this.legalContent.getTermsOfUseVersion(),
+      termsAcceptedAt: new Date(),
+    };
+    // Do not recreate a deleted account or activate a concurrently revoked link.
+    const result = await this.users.update(
+      { id: user.id, passwordHash: IsNull(), inviteTokenVersion: decoded.version ?? 0 },
+      activation,
+    );
+    if (result.affected !== 1) throw invalidInvite();
+    Object.assign(user, activation);
+    await this.revokeAllRefreshSessionsForUser(user.id);
     return this.login(user, metadata);
   }
 

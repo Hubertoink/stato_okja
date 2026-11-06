@@ -1,3 +1,4 @@
+import { normalizeExecutionStatus, validateActivityPlanning } from './activity-planning';
 import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, SelectQueryBuilder } from 'typeorm';
@@ -18,6 +19,7 @@ import {
   type OrgScopedUser,
 } from '../auth/org-scope-access';
 import { ActivityListQuery, type ActivityListFilters } from './activity-list-query';
+import { validateActivityStaffTimes } from './activity-staff-times';
 import { normalizeActivityMetrics } from './activity-metrics';
 import { assertActivityCategorySelection } from '../config/activity-category.config';
 
@@ -40,6 +42,7 @@ type ActivityAuditSnapshot = {
   categories: string[];
   tags: string[];
   staff: string[];
+  staffTimes: Array<{ staffId: string; minutes: number }>;
   cohorts: string[];
 };
 
@@ -90,13 +93,6 @@ export class ActivitiesService {
     return typeof value === 'number' && Number.isFinite(value) ? value : null;
   }
 
-  private normalizeExecutionStatus(
-    value?: string | null,
-  ): ActivityExecutionStatus {
-    return value === ActivityExecutionStatus.CANCELLED
-      ? ActivityExecutionStatus.CANCELLED
-      : ActivityExecutionStatus.COMPLETED;
-  }
 
   private assertUserCanAccessActivity(
     activity: Pick<Activity, 'orgId'>,
@@ -246,6 +242,7 @@ export class ActivitiesService {
       categories: this.mapRelationNames(activity?.categories),
       tags: this.mapRelationNames(activity?.tags),
       staff: this.mapRelationNames(activity?.staff),
+      staffTimes: [...(activity?.staffTimes || [])].sort((a, b) => a.staffId.localeCompare(b.staffId)),
       cohorts: this.mapCohortEntries(activity?.cohorts, cohortNamesById),
     };
   }
@@ -290,6 +287,7 @@ export class ActivitiesService {
       'categories',
       'tags',
       'staff',
+      'staffTimes',
       'cohorts',
     ];
 
@@ -384,7 +382,7 @@ export class ActivitiesService {
         .map((row) => row.executionStatus)
         .filter(
           (status): status is ActivityExecutionStatus =>
-            status === ActivityExecutionStatus.COMPLETED || status === ActivityExecutionStatus.CANCELLED,
+            Object.values(ActivityExecutionStatus).includes(status),
         ),
       hasUncategorized: Boolean(uncategorizedRow),
       availableYears: yearRows
@@ -438,7 +436,9 @@ export class ActivitiesService {
     // locationId is optional; if omitted, activity can still be created
 
     const activity = this.activityRepository.create(rest);
-    activity.executionStatus = this.normalizeExecutionStatus(rest.executionStatus);
+    const planning = { ...activity, executionStatus: rest.executionStatus, cohorts: cohorts ?? activity.cohorts };
+    validateActivityPlanning(planning);
+    activity.executionStatus = planning.executionStatus!;
     const activityOrgId = (rest.orgId ?? null) as string | null;
 
     // If a project is linked, enforce the activity type to match the project's type
@@ -481,6 +481,7 @@ export class ActivitiesService {
     }
 
     normalizeActivityMetrics(activity);
+    validateActivityStaffTimes(activity);
 
     const saved = await this.activityRepository.save(activity);
     await this.audit.log({
@@ -543,8 +544,9 @@ export class ActivitiesService {
 
     assertActivityCategorySelection(categoryIds ?? rest.categories?.map((category) => category.id) ?? existing.categories?.map((category) => category.id) ?? []);
 
+    validateActivityPlanning({ ...existing, ...rest, cohorts: cohorts ?? existing.cohorts }, existing.executionStatus);
     Object.assign(existing, rest);
-    existing.executionStatus = this.normalizeExecutionStatus(rest.executionStatus ?? existing.executionStatus);
+    existing.executionStatus = normalizeExecutionStatus(rest.executionStatus ?? existing.executionStatus);
 
     // If a project is linked (new or existing), ensure the activity type mirrors the project's type
     const restWithProject = rest as Partial<Activity> & { projectId?: string | null };
@@ -585,6 +587,7 @@ export class ActivitiesService {
     }
 
     normalizeActivityMetrics(existing);
+    validateActivityStaffTimes(existing);
 
     const updated = await this.activityRepository.manager.transaction(async (manager) => {
       const repository = manager.getRepository(Activity);

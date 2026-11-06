@@ -100,7 +100,7 @@ export function StatisticsKpis({
   );
 }
 
-function KpiCard({
+export function KpiCard({
   icon,
   variant,
   value,

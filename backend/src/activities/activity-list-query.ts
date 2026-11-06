@@ -1,3 +1,4 @@
+import { normalizeExecutionStatus } from './activity-planning';
 import { Brackets, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 import { Activity } from './entities/activity.entity';
 import { ActivityExecutionStatus } from '../common/enums';
@@ -242,17 +243,12 @@ export class ActivityListQuery {
     qb.andWhere(`${this.getWeekdayExpression('a.date')} IN (:...weekdays)`, { weekdays });
   }
 
-  private normalizeExecutionStatus(value?: string | null): ActivityExecutionStatus {
-    return value === ActivityExecutionStatus.CANCELLED
-      ? ActivityExecutionStatus.CANCELLED
-      : ActivityExecutionStatus.COMPLETED;
-  }
 
   private normalizeExecutionStatuses(values?: string[] | null): ActivityExecutionStatus[] | undefined {
     if (!Array.isArray(values) || values.length === 0) return undefined;
 
     const normalized = Array.from(
-      new Set(values.map((value) => this.normalizeExecutionStatus(value))),
+      new Set(values.map((value) => normalizeExecutionStatus(value))),
     );
 
     return normalized.length > 0 ? normalized : undefined;

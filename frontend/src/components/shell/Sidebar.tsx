@@ -52,6 +52,7 @@ export default function Sidebar({
       )}
       <aside
         className={`app-sidebar ${collapsed ? 'is-collapsed' : ''} ${expanded ? 'is-expanded' : ''}`}
+        data-icon-only={iconOnly}
         aria-label={t('shell.navigation')}
       >
         <div className="sidebar-brand">

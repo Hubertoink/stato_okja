@@ -1,3 +1,5 @@
+import { StaffTimesButton, StaffTimeIndicator } from '@/components/StaffTimesButton';
+import ActivityPlanningNotice from '@/components/ActivityPlanningNotice';
 import { usePublicConfig } from '@/lib/publicConfig';
 import {
   selectActivityCategory,
@@ -37,7 +39,7 @@ import { useFocusedFieldVisibility } from '@/lib/useFocusedFieldVisibility';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { getTimeRangeValidationIssue } from '@/lib/timeRange';
-import { DEFAULT_ACTIVITY_EXECUTION_STATUS } from '@/lib/activityExecutionStatus';
+import { activityStatusForDate, isPlannedActivity, isFutureActivityDate } from '@/lib/activityExecutionStatus';
 import { useAuth } from '@/lib/auth';
 import { useActivityInlineCreation } from './useActivityInlineCreation';
 import {
@@ -112,7 +114,7 @@ export default function ActivityEditPage() {
     if (!activity || isDirty) return;
     const nextForm = {
       ...getActivityFormStateFromActivity(activity),
-      executionStatus: activity.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
+      executionStatus: activityStatusForDate(activity.executionStatus, activity.date),
     };
     initialCohortCountsRef.current = nextForm.cohortCounts || {};
     formVersionRef.current = activity.version;
@@ -160,9 +162,10 @@ export default function ActivityEditPage() {
   // Derive cohort-based totals
   const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
+  const countsLocked = isPlannedActivity(form.executionStatus) || isFutureActivityDate(form.date);
   const isCohortValueChanged = (cohortId: string, gender: GenderKey, value: number) =>
     (initialCohortCountsRef.current[cohortId]?.[gender] || 0) !== value;
-  const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end);
+  const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end, true);
   const timeRangeError = timeRangeIssue
     ? t(
         timeRangeIssue === 'incomplete'
@@ -186,6 +189,10 @@ export default function ActivityEditPage() {
   };
 
   const handleSave = () => {
+    if (countsLocked && cohortTotal > 0) {
+      showToast(t('common:executionStatus.clearCountsHint'), { type: 'error' });
+      return;
+    }
     if (!activity) return;
     if (categoryMode === 'single' && (form.categoryIds?.length ?? 0) > 1 && selectedProject?.type !== 'open_door') {
       showToast(SINGLE_CATEGORY_MESSAGE, { type: 'error' });
@@ -215,7 +222,7 @@ export default function ActivityEditPage() {
     const payload = buildActivitySavePayload({
       form: {
         ...form,
-        executionStatus: form.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
+        executionStatus: activityStatusForDate(form.executionStatus, form.date),
       },
       selectedProject,
       fallbackDate: activity.date,
@@ -256,6 +263,7 @@ export default function ActivityEditPage() {
           actions={
             <ActivityExecutionStatusControl
               value={form.executionStatus}
+              date={form.date}
               onChange={(executionStatus) =>
                 setForm((current) => ({ ...current, executionStatus }))
               }
@@ -282,7 +290,7 @@ export default function ActivityEditPage() {
                 type="date"
                 value={(form.date || '').slice(0, 10)}
                 onChange={(e) => {
-                  setForm({ ...form, date: e.target.value });
+                  setForm({ ...form, date: e.target.value, executionStatus: activityStatusForDate(form.executionStatus, e.target.value) });
                   setValidationErrors((errors) => ({ ...errors, date: undefined }));
                 }}
                 aria-invalid={Boolean(validationErrors.date)}
@@ -402,6 +410,7 @@ export default function ActivityEditPage() {
                 <input
                   id="start-time-edit"
                   type="time"
+                  required
                   value={form.start || ''}
                   onChange={(e) => setForm({ ...form, start: e.target.value })}
                   aria-invalid={Boolean(timeRangeError)}
@@ -418,6 +427,7 @@ export default function ActivityEditPage() {
                 <input
                   id="end-time-edit"
                   type="time"
+                  required
                   value={form.end || ''}
                   onChange={(e) => setForm({ ...form, end: e.target.value })}
                   aria-invalid={Boolean(timeRangeError)}
@@ -435,7 +445,10 @@ export default function ActivityEditPage() {
             ) : null}
 
             {/* Cohorts */}
-            <div>
+            <ActivityPlanningNotice status={form.executionStatus} date={form.date} hasCounts={cohortTotal > 0}
+                onClearCounts={() => setForm((current) => ({ ...current, cohortCounts: {} }))}
+                onDocument={() => setForm((current) => ({ ...current, executionStatus: 'completed' }))} />
+            <fieldset disabled={countsLocked} className="min-w-0">
               <div className="mb-1 flex items-center justify-between gap-3">
                 <label className="block text-sm font-medium">{autoT('ui_4d34ac48c54e')}</label>
                 {isMobile && (
@@ -559,6 +572,7 @@ export default function ActivityEditPage() {
                       </span>
                       {(['m', 'w', 'd'] as const).map((g) => (
                         <ActivityCohortCountField
+                          disabled={countsLocked}
                           key={g}
                           mode={tapModeEnabled ? 'tap' : 'input'}
                           value={entry[g] || 0}
@@ -586,7 +600,7 @@ export default function ActivityEditPage() {
                   total={cohortTotal}
                 />
               </div>
-            </div>
+            </fieldset>
 
             <details className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 md:p-4">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-medium text-[var(--text-primary)]">
@@ -694,6 +708,7 @@ export default function ActivityEditPage() {
                           {t('quickAdd.add')}
                         </button>
                       ) : null}
+                      <StaffTimesButton form={form} staff={allStaff ?? staff ?? []} onChange={staffTimes => setForm(current => ({ ...current, staffTimes }))} />
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {employeeStaff.map((s) => {
@@ -713,6 +728,7 @@ export default function ActivityEditPage() {
                             }`}
                           >
                             {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
+                          <StaffTimeIndicator form={form} staffId={s.id} />
                           </button>
                         );
                       })}
@@ -735,6 +751,7 @@ export default function ActivityEditPage() {
                           {t('quickAdd.add')}
                         </button>
                       ) : null}
+                      <StaffTimesButton form={form} staff={allStaff ?? staff ?? []} onChange={staffTimes => setForm(current => ({ ...current, staffTimes }))} />
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {volunteerStaff.map((s) => {
@@ -754,6 +771,7 @@ export default function ActivityEditPage() {
                             }`}
                           >
                             {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
+                          <StaffTimeIndicator form={form} staffId={s.id} />
                           </button>
                         );
                       })}
@@ -776,6 +794,7 @@ export default function ActivityEditPage() {
                           {t('quickAdd.add')}
                         </button>
                       ) : null}
+                      <StaffTimesButton form={form} staff={allStaff ?? staff ?? []} onChange={staffTimes => setForm(current => ({ ...current, staffTimes }))} />
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {helperStaff.map((s) => {
@@ -797,6 +816,7 @@ export default function ActivityEditPage() {
                             }`}
                           >
                             {s.name}{s.active === false ? ` (${t('common:staffSelection.archived')})` : ''}
+                          <StaffTimeIndicator form={form} staffId={s.id} />
                           </button>
                         );
                       })}

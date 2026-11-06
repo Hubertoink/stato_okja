@@ -54,6 +54,14 @@ export function toActivityExportRows(
   }));
 }
 
+function teamColumns(activity: Activity, staffId?: string): Array<string | number> {
+  if (!staffId) return [];
+  return [
+    activity.staffTimes?.find((entry) => entry.staffId === staffId)?.minutes ?? getActivityDurationMinutes(activity) ?? '',
+    activity.executionStatus === 'cancelled' ? 'Ausgefallen' : activity.executionStatus === 'planned' ? 'Geplant' : 'Durchgeführt',
+  ];
+}
+
 function csvEscape(value: string | number) {
   const text = String(value);
   // Prevent formula execution when the file is opened in spreadsheet software.
@@ -61,7 +69,7 @@ function csvEscape(value: string | number) {
   return `"${safeText.replace(/"/g, '""')}"`;
 }
 
-export function serializeActivitiesAsCsv(activities: Activity[], getTypeLabel: ActivityTypeLabel) {
+export function serializeActivitiesAsCsv(activities: Activity[], getTypeLabel: ActivityTypeLabel, staffId?: string) {
   const rows = toActivityExportRows(activities, getTypeLabel);
   const values: Array<Array<string | number>> = [
     [
@@ -74,8 +82,9 @@ export function serializeActivitiesAsCsv(activities: Activity[], getTypeLabel: A
       autoT('ui_aff024fe4ab0'),
       autoT('ui_3c363836cf4e'),
       autoT('ui_d62550d402f1'),
+      ...(staffId ? ['Einsatzzeit (min)', 'Status'] : []),
     ],
-    ...rows.map((row) => [
+    ...rows.map((row, index) => [
       row.date,
       row.type,
       row.title,
@@ -85,6 +94,7 @@ export function serializeActivitiesAsCsv(activities: Activity[], getTypeLabel: A
       row.female,
       row.diverse,
       row.duration,
+      ...teamColumns(activities[index], staffId),
     ]),
   ];
 
@@ -96,15 +106,17 @@ export async function exportActivitiesAsCsv({
   fileName,
   getTypeLabel,
   onProgress,
+  staffId,
 }: {
   activities: Activity[];
   fileName: string;
   getTypeLabel: ActivityTypeLabel;
   onProgress: ProgressHandler;
+  staffId?: string;
 }) {
   onProgress(autoT('ui_fdc6078908bb'));
   await new Promise(requestAnimationFrame);
-  const blob = new Blob([serializeActivitiesAsCsv(activities, getTypeLabel)], {
+  const blob = new Blob([serializeActivitiesAsCsv(activities, getTypeLabel, staffId)], {
     type: 'text/csv;charset=utf-8',
   });
   const url = URL.createObjectURL(blob);
@@ -124,11 +136,13 @@ export async function exportActivitiesAsExcel({
   fileName,
   getTypeLabel,
   onProgress,
+  staffId,
 }: {
   activities: Activity[];
   fileName: string;
   getTypeLabel: ActivityTypeLabel;
   onProgress: ProgressHandler;
+  staffId?: string;
 }) {
   onProgress(autoT('ui_fdc6078908bb'));
   await new Promise(requestAnimationFrame);
@@ -144,8 +158,9 @@ export async function exportActivitiesAsExcel({
       autoT('ui_aff024fe4ab0'),
       autoT('ui_3c363836cf4e'),
       autoT('ui_d62550d402f1'),
+      ...(staffId ? ['Einsatzzeit (min)', 'Status'] : []),
     ],
-    ...rows.map((row) => [
+    ...rows.map((row, index) => [
       row.date,
       row.type,
       row.title,
@@ -155,6 +170,7 @@ export async function exportActivitiesAsExcel({
       row.female,
       row.diverse,
       row.duration === '' ? '' : row.duration,
+      ...teamColumns(activities[index], staffId),
     ]),
   ];
   const xlsx = await import('xlsx-js-style');
@@ -174,6 +190,7 @@ export async function exportActivitiesAsExcel({
     { wch: 8 },
     { wch: 8 },
     { wch: 12 },
+    ...(staffId ? [{ wch: 18 }, { wch: 16 }] : []),
   ];
   for (let column = 0; column < (sheetRows[0]?.length || 0); column++) {
     const cell = worksheet[utils.encode_cell({ r: 0, c: column })] as unknown as

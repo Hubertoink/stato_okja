@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Check, CheckCircle2, ChevronDown } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Check, CheckCircle2, ChevronDown } from 'lucide-react';
 import {
   ACTIVITY_EXECUTION_STATUS_OPTIONS,
   type ActivityExecutionStatus,
   normalizeActivityExecutionStatus,
+  isFutureActivityDate,
 } from '@/lib/activityExecutionStatus';
 import { useTranslation } from 'react-i18next';
 
 function StatusIcon({ status, className = '' }: { status: ActivityExecutionStatus; className?: string }) {
+  if (status === 'planned') return <CalendarClock className={className} />;
   if (status === 'cancelled') {
     return <AlertTriangle className={className} />;
   }
@@ -17,19 +19,22 @@ function StatusIcon({ status, className = '' }: { status: ActivityExecutionStatu
 
 export default function ActivityExecutionStatusControl({
   value,
+  date,
   onChange,
 }: {
   value?: string | null;
+  date?: string;
   onChange: (status: ActivityExecutionStatus) => void;
 }) {
   const { t } = useTranslation('common');
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const status = normalizeActivityExecutionStatus(value);
-  const buttonClasses =
-    status === 'cancelled'
-      ? 'activity-status-control activity-status-control--cancelled'
-      : 'activity-status-control activity-status-control--completed';
+  const buttonClasses = `activity-status-control activity-status-control--${status}`;
+  const future = isFutureActivityDate(date);
+  const options = ACTIVITY_EXECUTION_STATUS_OPTIONS.filter((option) =>
+    option === 'planned' ? future || status === 'planned' : option !== 'completed' || !future,
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -71,7 +76,7 @@ export default function ActivityExecutionStatusControl({
           <div className="status-menu-label px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em]">
             {t('executionStatus.menuTitle')}
           </div>
-          {ACTIVITY_EXECUTION_STATUS_OPTIONS.map((option) => {
+          {options.map((option) => {
             const active = option === status;
             return (
               <button
@@ -90,7 +95,7 @@ export default function ActivityExecutionStatusControl({
                 <span className="inline-flex items-center gap-2">
                   <StatusIcon
                     status={option}
-                    className={`h-4 w-4 ${option === 'cancelled' ? "text-rose-600" : "text-emerald-600"}`}
+                    className="h-4 w-4"
                   />
                   {t(`executionStatus.${option}`)}
                 </span>

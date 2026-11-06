@@ -24,7 +24,7 @@ function selectDesktopRelease(releases) {
   }).sort((a, b) => compareVersions(b.version, a.version))[0] || null;
 }
 
-async function discoverDesktopRelease(fetchImpl = fetch) {
+async function discoverDesktopRelease(fetchImpl) {
   const releases = [];
   // Include prereleases and ignore the separate server release family.
   // Bound requests even for repositories with a long release history.
@@ -33,7 +33,7 @@ async function discoverDesktopRelease(fetchImpl = fetch) {
       headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'StatO-Desktop' },
       signal: AbortSignal.timeout(15000),
     });
-    if (!response.ok) throw new Error(`Update-Prüfung fehlgeschlagen (${response.status}).`);
+    if (!response.ok) throw Object.assign(new Error('Update-Prüfung fehlgeschlagen.'), { status: response.status });
     const batch = await response.json();
     if (!Array.isArray(batch)) throw new Error('Ungültige Release-Antwort.');
     releases.push(...batch);
@@ -42,7 +42,11 @@ async function discoverDesktopRelease(fetchImpl = fetch) {
   throw new Error('Release-Liste ist zu lang. Bitte später erneut prüfen.');
 }
 
-function createUpdateController({ updater, currentVersion, enabled, discover = discoverDesktopRelease, onState = () => {} }) {
+function createUpdateController({ updater, currentVersion, enabled,
+  // Use the updater's Chromium session throughout: Node fetch bypasses Windows
+  // system proxy/PAC settings needed by many municipal VPN networks.
+  discover = () => discoverDesktopRelease((url, options) => updater.netSession.fetch(url, options)),
+  onState = () => {} }) {
   let state = { revision: 0, status: enabled ? 'idle' : 'disabled', currentVersion, version: null, percent: 0, checkedAt: null, message: '' };
   let busy = false;
   let expectedVersion;
@@ -51,7 +55,17 @@ function createUpdateController({ updater, currentVersion, enabled, discover = d
     onState(state);
     return state;
   };
-  const fail = () => publish({ status: 'error', message: 'Update nicht möglich. Internetverbindung prüfen und erneut versuchen.' });
+  const fail = (error) => {
+    let message = 'Update nicht möglich. Internetverbindung, VPN und Proxy prüfen und erneut versuchen.';
+    if (error?.name === 'TimeoutError' || /TIMED_OUT|ETIMEDOUT/.test(error?.message || '')) {
+      message = 'Die Update-Suche hat zu lange gedauert. VPN- und Proxy-Verbindung prüfen und erneut versuchen.';
+    } else if ([403, 429].includes(error?.status)) {
+      message = 'Der Update-Dienst begrenzt oder blockiert die Anfrage. Bitte später erneut versuchen; gegebenenfalls die IT nach der GitHub-Freigabe fragen.';
+    } else if (error?.status === 407) {
+      message = 'Der Netzwerk-Proxy verlangt eine Anmeldung. Bitte die Proxy-Anmeldung mit der IT prüfen.';
+    }
+    return publish({ status: 'error', message });
+  };
   updater.autoDownload = false;
   updater.autoInstallOnAppQuit = false;
   updater.allowDowngrade = false;
@@ -72,7 +86,8 @@ function createUpdateController({ updater, currentVersion, enabled, discover = d
       try {
         const release = await discover();
         const checkedAt = new Date().toISOString();
-        if (!release || compareVersions(release.version, currentVersion) <= 0) {
+        if (!release) throw new Error('Kein vollständiges Desktop-Release gefunden.');
+        if (compareVersions(release.version, currentVersion) <= 0) {
           return publish({ status: 'current', checkedAt });
         }
         expectedVersion = release.version;
@@ -81,15 +96,15 @@ function createUpdateController({ updater, currentVersion, enabled, discover = d
         const result = await updater.checkForUpdates();
         if (result?.updateInfo.version !== expectedVersion) throw new Error('Release metadata mismatch');
         return publish({ status: 'available', version: expectedVersion, checkedAt });
-      } catch {
-        return fail();
+      } catch (error) {
+        return fail(error);
       } finally { busy = false; }
     },
     async download() {
       if (!enabled || busy || state.status !== 'available') return state;
       busy = true;
       publish({ status: 'downloading', percent: 0, message: '' });
-      try { await updater.downloadUpdate(); } catch { fail(); }
+      try { await updater.downloadUpdate(); } catch (error) { fail(error); }
       finally { busy = false; }
       return state;
     },

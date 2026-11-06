@@ -95,11 +95,19 @@ export class UsersService {
   }
 
   async disableMembership(userId: string, orgId: string) {
-    const membership = await this.findMembership(userId, orgId);
-    if (!membership) return false;
-    membership.status = 'disabled';
-    await this.memberships.save(membership);
-    return true;
+    return this.repo.manager.transaction(async (manager) => {
+      const memberships = manager.getRepository(OrganizationMembership);
+      const membership = await memberships.findOne({ where: { userId, orgId } });
+      if (!membership) return false;
+      membership.status = 'disabled';
+      await memberships.save(membership);
+      // An invitation activates the account. Revoking access must also revoke
+      // outstanding activation links, even if access is granted again later.
+      await manager.getRepository(User).increment(
+        { id: userId, passwordHash: IsNull() }, 'inviteTokenVersion', 1,
+      );
+      return true;
+    });
   }
 
   async countActiveMembershipAdmins(orgId: string) {

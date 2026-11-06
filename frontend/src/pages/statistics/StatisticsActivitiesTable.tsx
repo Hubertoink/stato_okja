@@ -26,6 +26,7 @@ export function StatisticsActivitiesTable({
   exportActions,
   formatNumber,
   getTypeLabel,
+  staffId,
 }: {
   activities: Activity[];
   isLoading: boolean;
@@ -40,6 +41,7 @@ export function StatisticsActivitiesTable({
   exportActions: ReactNode;
   formatNumber: (value?: number) => string;
   getTypeLabel: (type?: string | null) => string;
+  staffId?: string;
 }) {
   const pages: (number | 'ellipsis')[] = [];
   if (totalPages <= 7) for (let index = 1; index <= totalPages; index++) pages.push(index);
@@ -87,6 +89,7 @@ export function StatisticsActivitiesTable({
                 autoT('ui_aff024fe4ab0'),
                 autoT('ui_3c363836cf4e'),
                 autoT('ui_d62550d402f1'),
+                ...(staffId ? ['Einsatzzeit (min)', 'Status'] : []),
               ].map((label, index) => (
                 <th key={label} className={`px-3 py-2 ${index < 4 ? 'text-left' : 'text-right'}`}>
                   {label}
@@ -124,12 +127,16 @@ export function StatisticsActivitiesTable({
                   <td className="px-3 py-1.5 text-right">
                     {getActivityDurationMinutes(activity) ?? ''}
                   </td>
+                  {staffId && <>
+                    <td className="px-3 py-1.5 text-right">{activity.staffTimes?.find(entry => entry.staffId === staffId)?.minutes ?? getActivityDurationMinutes(activity) ?? ''}</td>
+                    <td className="px-3 py-1.5"><ActivityExecutionStatusBadge status={activity.executionStatus} compact /></td>
+                  </>}
                 </tr>
               );
             })}
-            {isLoading && activities.length === 0 && <LoadingTableRows columns={9} />}
-            {isError && <tr><td colSpan={9} role="alert">Daten konnten nicht geladen werden. <Button type="button" onClick={onRetry}>Erneut versuchen</Button></td></tr>}
-            {!isLoading && !isError && activities.length === 0 && <EmptyRow label={autoT('ui_afc08a0675e3')} />}
+            {isLoading && activities.length === 0 && <LoadingTableRows columns={staffId ? 11 : 9} />}
+            {isError && <tr><td colSpan={staffId ? 11 : 9} role="alert">Daten konnten nicht geladen werden. <Button type="button" onClick={onRetry}>Erneut versuchen</Button></td></tr>}
+            {!isLoading && !isError && activities.length === 0 && <EmptyRow label={autoT('ui_afc08a0675e3')} columns={staffId ? 11 : 9} />}
           </tbody>
         </table>
       </div>
@@ -189,10 +196,10 @@ export function StatisticsActivitiesTable({
     </div>
   );
 }
-function EmptyRow({ label }: { label: string }) {
+function EmptyRow({ label, columns = 9 }: { label: string; columns?: number }) {
   return (
     <tr>
-      <td className="px-3 py-3 text-center text-gray-500" colSpan={9}>
+      <td className="px-3 py-3 text-center text-gray-500" colSpan={columns}>
         {label}
       </td>
     </tr>

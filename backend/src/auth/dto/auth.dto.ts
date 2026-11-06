@@ -100,7 +100,7 @@ export class AcceptInviteDto {
   @MinLength(1)
   password!: string;
 
-  @IsBoolean()
+  @IsBoolean({ message: 'Bitte lade die Einladungsseite neu und bestätige die Nutzungsbedingungen. Falls das Kästchen fehlt, öffne den aktuellen Einladungslink in einem privaten Browserfenster.' })
   termsAccepted!: boolean;
 }
 

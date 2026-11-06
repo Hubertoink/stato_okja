@@ -39,6 +39,7 @@ export interface Activity {
   startTime?: string | null;
   endTime?: string | null;
   durationMinutes?: number | null;
+  staffTimes?: Array<{ staffId: string; minutes: number }> | null;
   executionStatus?: ActivityExecutionStatus | null;
   type: 'open_door' | 'project_open' | 'project_closed' | 'event' | 'outreach';
   locationId?: string | null;

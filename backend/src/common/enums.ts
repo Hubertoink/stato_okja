@@ -18,6 +18,7 @@ export enum ActivityType {
 export enum ActivityExecutionStatus {
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
+  PLANNED = 'planned',
 }
 
 export enum AuditAction {

@@ -1,4 +1,6 @@
 import { normalizeExecutionStatus, validateActivityPlanning } from './activity-planning';
+import { validateActivityContributions } from './activity-contributions';
+import { Contributor } from '../contributors/contributor.entity';
 import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, SelectQueryBuilder } from 'typeorm';
@@ -43,6 +45,7 @@ type ActivityAuditSnapshot = {
   tags: string[];
   staff: string[];
   staffTimes: Array<{ staffId: string; minutes: number }>;
+  contributions: NonNullable<Activity['contributions']>;
   cohorts: string[];
 };
 
@@ -243,6 +246,7 @@ export class ActivitiesService {
       tags: this.mapRelationNames(activity?.tags),
       staff: this.mapRelationNames(activity?.staff),
       staffTimes: [...(activity?.staffTimes || [])].sort((a, b) => a.staffId.localeCompare(b.staffId)),
+      contributions: [...(activity?.contributions || [])].sort((a, b) => a.contributorId.localeCompare(b.contributorId)),
       cohorts: this.mapCohortEntries(activity?.cohorts, cohortNamesById),
     };
   }
@@ -288,6 +292,7 @@ export class ActivitiesService {
       'tags',
       'staff',
       'staffTimes',
+      'contributions',
       'cohorts',
     ];
 
@@ -482,6 +487,7 @@ export class ActivitiesService {
 
     normalizeActivityMetrics(activity);
     validateActivityStaffTimes(activity);
+    await validateActivityContributions(activity, ids => this.activityRepository.manager.getRepository(Contributor).findBy({ id: In(ids) }));
 
     const saved = await this.activityRepository.save(activity);
     await this.audit.log({
@@ -588,6 +594,7 @@ export class ActivitiesService {
 
     normalizeActivityMetrics(existing);
     validateActivityStaffTimes(existing);
+    await validateActivityContributions(existing, ids => this.activityRepository.manager.getRepository(Contributor).findBy({ id: In(ids) }), beforeActivityForAudit.contributions || []);
 
     const updated = await this.activityRepository.manager.transaction(async (manager) => {
       const repository = manager.getRepository(Activity);

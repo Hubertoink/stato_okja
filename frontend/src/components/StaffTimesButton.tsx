@@ -49,6 +49,7 @@ export function StaffTimesButton({
         size="icon-touch"
         aria-label="Einsatzzeiten anpassen"
         title="Einsatzzeiten anpassen"
+        disabled={!selected.length}
         onClick={() => {
           setDraft(customStaffTimes(form.staffTimes, form.staffIds, duration));
           setOpen(true);

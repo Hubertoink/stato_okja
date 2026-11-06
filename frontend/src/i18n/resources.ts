@@ -896,6 +896,7 @@ export const resources = {
         tags: 'Tags',
         cohorts: 'Altersgruppen',
         team: 'Team',
+        contributors: 'Mitwirkende',
         locations: 'Einrichtungen',
         holidays: 'Feiertage',
         openingHours: 'Öffnungszeiten',
@@ -909,6 +910,7 @@ export const resources = {
         tags: 'Tags ergänzen Kategorien um flexible Merkmale. Sie helfen, besondere Themen, Methoden oder Zielsetzungen später gezielt zu filtern und auszuwerten.',
         cohorts:
           'Kohorten definieren die Altersgruppen, nach denen Teilnahmen dokumentiert werden. Dadurch bleiben Eingaben im Alltag schnell und die Auswertung spricht dieselbe Sprache.',
+        contributors: 'Personen verwalten und ihre Mitwirkung je Monat und Projekt auswerten.',
         team: 'Teamdaten ordnen Aktivitäten den beteiligten Mitarbeitenden zu. Das schafft Nachvollziehbarkeit für die Dokumentation, ohne in jedem Eintrag Namen neu pflegen zu müssen.',
         locations:
           'Einrichtungen bilden die Orte der Arbeit ab. Sie verbinden Angebote mit Standorten und ermöglichen später standortbezogene Kalender- und Statistikansichten.',
@@ -2055,6 +2057,7 @@ export const resources = {
         tags: 'Tags',
         cohorts: 'Age groups',
         team: 'Team',
+        contributors: 'Mitwirkende',
         locations: 'Locations',
         holidays: 'Public holidays',
         openingHours: 'Opening hours',
@@ -2068,6 +2071,7 @@ export const resources = {
         tags: 'Tags add flexible attributes to categories. They help filter and analyse specific topics, methods or objectives later.',
         cohorts:
           'Cohorts define the age groups used to document participation. This keeps daily data entry quick and reporting consistent.',
+        contributors: 'Manage contributors and review their contributions by month and project.',
         team: 'Team data associates activities with participating staff. This makes documentation traceable without entering names again for every record.',
         locations:
           'Locations represent where the work takes place. They connect services with sites and enable location-based calendar and statistics views.',

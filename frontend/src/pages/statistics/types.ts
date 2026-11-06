@@ -4,6 +4,7 @@ import type { OrganizationClosureStateFilter } from '@/lib/orgs';
 import type { WeeklyProfile } from '@/lib/weeklyProfile';
 
 export type StatsOverviewResponse = {
+  contributions?: import('@/lib/contributors').ContributionEntry[];
   summary: {
     totalActivities: number;
     totalParticipants: number;

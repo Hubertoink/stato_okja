@@ -1,3 +1,4 @@
+import { useContributors } from '@/lib/contributors';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -43,6 +44,7 @@ export default function ActivitiesFilterDrawer({
   const { data: projects = [] } = useProjects();
   const { data: locations = [] } = useLocations({ active: true });
   const { data: staff = [] } = useStaff({ active: true });
+  const contributors = useContributors();
   const availabilityQuery = useQuery({
     queryKey: ['activities-filter-taxonomy-availability', scopeKey],
     queryFn: () => fetchActivitiesFilterAvailability(scope),
@@ -306,6 +308,18 @@ export default function ActivitiesFilterDrawer({
             ) : (
               <div className="text-sm text-gray-500 px-1 py-2">{t('filterDrawer.noStaff')}</div>
             )}
+          </div>
+        </details>
+
+        <details className="activity-filter-section" open={Boolean(f.hasContributions || f.contributorIds?.length)}>
+          <summary>Mitwirkende</summary>
+          <div className="mt-3 text-sm space-y-2">
+            <label className="flex items-center gap-2"><Input className="!w-4 !min-h-0 !p-0" type="checkbox" checked={!!f.hasContributions} onChange={event => setF(current => ({ ...current, hasContributions: event.target.checked || undefined }))} />Nur Aktivitäten mit Mitwirkung</label>
+            <div className="max-h-48 overflow-auto rounded-lg border border-[var(--border-subtle)] p-2 space-y-1">
+              {contributors.data?.map(person => <label key={person.id} className="flex items-center gap-2"><Input className="!w-4 !min-h-0 !p-0" type="checkbox" checked={!!f.contributorIds?.includes(person.id)} onChange={() => toggleIn('contributorIds', person.id)} /><span className="h-3 w-3 rounded shrink-0" style={{ backgroundColor: person.color || '#7aa39a' }} /><span>{person.name}{!person.active && ' (archiviert)'}</span></label>)}
+              {contributors.isPending && <p role="status">Mitwirkende werden geladen …</p>}
+              {contributors.isError && <p role="alert">Mitwirkende konnten nicht geladen werden.</p>}
+            </div>
           </div>
         </details>
 

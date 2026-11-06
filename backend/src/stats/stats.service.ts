@@ -1,3 +1,4 @@
+import { Contributor } from '../contributors/contributor.entity';
 import { aggregateTeamStatistics } from './team-statistics';
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
@@ -72,6 +73,7 @@ type WeeklyProfile = {
 };
 
 type StatsOverviewResult = {
+  contributions: Awaited<ReturnType<StatsService['getContributions']>>;
   summary: {
     totalActivities: number;
     totalParticipants: number;
@@ -523,9 +525,28 @@ export class StatsService {
     return Array.from(years).sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
   }
 
+  async getContributions(scope: StatsScope) {
+    const { from, to, orgId, orgIds, projectId, type, executionStatuses, weekdays, closureState } = scope;
+    const qb = await this.createFilteredActivityQuery(from, to, orgId, orgIds, projectId, type, executionStatuses, weekdays, closureState);
+    const activities = await qb.select(['activity.id', 'activity.date', 'activity.title', 'activity.orgId', 'activity.projectId', 'activity.contributions'])
+      .andWhere('activity.executionStatus = :contributionStatus', { contributionStatus: 'completed' })
+      .andWhere('activity.contributions IS NOT NULL')
+      .orderBy('activity.date', 'DESC').getMany();
+    const ids = [...new Set(activities.flatMap(activity => (activity.contributions || []).map(entry => entry.contributorId)))];
+    if (!ids.length) return [];
+    const people = new Map((await this.activityRepository.manager.getRepository(Contributor).findBy({ id: In(ids) })).map(person => [person.id, person]));
+    return activities.flatMap(activity => (activity.contributions || []).flatMap(entry => {
+      const person = people.get(entry.contributorId);
+      if (!person || (person.orgId ?? null) !== (activity.orgId ?? null)) return [];
+      return [{ ...entry, name: person.name, color: person.color, active: person.active,
+        activityId: activity.id, date: this.toCalendarDateString(activity.date), title: activity.title || 'Aktivität',
+        projectId: activity.projectId, projectTitle: null }];
+    }));
+  }
+
   private async buildOverview(scope: StatsScope): Promise<StatsOverviewResult> {
     const { from, to, orgId, orgIds, projectId, type, executionStatuses, closureState, weekdays } = scope;
-    const [summary, byType, participantsTimeseries, byCategory, byCohort, topTags, topProjects, availableYears, weeklyProfile] = await Promise.all([
+    const [summary, byType, participantsTimeseries, byCategory, byCohort, topTags, topProjects, availableYears, weeklyProfile, contributions] = await Promise.all([
       this.getSummary(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
       this.getByType(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
       this.getParticipantsTimeseries(from, to, orgId, orgIds, projectId, type, weekdays, executionStatuses, closureState),
@@ -535,6 +556,7 @@ export class StatsService {
       projectId ? Promise.resolve([]) : this.getTopProjects(from, to, orgId, orgIds, type, weekdays, executionStatuses, closureState),
       this.getAvailableYears(orgId, orgIds),
       this.getWeeklyProfile(scope),
+      this.getContributions(scope),
     ]);
 
     return {
@@ -552,6 +574,7 @@ export class StatsService {
       topProjects,
       availableYears,
       weeklyProfile,
+      contributions,
     };
   }
 

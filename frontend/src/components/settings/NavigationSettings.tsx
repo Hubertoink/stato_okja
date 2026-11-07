@@ -85,7 +85,7 @@ export default function NavigationSettings() {
             type="checkbox"
             checked={user?.sidebarColoredIcons === true}
             onChange={(event) => void savePreference({ sidebarColoredIcons: event.target.checked })}
-            className="mt-1 accent-[var(--viridian)]"
+            className="mt-1 h-4 !min-h-0 !w-4 shrink-0 !p-0 accent-[var(--viridian)]"
             aria-describedby={`${id}-colors-description`}
           />
           <span>

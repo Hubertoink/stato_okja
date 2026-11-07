@@ -9,6 +9,24 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.23.0] - 2026-11-07
+
+### Added
+- Mitwirkende lassen sich in den Stammdaten verwalten und Aktivitäten mit individuellen Mitwirkungszeiten zuordnen. Filter und Statistiken unterstützen die Auswertung der Mitwirkung.
+- Die Seitenleisten-Icons können optional nach Hauptnavigation, Stammdaten/Betrieb und Verwaltung in den Farben des aktiven Themes dargestellt werden. Die Auswahl wird im Benutzerprofil gespeichert.
+- Projekte lassen sich nach Teammitgliedern und Kategorien filtern; aktive Filter werden sichtbar angezeigt.
+
+### Fixed
+- Die Hinzufügen-Aktion für Mitwirkende verwendet denselben transparenten Hover wie Tags und die übrigen Hinzufügen-Aktionen.
+- Die Checkbox für farbige Seitenleisten-Icons entspricht der kompakten Darstellung der übrigen App.
+- Filteraktionen für Aktivitäten bleiben außerhalb des scrollbaren Bereichs erreichbar. Leere Statistikauswertungen erhalten verständliche Hinweise.
+
+### Upgrade-Hinweise
+- Server, Backup-Image und Windows-Desktop verwenden Version 1.23.0. Die neuen Webfunktionen benötigen auch das Update des verbundenen StatO-Servers.
+- Mittwald: Backend und Backup auf `1.23.0`, Frontend auf `stack-1.23.0` aktualisieren. Der Demo-Tag bleibt `demo`.
+- Datenbankmigrationen ergänzen Mitwirkende, ihre Farbzuordnung, Mitwirkungsdaten an Aktivitäten und die persönliche Sidebar-Einstellung. Vor dem Update ein Backup erstellen und die Migrationen ausführen lassen.
+- Farbige Seitenleisten-Icons sind standardmäßig deaktiviert und können unter Einstellungen → Navigation aktiviert werden.
+
 ## [1.22.5] - 2026-11-03
 
 ### Fixed

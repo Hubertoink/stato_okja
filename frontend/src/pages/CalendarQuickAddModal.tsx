@@ -1,3 +1,5 @@
+import { activityFormMinutes } from '@/lib/staffTimes';
+import { ActivityContributions } from '@/components/ActivityContributions';
 import { StaffTimesButton, StaffTimeIndicator } from '@/components/StaffTimesButton';
 import ActivityPlanningNotice from '@/components/ActivityPlanningNotice';
 import { usePublicConfig } from '@/lib/publicConfig';
@@ -807,6 +809,7 @@ export default function ActivityQuickAdd({
                 </div>
               </fieldset>
             </div>
+
             <details open={!isMobile} className="space-y-3">
               <summary className="cursor-pointer font-medium md:hidden">{t('common:workflow.extraDetails')}</summary>
               {(!selectedProject || selectedProject.type !== 'open_door') && (
@@ -1018,6 +1021,9 @@ export default function ActivityQuickAdd({
                   </div>
                 </div>
               )}
+            <ActivityContributions value={form.contributions || []}
+              onChange={contributions => setForm(current => ({ ...current, contributions }))}
+              startTime={form.start} endTime={form.end} durationMinutes={activityFormMinutes(form)} completed={activityStatusForDate(form.executionStatus, form.date) === 'completed'} />
               <div>
                 <label className="block text-sm font-medium mb-1">{t('quickAdd.notes')}</label>
                 <textarea

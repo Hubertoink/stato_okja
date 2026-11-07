@@ -17,6 +17,8 @@ export type ActivityListFilters = {
   uncategorized?: boolean;
   tagIds?: string[];
   staffIds?: string[];
+  contributorIds?: string[];
+  hasContributions?: boolean;
   cohortIds?: string[];
   executionStatuses?: string[];
   closureState?: string;
@@ -156,6 +158,16 @@ export class ActivityListQuery {
     }
     if (filters?.staffIds && filters.staffIds.length) {
       qb.andWhere('staff.id IN (:...staffIds)', { staffIds: filters.staffIds });
+    }
+    if (filters?.hasContributions || filters?.contributorIds?.length) {
+      const postgres = this.usesPostgresCohortQuery();
+      const source = postgres
+        ? "jsonb_array_elements(COALESCE(NULLIF(a.contributions, ''), '[]')::jsonb)"
+        : "json_each(COALESCE(NULLIF(a.contributions, ''), '[]'))";
+      const id = postgres ? "contribution_entry->>'contributorId'" : "json_extract(contribution_entry.value, '$.contributorId')";
+      const selected = filters.contributorIds?.length ? ` WHERE ${id} IN (:...contributorIds)` : '';
+      qb.andWhere(`EXISTS (SELECT 1 FROM ${source} AS contribution_entry${selected})`,
+        filters.contributorIds?.length ? { contributorIds: filters.contributorIds } : {});
     }
     if (filters?.cohortIds && filters.cohortIds.length && this.usesPostgresCohortQuery()) {
       qb.andWhere(

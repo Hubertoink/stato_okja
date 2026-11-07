@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ContributorsModule } from './contributors/contributors.module';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -49,6 +50,7 @@ import { ProcessesModule } from './processes/processes.module';
     ActivitiesModule,
     TaxonomyModule,
     StaffModule,
+    ContributorsModule,
     LocationsModule,
     StatsModule,
     ProjectsModule,

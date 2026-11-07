@@ -131,6 +131,8 @@ export class ActivitiesController {
     @Query('orgId') orgIdQuery?: string,
     @Query('page') pageStr?: string,
     @Query('limit') limitStr?: string,
+    @Query('contributorIds') contributorIdsCsv?: string,
+    @Query('hasContributions') hasContributions?: string,
   ) {
     // Activities belong to exactly one organization. A selected parent must
     // not implicitly include activities of its child organizations.
@@ -159,6 +161,8 @@ export class ActivitiesController {
       uncategorized: typeof uncategorized !== 'undefined' ? uncategorized === 'true' || uncategorized === '1' : undefined, // Added filtering logic for uncategorized
       tagIds: csvToArray(tagIdsCsv),
       staffIds: csvToArray(staffIdsCsv),
+      contributorIds: csvToArray(contributorIdsCsv),
+      hasContributions: hasContributions === 'true' || hasContributions === '1',
       cohortIds: csvToArray(cohortIdsCsv),
       executionStatuses: csvToExecutionStatuses(executionStatusesCsv),
       closureState: parseClosureState(closureState),

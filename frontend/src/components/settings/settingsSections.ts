@@ -19,6 +19,7 @@ export type SettingsTab =
   | 'tags'
   | 'cohorts'
   | 'team'
+  | 'contributors'
   | 'locations'
   | 'holidays'
   | 'openingHours';
@@ -33,6 +34,7 @@ const TABS = [
   { id: 'tags', section: 'masterData', icon: Tag },
   { id: 'cohorts', section: 'masterData', icon: Calendar },
   { id: 'team', section: 'masterData', icon: Users },
+  { id: 'contributors', section: 'masterData', icon: Users },
   { id: 'locations', section: 'masterData', icon: MapPin },
   { id: 'templates', section: 'masterData', icon: LayoutTemplate },
   { id: 'openingHours', section: 'operations', icon: Clock },

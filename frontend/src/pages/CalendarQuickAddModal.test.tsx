@@ -32,9 +32,10 @@ vi.mock('@/lib/taxonomy', () => ({
   useTaxonomyAccess: () => ({ data: {} }), useCreateCategory: () => ({}),
   useUpdateCategory: () => ({}), useCreateTag: () => ({}), useUpdateTag: () => ({}),
 }));
-vi.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { role: 'editor' } }) }));
+vi.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { role: 'editor' } }), canManageSettingsDestructiveActions: () => true }));
+vi.mock('@/lib/contributors', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/contributors')>(), useContributors: () => ({ isSuccess: true, data: [{ id: 'lea', name: 'Lea', active: true, color: '#123456' }] }), useSaveContributor: () => ({ mutateAsync: vi.fn() }) }));
 vi.mock('@/components/Toast', () => ({ useToast: () => ({ showToast: vi.fn() }) }));
-vi.mock('@/components/Modal', () => ({ useModalHistory: () => ({ dismiss: vi.fn(), dismissWithoutCallback: vi.fn() }) }));
+vi.mock('@/components/Modal', async importOriginal => ({ ...await importOriginal<typeof import('@/components/Modal')>(), useModalHistory: () => ({ dismiss: vi.fn(), dismissWithoutCallback: vi.fn() }) }));
 vi.mock('@/lib/useActivityModalCountMode', () => ({ useActivityModalCountMode: () => ({ isMobile: false, tapModeEnabled: false }) }));
 vi.mock('./useActivityInlineCreation', () => ({ useActivityInlineCreation: () => ({}) }));
 vi.mock('./ProjectPickerModal', () => ({ default: () => null }));
@@ -51,6 +52,19 @@ function activity(version: number, youngWomen: number): Activity {
 beforeEach(() => { state.categoryMode = 'multiple'; state.activity = undefined; state.staff = []; state.mutate.mockReset(); });
 
 describe('activity editor refresh', () => {
+  it('offers contributions in the calendar modal and saves explicit minutes', () => {
+    const initial = activity(1, 4);
+    render(<ActivityQuickAdd dateISO={initial.date} activity={initial} onClose={vi.fn()} />);
+    expect(screen.getByRole('region', { name: 'Mitwirkende' }).closest('details')).not.toBeNull();
+    expect(screen.getByRole('region', { name: 'Mitwirkende' }).closest('details')?.parentElement?.children).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: 'Lea' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mitwirkungszeiten anpassen' }));
+    fireEvent.change(screen.getByRole('slider', { name: 'Lea: Mitwirkungszeit' }), { target: { value: '45' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Übernehmen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(state.mutate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ contributions: [{ contributorId: 'lea', minutes: 45 }] }) }), expect.anything());
+  });
+
   it('opens the standalone editor when its activity arrives after the initial render', async () => {
     const { rerender } = render(<MemoryRouter><ActivityEditPage /></MemoryRouter>);
     expect(screen.queryByLabelText('Notizen')).not.toBeInTheDocument();

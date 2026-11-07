@@ -19,6 +19,7 @@ import {
 } from '@/lib/projects';
 import {
   Layers,
+  X,
   Users,
   Pencil,
   Plus,
@@ -91,7 +92,8 @@ import {
 import { EditorActions } from '@/components/ui/EditorFrame';
 import { fieldControlClassName } from '@/components/ui/Field';
 import { HeaderFilterButton, HeaderSearchAction } from '@/components/ui/HeaderActions';
-import { ResponsiveFilterPanel } from '@/components/ui/ResponsiveFilterPanel';
+import ProjectsFilterDrawer from '@/components/ProjectsFilterDrawer';
+import { matchesProjectFilters } from '@/lib/projectsFilters';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ProjectStarButton } from '@/components/ui/ProjectStar';
 import { ProjectStarIndicator } from '@/components/ui/ProjectStar';
@@ -2442,6 +2444,14 @@ function toProjectUpsertPayload(values: Partial<Project> | undefined): Partial<P
   return out as Partial<Project>;
 }
 
+function ProjectActiveFilterBadge({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return <Button size="sm" variant="ghost" onClick={onRemove}
+    aria-label={`${label}: Filter entfernen`} title={`${label}: Filter entfernen`}
+    className="min-w-0 max-w-full !min-h-0 !rounded-full !bg-azure-web !px-2 !py-1 !font-normal !text-viridian">
+    <span className="truncate">{label}</span><X aria-hidden="true" className="shrink-0 !h-3 !w-3" />
+  </Button>;
+}
+
 export default function Projects() {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -2457,6 +2467,8 @@ export default function Projects() {
   const [initialProjectFilters] = useState(loadProjectsFilters);
   const [showArchived, setShowArchived] = useState(initialProjectFilters.showArchived);
   const [projectTypeFilterOpen, setProjectTypeFilterOpen] = useState(false);
+  const [projectStaffFilters, setProjectStaffFilters] = useState(initialProjectFilters.staffNames);
+  const [projectCategoryFilters, setProjectCategoryFilters] = useState(initialProjectFilters.categoryIds);
   const [projectTypeFilters, setProjectTypeFilters] = useState<string[]>(
     initialProjectFilters.types,
   );
@@ -2476,8 +2488,8 @@ export default function Projects() {
     }
   }, [desktopView]);
   useEffect(() => {
-    saveProjectsFilters({ showArchived, types: projectTypeFilters });
-  }, [projectTypeFilters, showArchived]);
+    saveProjectsFilters({ showArchived, types: projectTypeFilters, staffNames: projectStaffFilters, categoryIds: projectCategoryFilters });
+  }, [projectTypeFilters, showArchived, projectStaffFilters, projectCategoryFilters]);
   const [modal, setModal] = useState<{
     mode: 'create' | 'edit';
     project?: Project;
@@ -2505,22 +2517,11 @@ export default function Projects() {
   const update = useUpdateProject();
 
   const projects = data || [];
-  const projectTypes = useMemo(
-    () =>
-      Array.from(new Set([...Object.keys(PROJECT_TYPE_LABELS), ...projects.map((project) => project.type)])).sort((left, right) =>
-        (PROJECT_TYPE_LABELS[left] || left).localeCompare(
-          PROJECT_TYPE_LABELS[right] || right,
-          'de',
-        ),
-      ),
-    [projects],
-  );
   const filteredProjects = useMemo(
-    () =>
-      projectTypeFilters.length === 0
-        ? projects
-        : projects.filter((project) => projectTypeFilters.includes(project.type)),
-    [projects, projectTypeFilters],
+    () => projects.filter((project) => matchesProjectFilters(project, {
+      types: projectTypeFilters, staffNames: projectStaffFilters, categoryIds: projectCategoryFilters,
+    })),
+    [projects, projectTypeFilters, projectStaffFilters, projectCategoryFilters],
   );
   const isDesktopListView = desktopView === 'list';
   const [starred, setStarred] = useState<string[]>(() => getStarredProjectIds());
@@ -2599,6 +2600,20 @@ export default function Projects() {
         mobileTitle={autoT('ui_3930f79f07e5')}
         className="mb-4"
         title={autoT('ui_44772dcbbde7')}
+        titleAddon={(projectStaffFilters.length > 0 || projectCategoryFilters.length > 0 || showArchived) ? (
+          <div className="flex min-w-0 max-w-full flex-wrap gap-2" role="group" aria-label="Gesetzte Projektfilter">
+            {projectStaffFilters.map(name => <ProjectActiveFilterBadge key={`staff-${name}`} label={`Mitarbeitende: ${name}`}
+              onRemove={() => setProjectStaffFilters(current => current.filter(entry => entry !== name))} />)}
+            {projectCategoryFilters.map(id => {
+              const name = categoryMap.get(id)?.name
+                || [...projects, ...(archivedOnly || [])].flatMap(project => project.categories || []).find(category => category.id === id)?.name
+                || 'Kategorie';
+              return <ProjectActiveFilterBadge key={`category-${id}`} label={`Kategorie: ${name}`}
+                onRemove={() => setProjectCategoryFilters(current => current.filter(entry => entry !== id))} />;
+            })}
+            {showArchived && <ProjectActiveFilterBadge label="Archivierte Projekte" onRemove={() => setShowArchived(false)} />}
+          </div>
+        ) : undefined}
         actions={
           <div className="flex flex-wrap justify-end gap-2">
             <HeaderSearchAction
@@ -2626,74 +2641,24 @@ export default function Projects() {
               <HeaderFilterButton
                 aria-expanded={projectTypeFilterOpen}
                 aria-label="Projekte filtern"
-                aria-pressed={projectTypeFilters.length > 0 || favoritesOnly || showArchived}
+                aria-pressed={projectStaffFilters.length > 0 || projectCategoryFilters.length > 0 || showArchived}
                 onClick={() => setProjectTypeFilterOpen((open) => !open)}
                 title="Projekte filtern"
               />
-              <ResponsiveFilterPanel
+              {projectTypeFilterOpen && <ProjectsFilterDrawer
                 anchorRef={projectTypeFilterRef}
-                desktopClassName="filter-popover--projects"
+                projects={[...projects, ...(archivedOnly || [])]}
+                categories={categoriesList || []}
+                initial={{ staffNames: projectStaffFilters, categoryIds: projectCategoryFilters, showArchived }}
+                archivedCount={archivedCount}
                 onClose={() => setProjectTypeFilterOpen(false)}
-                open={projectTypeFilterOpen}
-                title="Projekte filtern"
-              >
-                <section>
-                  <h4 className="mb-2 text-sm font-semibold text-viridian">Projektarten</h4>
-                  <div className="grid gap-1">
-                    <Button
-                      aria-pressed={projectTypeFilters.length === 0 && !favoritesOnly}
-                      className="justify-start"
-                      onClick={() => { setProjectTypeFilters([]); setFavoritesOnly(false); }}
-                      size="sm"
-                      variant={projectTypeFilters.length === 0 && !favoritesOnly ? 'primary' : 'secondary'}
-                    >
-                      Alle ({projects.length})
-                    </Button>
-                    {projectTypes.map((type) => {
-                      const selected = projectTypeFilters.includes(type);
-                      return (
-                        <Button
-                          key={type}
-                          aria-pressed={selected}
-                          className="justify-start"
-                          onClick={() => {
-                            setFavoritesOnly(false);
-                            setProjectTypeFilters((current) =>
-                              selected
-                                ? current.filter((entry) => entry !== type)
-                                : [...current, type],
-                            );
-                          }}
-                          size="sm"
-                          variant={selected ? 'primary' : 'secondary'}
-                        >
-                          {PROJECT_TYPE_LABELS[type] || type} ({projects.filter(project => project.type === type).length})
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </section>
-                <Button
-                  aria-pressed={favoritesOnly}
-                  className="mt-2 w-full justify-start"
-                  onClick={() => { setProjectTypeFilters([]); setFavoritesOnly(value => !value); }}
-                  size="sm"
-                  variant={favoritesOnly ? 'primary' : 'secondary'}
-                >
-                  <ProjectStarIndicator size="sm" />Favoriten ({projects.filter(project => starred.includes(project.id)).length})
-                </Button>
-                <label className="filter-archive-option mt-3">
-                  <input
-                    type="checkbox"
-                    checked={showArchived}
-                    onChange={(event) => setShowArchived(event.target.checked)}
-                  />
-                  <span>
-                    Archivierte Projekte einblenden
-                    {archivedCount > 0 ? ` (${archivedCount})` : ''}
-                  </span>
-                </label>
-              </ResponsiveFilterPanel>
+                onApply={(filters) => {
+                  setProjectStaffFilters(filters.staffNames);
+                  setProjectCategoryFilters(filters.categoryIds);
+                  setShowArchived(filters.showArchived);
+                  setProjectTypeFilterOpen(false);
+                }}
+              />}
             </div>
             <IconButton
               aria-label={autoT('ui_4bc9d33f94ce')}

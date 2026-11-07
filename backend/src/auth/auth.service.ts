@@ -43,6 +43,7 @@ export type AuthUserResponse = {
   themeMode: ThemeMode;
   viewDensity: ViewDensity;
   navigationLayout: NavigationLayout;
+  sidebarColoredIcons: boolean;
   locale: SupportedLocale;
   mustChangePassword: boolean;
   termsAcceptanceRequired: boolean;
@@ -260,6 +261,7 @@ export class AuthService {
       theme,
       themeMode,
       navigationLayout: user.navigationLayout === 'top' ? 'top' : 'sidebar',
+      sidebarColoredIcons: user.sidebarColoredIcons === true,
       viewDensity: user.viewDensity === 'normal' ? 'normal' : 'compact',
       locale: resolveLocale(user.locale ?? org?.defaultLocale),
       mustChangePassword: user.mustChangePassword === true,
@@ -1050,7 +1052,7 @@ export class AuthService {
 
   async updateProfile(
     userId: string,
-    patch: { name?: string; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; viewDensity?: ViewDensity; navigationLayout?: NavigationLayout; locale?: SupportedLocale },
+    patch: { name?: string; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; viewDensity?: ViewDensity; navigationLayout?: NavigationLayout; sidebarColoredIcons?: boolean; locale?: SupportedLocale },
   ) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
@@ -1067,6 +1069,9 @@ export class AuthService {
       (user as unknown as { themeMode?: ThemeMode }).themeMode = patch.themeMode;
     }
     if (typeof patch.locale === 'string') user.locale = resolveLocale(patch.locale);
+    if (typeof patch.sidebarColoredIcons === 'boolean') {
+      user.sidebarColoredIcons = patch.sidebarColoredIcons;
+    }
     if (patch.navigationLayout && SUPPORTED_NAVIGATION_LAYOUTS.includes(patch.navigationLayout)) {
       user.navigationLayout = patch.navigationLayout;
     }

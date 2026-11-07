@@ -1,3 +1,4 @@
+import { useContributors } from '@/lib/contributors';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -43,6 +44,7 @@ export default function ActivitiesFilterDrawer({
   const { data: projects = [] } = useProjects();
   const { data: locations = [] } = useLocations({ active: true });
   const { data: staff = [] } = useStaff({ active: true });
+  const contributors = useContributors();
   const availabilityQuery = useQuery({
     queryKey: ['activities-filter-taxonomy-availability', scopeKey],
     queryFn: () => fetchActivitiesFilterAvailability(scope),
@@ -129,6 +131,26 @@ export default function ActivitiesFilterDrawer({
   return (
     <ResponsiveFilterPanel
       desktopClassName="filter-popover--activities"
+      footer={
+        <div className="flex justify-end border-t border-[var(--border-subtle)] bg-[var(--surface-elevated)] pt-3">
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+              onClick={onClose}
+            >
+              {t('filterDrawer.close')}
+            </button>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors"
+              onClick={apply}
+            >
+              {t('filterDrawer.apply')}
+            </button>
+          </div>
+        </div>
+      }
       onClose={onClose}
       open={open}
       title={t('filterDrawer.title')}
@@ -286,6 +308,18 @@ export default function ActivitiesFilterDrawer({
             ) : (
               <div className="text-sm text-gray-500 px-1 py-2">{t('filterDrawer.noStaff')}</div>
             )}
+          </div>
+        </details>
+
+        <details className="activity-filter-section" open={Boolean(f.hasContributions || f.contributorIds?.length)}>
+          <summary>Mitwirkende</summary>
+          <div className="mt-3 text-sm space-y-2">
+            <label className="flex items-center gap-2"><Input className="!w-4 !min-h-0 !p-0" type="checkbox" checked={!!f.hasContributions} onChange={event => setF(current => ({ ...current, hasContributions: event.target.checked || undefined }))} />Nur Aktivitäten mit Mitwirkung</label>
+            <div className="max-h-48 overflow-auto rounded-lg border border-[var(--border-subtle)] p-2 space-y-1">
+              {contributors.data?.map(person => <label key={person.id} className="flex items-center gap-2"><Input className="!w-4 !min-h-0 !p-0" type="checkbox" checked={!!f.contributorIds?.includes(person.id)} onChange={() => toggleIn('contributorIds', person.id)} /><span className="h-3 w-3 rounded shrink-0" style={{ backgroundColor: person.color || '#7aa39a' }} /><span>{person.name}{!person.active && ' (archiviert)'}</span></label>)}
+              {contributors.isPending && <p role="status">Mitwirkende werden geladen …</p>}
+              {contributors.isError && <p role="alert">Mitwirkende konnten nicht geladen werden.</p>}
+            </div>
           </div>
         </details>
 
@@ -504,26 +538,6 @@ export default function ActivitiesFilterDrawer({
             </div>
           </div>
         </details>
-
-        <div className="sticky bottom-0 flex flex-col gap-3 border-t border-[var(--border-subtle)] bg-[var(--surface-elevated)] py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div />
-          <div className="flex items-center justify-end gap-3">
-            <button
-              type="button"
-              className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
-              onClick={onClose}
-            >
-              {t('filterDrawer.close')}
-            </button>
-            <button
-              type="button"
-              className="px-4 py-2 rounded-lg bg-viridian text-white hover:bg-cambridge-blue transition-colors"
-              onClick={apply}
-            >
-              {t('filterDrawer.apply')}
-            </button>
-          </div>
-        </div>
       </div>
     </ResponsiveFilterPanel>
   );

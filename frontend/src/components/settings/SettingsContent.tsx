@@ -8,6 +8,7 @@ import SettingsCategories from '@/pages/SettingsCategories';
 import SettingsTags from '@/pages/SettingsTags';
 import SettingsCohorts from '@/pages/SettingsCohorts';
 import SettingsTeam from '@/pages/SettingsTeam';
+import SettingsContributors from '@/pages/SettingsContributors';
 import SettingsLocations from '@/pages/SettingsLocations';
 import SettingsProjectTemplates from '@/pages/SettingsProjectTemplates';
 import SettingsOpeningHours from '@/pages/SettingsOpeningHours';
@@ -40,6 +41,8 @@ export default function SettingsContent({ tab }: { tab: SettingsTab }) {
       return <SettingsCohorts />;
     case 'team':
       return <SettingsTeam />;
+    case 'contributors':
+      return <SettingsContributors />;
     case 'locations':
       return <SettingsLocations />;
     case 'templates':

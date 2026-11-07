@@ -22,7 +22,7 @@ export function ActivityContributions({ value, onChange, durationMinutes, startT
   return <section aria-label="Mitwirkende">
     <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
       <span className="block text-sm font-medium">Mitwirkende</span>
-      {canCreate && <Button variant="ghost" className="!min-h-0 !p-0 !gap-1 !text-sm !font-medium !text-viridian hover:!text-viridian/80" aria-label="Mitwirkende hinzufügen" disabled={!completed} onClick={() => setCreating(true)}><Plus className="h-4 w-4" />Hinzufügen</Button>}
+      {canCreate && <Button variant="ghost" className="!min-h-0 !p-0 !gap-1 !text-sm !font-medium !text-viridian hover:!bg-transparent hover:!text-viridian/80" aria-label="Mitwirkende hinzufügen" disabled={!completed} onClick={() => setCreating(true)}><Plus className="h-4 w-4" />Hinzufügen</Button>}
       <ContributionTimesButton value={value.map(entry => ({ ...entry, minutes: resolved.find(item => item.contributorId === entry.contributorId)!.minutes }))} people={people.data || []} duration={durationMinutes} startTime={startTime} endTime={endTime} disabled={!completed} onChange={onChange} />
     </div>
     {people.isPending && <p role="status">Mitwirkende werden geladen …</p>}

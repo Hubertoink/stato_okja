@@ -2,9 +2,10 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Zurückgezogene Einladungen können kein Konto mehr aktivieren. Beim Entziehen eines Organisationszugangs werden offene Einladungslinks ungültig.
-- Auch während der Annahme entzogene Zugänge und gelöschte Konten werden berücksichtigt.
-- Für diese Korrektur den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren.
+- Mitwirkende mit individuellen Zeiten, passenden Filtern und Statistiken in der verbundenen Weboberfläche.
+- Optionale, nach Bereichen gruppierte Sidebar-Farben passend zum aktiven Theme.
+- Erweiterte Projektfilter und einheitliche Hinzufügen-Aktionen sowie Checkbox-Darstellung.
+- Für diese Funktionen den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren. Der Windows-Client wird als passende Version bereitgestellt; die Weboberfläche kommt vom Server.
 
 ### Installation und einmaliger Umstieg
 

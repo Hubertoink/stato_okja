@@ -63,6 +63,9 @@ export class User {
   @Column({ type: 'varchar', length: 16, default: 'sidebar' })
   navigationLayout!: NavigationLayout;
 
+  @Column({ type: 'boolean', default: false })
+  sidebarColoredIcons!: boolean;
+
   @Column({ type: 'varchar', length: 8, nullable: true })
   locale!: SupportedLocale | null;
 

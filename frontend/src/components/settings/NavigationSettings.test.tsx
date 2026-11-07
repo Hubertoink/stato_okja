@@ -35,6 +35,27 @@ describe('account navigation preference', () => {
     );
     expect(api.patch).toHaveBeenCalledExactlyOnceWith('/auth/me', { navigationLayout: 'top' });
   });
+  it('saves colored icons and allows switching back to monochrome', async () => {
+    vi.mocked(api.patch)
+      .mockResolvedValueOnce({ data: { ...initialUser, sidebarColoredIcons: true } })
+      .mockResolvedValueOnce({ data: { ...initialUser, sidebarColoredIcons: false } });
+    render(<Harness />);
+    const toggle = screen.getByRole('checkbox');
+    expect(toggle).not.toBeChecked();
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle).toBeChecked());
+    expect(api.patch).toHaveBeenLastCalledWith('/auth/me', { sidebarColoredIcons: true });
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    expect(api.patch).toHaveBeenLastCalledWith('/auth/me', { sidebarColoredIcons: false });
+  });
+  it('keeps colored icons disabled when saving fails', async () => {
+    vi.mocked(api.patch).mockRejectedValueOnce(new Error('offline'));
+    render(<Harness />);
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('fehlgeschlagen');
+    expect(screen.getByRole('checkbox')).not.toBeChecked();
+  });
   it('keeps the current layout on failure and lets the user retry', async () => {
     vi.mocked(api.patch)
       .mockRejectedValueOnce(new Error('offline'))

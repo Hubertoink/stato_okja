@@ -864,6 +864,8 @@ export const resources = {
         profileLink: 'Profil und Sprache anpassen',
       },
       navigationLayout: {
+        coloredIcons: 'Seitenleisten-Icons nach Bereich einfärben',
+        coloredIconsDescription: 'Hauptnavigation, Stammdaten & Betrieb und Verwaltung erhalten jeweils eine gemeinsame Farbe aus deinem Design-Theme.',
         title: 'Navigation', description: 'Wähle die Navigation für Desktop und Tablet.',
         sidebar: 'Seitenleiste', top: 'Obere Navigation',
         sidebarDescription: 'Mehr Platz für Menüpunkte, mit einklappbarer Seitenleiste. Standard auf breiten Bildschirmen.',
@@ -2025,6 +2027,8 @@ export const resources = {
         profileLink: 'Edit profile and language',
       },
       navigationLayout: {
+        coloredIcons: 'Color sidebar icons by section',
+        coloredIconsDescription: 'Main navigation, master data & operations, and administration each share a color from your design theme.',
         title: 'Navigation', description: 'Choose your desktop and tablet navigation.',
         sidebar: 'Sidebar', top: 'Top navigation',
         sidebarDescription: 'More room for menu items, with a collapsible sidebar. Default on wide screens.',

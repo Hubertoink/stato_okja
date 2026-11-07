@@ -53,6 +53,7 @@ export default function Sidebar({
       <aside
         className={`app-sidebar ${collapsed ? 'is-collapsed' : ''} ${expanded ? 'is-expanded' : ''}`}
         data-icon-only={iconOnly}
+        data-colored-icons={user?.sidebarColoredIcons === true}
         aria-label={t('shell.navigation')}
       >
         <div className="sidebar-brand">
@@ -88,7 +89,7 @@ export default function Sidebar({
           </Button>
         </div>
         <div className="sidebar-scroll">
-          <nav aria-label={t('shell.navigation')}>
+          <nav data-sidebar-section="main" aria-label={t('shell.navigation')}>
             <NavigationLinks
               sidebar
               items={items.filter(
@@ -97,7 +98,7 @@ export default function Sidebar({
               onNavigate={() => setExpanded(false)}
             />
           </nav>
-          <nav className="sidebar-admin" aria-label={t('navigation.masterData')}>
+          <nav className="sidebar-admin" data-sidebar-section="operations" aria-label={t('navigation.masterData')}>
             <NavigationLinks
               sidebar
               items={items.filter((item) => ['/master-data', '/operations'].includes(item.to))}
@@ -105,7 +106,7 @@ export default function Sidebar({
             />
           </nav>
           {admins.length > 0 && (
-            <nav className="sidebar-admin" aria-label={t('shell.administration')}>
+            <nav className="sidebar-admin" data-sidebar-section="administration" aria-label={t('shell.administration')}>
               <p className="sidebar-label">{t('shell.administration')}</p>
               <NavigationLinks sidebar items={admins} onNavigate={() => setExpanded(false)} />
             </nav>

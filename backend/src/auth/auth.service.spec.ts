@@ -134,6 +134,24 @@ describe('AuthService invitations', () => {
     );
   });
 
+  it('persists and returns both colored sidebar icon states', async () => {
+    const { service } = createService({ existingUser: {
+      id: 'user-1', name: 'Existing name', email: 'user@example.org', role: 'user',
+    } });
+    expect(await service.getProfile('user-1')).toEqual(expect.objectContaining({ sidebarColoredIcons: false }));
+    for (const sidebarColoredIcons of [true, false]) {
+      await service.updateProfile('user-1', { sidebarColoredIcons });
+      expect(await service.getProfile('user-1')).toEqual(expect.objectContaining({ sidebarColoredIcons }));
+    }
+  });
+
+  it('rejects non-boolean sidebar icon preferences', async () => {
+    const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
+    const metadata = { type: 'body' as const, metatype: UpdateMeDto };
+    await expect(pipe.transform({ sidebarColoredIcons: 'true' }, metadata)).rejects.toThrow();
+    await expect(pipe.transform({ sidebarColoredIcons: false }, metadata)).resolves.toEqual(expect.objectContaining({ sidebarColoredIcons: false }));
+  });
+
   it('rejects unsupported navigation layout values at the profile API boundary', async () => {
     const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
     const metadata = { type: 'body' as const, metatype: UpdateMeDto };

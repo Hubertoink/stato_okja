@@ -16,11 +16,16 @@ export default function NavigationSettings() {
 
   async function selectLayout(next: NavigationLayout) {
     if (!user || saving || next === layout) return;
+    await savePreference({ navigationLayout: next });
+  }
+
+  async function savePreference(patch: { navigationLayout?: NavigationLayout; sidebarColoredIcons?: boolean }) {
+    if (!user || saving) return;
     const generation = getAuthSessionGeneration();
     setSaving(true);
     setStatus(null);
     try {
-      const response = await api.patch<AuthUser>('/auth/me', { navigationLayout: next });
+      const response = await api.patch<AuthUser>('/auth/me', patch);
       if (generation !== getAuthSessionGeneration()) return;
       updateSessionUser(response.data);
       setStatus('saved');
@@ -75,6 +80,21 @@ export default function NavigationSettings() {
             </label>
           ))}
         </div>
+        <label className="mt-4 flex items-start gap-3">
+          <Input
+            type="checkbox"
+            checked={user?.sidebarColoredIcons === true}
+            onChange={(event) => void savePreference({ sidebarColoredIcons: event.target.checked })}
+            className="mt-1 accent-[var(--viridian)]"
+            aria-describedby={`${id}-colors-description`}
+          />
+          <span>
+            <span className="font-semibold text-[var(--text-primary)]">{t('navigationLayout.coloredIcons')}</span>
+            <span id={`${id}-colors-description`} className="mt-1 block text-sm text-[var(--text-secondary)]">
+              {t('navigationLayout.coloredIconsDescription')}
+            </span>
+          </span>
+        </label>
       </fieldset>
       <p className="mt-3 text-sm text-[var(--text-muted)]">{t('navigationLayout.deviceHint')}</p>
       <p

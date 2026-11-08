@@ -11,8 +11,17 @@ identisch sein; `npm run version:check` prueft dies.
 Nach lokalen Versionsänderungen `node scripts/sync-distribution-version.mjs`
 ausführen. Der Release-Workflow synchronisiert den Generator und die
 NAS-Vorlagen ebenfalls aus `VERSION`. Das Frontend liefert `/start/` und
-`/env-generator/` mit aus; eine separate WordPress-Kopie muss gesondert
-aktualisiert werden.
+`/env-generator/` mit aus. Die öffentlichen Kopien in der Docusaurus-Dokumentation
+und auf der Instatic-Website müssen gesondert aktualisiert werden:
+
+- Docusaurus: `docs/env-generator/` nach `static/env-generator/` kopieren,
+  die Dokumentation bauen und auf `docs.stato-okja.de` veröffentlichen.
+- Instatic: `template.js` in `examples/sites/stato-okja/env-generator-src/`
+  synchronisieren, den Generator neu bündeln und das aktualisierte Asset im CMS
+  veröffentlichen. Ein StatO-Release aktualisiert diese separate Website nicht.
+
+Bei beiden Kopien die angezeigte Version, Docker-Compose- und ZimaOS-Ausgabe,
+`INITIAL_SETUP_TOKEN` sowie die Darstellung auf Mobilgeräten prüfen.
 
 Die Veröffentlichung wartet zusätzlich auf den Docker-Integrationstest für
 Ersteinrichtung, Containerwechsel und Wiederherstellung. Die Installer-Tests

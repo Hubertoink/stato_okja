@@ -12,18 +12,18 @@ und dieses Projekt hÃ¤lt sich an [Semantic Versioning](https://semver.org/lang/d
 ## [1.23.1] - 2026-11-08
 
 ### Changed
-- Die Anmeldeseite zeigt einen lokal ausgelieferten Fluid-Hintergrund mit Mauswellen. Die Hintergrundfarbe folgt dem aktiven Theme; die Animation ist auf Desktop und Mobilgeräten an die Fläche angepasst.
-- Bei aktivierter Systemeinstellung „Bewegung reduzieren“ bleibt der Login-Hintergrund statisch.
-- Einträge der letzten Aktionen erscheinen ohne zusätzliche Rahmen und Hintergründe.
+- Die Anmeldeseite zeigt einen lokal ausgelieferten Fluid-Hintergrund mit Mauswellen. Die Hintergrundfarbe folgt dem aktiven Theme; die Animation ist auf Desktop und MobilgerÃ¤ten an die FlÃ¤che angepasst.
+- Bei aktivierter Systemeinstellung â€Bewegung reduzierenâ€œ bleibt der Login-Hintergrund statisch.
+- EintrÃ¤ge der letzten Aktionen erscheinen ohne zusÃ¤tzliche Rahmen und HintergrÃ¼nde.
 
 ### Fixed
-- Der eigenständige Animationsexport wird vom PWA-App-Shell-Fallback ausgenommen und darf ausschließlich auf derselben Domain eingebettet werden.
-- Die Quellcode-Prüfung überspringt die bereits kompilierten Toolcraft-Assets.
+- Der eigenstÃ¤ndige Animationsexport wird vom PWA-App-Shell-Fallback ausgenommen und darf ausschlieÃŸlich auf derselben Domain eingebettet werden.
+- Die Quellcode-PrÃ¼fung Ã¼berspringt die bereits kompilierten Toolcraft-Assets.
 
 ### Upgrade-Hinweise
-- Server, Backup-Image und Windows-Desktop verwenden Version 1.23.1. Für die neue Anmeldeseite muss der verbundene StatO-Server aktualisiert werden.
+- Server, Backup-Image und Windows-Desktop verwenden Version 1.23.1. FÃ¼r die neue Anmeldeseite muss der verbundene StatO-Server aktualisiert werden.
 - Mittwald: Backend und Backup auf `1.23.1`, Frontend auf `stack-1.23.1` aktualisieren. Der Demo-Tag bleibt `demo`.
-- Gegenüber 1.23.0 sind keine neuen Datenbankmigrationen oder Umgebungsvariablen erforderlich.
+- GegenÃ¼ber 1.23.0 sind keine neuen Datenbankmigrationen oder Umgebungsvariablen erforderlich.
 
 ## [1.23.0] - 2026-11-07
 

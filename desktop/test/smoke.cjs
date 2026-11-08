@@ -252,6 +252,19 @@ async function switchModal(application, local) {
       document.body.append(content);
     });
     await local.waitForFunction(() => getComputedStyle(document.getElementById('stato-window-titlebar')).backgroundColor === 'rgb(24, 32, 48)');
+    await local.waitForFunction(() => getComputedStyle(document.getElementById('desktop-footer')).backgroundColor === 'rgb(24, 32, 48)');
+    await remote.evaluate(() => {
+      const sidebar = document.createElement('aside');
+      sidebar.className = 'app-sidebar';
+      sidebar.style.cssText = 'position:fixed;left:0;top:0;width:64px;height:100vh;background:rgb(70, 45, 90)';
+      document.body.append(sidebar);
+    });
+    await local.waitForFunction(() => getComputedStyle(document.getElementById('stato-window-titlebar'), '::before').width === '64px');
+    assert.equal(await local.locator('#stato-window-titlebar').evaluate(el => getComputedStyle(el, '::before').backgroundColor), 'rgb(70, 45, 90)');
+    await remote.evaluate(() => { document.querySelector('.app-sidebar').style.width = '240px'; });
+    await local.waitForFunction(() => getComputedStyle(document.getElementById('stato-window-titlebar'), '::before').width === '240px');
+    await remote.evaluate(() => { document.querySelector('.app-sidebar').remove(); });
+    await local.waitForFunction(() => getComputedStyle(document.getElementById('stato-window-titlebar'), '::before').width === '0px');
     for (const width of [720, 900, 1200, 1600]) {
       const [contentWidth, contentHeight] = await application.evaluate(({ BrowserWindow }, width) => {
         const win = BrowserWindow.getAllWindows()[0];
@@ -303,7 +316,7 @@ async function switchModal(application, local) {
     });
     await local.locator('#desktop-updates.update-ready').waitFor();
     assert.equal(await local.locator('#desktop-updates').textContent(), 'Update verfügbar');
-    assert.equal(await local.locator('#desktop-updates').evaluate((element) => getComputedStyle(element).backgroundColor), 'rgb(91, 95, 255)');
+    assert.equal(await local.locator('#desktop-updates').evaluate((element) => getComputedStyle(element).backgroundColor), 'rgb(91, 108, 255)');
     await capture(application, 'desktop-update-highlight.png');
     await application.evaluate(({ webContents }) => {
       const shell = webContents.getAllWebContents().find((wc) => wc.getURL().endsWith('/shell/index.html'));
@@ -490,7 +503,7 @@ async function switchModal(application, local) {
     console.log('PASS: blob download, blank/blob previews and IPC sender guard');
 
     await remote.evaluate(() => {
-      document.documentElement.style.setProperty('--viridian', '#8839ef');
+      for (const [key, value] of Object.entries({ '--viridian': '#8839ef', '--surface-elevated': '#182030', '--app-bg': '#101828', '--text-primary': '#ffffff', '--text-muted': '#b6bdd5', '--input-bg': '#202c40', '--border-subtle': '#485468' })) document.documentElement.style.setProperty(key, value);
     });
     let switchPage = await switchModal(application, local);
     await switchPage.waitForFunction(() =>
@@ -526,6 +539,12 @@ async function switchModal(application, local) {
     await switchPage.getByRole('button', { name: 'Server wechseln', exact: true }).click();
     await waitState(local, 'setup');
     assert.equal(popup.isClosed(), true);
+    assert.equal(await local.locator('.card').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(24, 32, 48)');
+    assert.equal(await local.locator('#heading').evaluate(el => getComputedStyle(el).color), 'rgb(136, 57, 239)');
+    assert.ok(await local.locator('.card').evaluate(el => el.getBoundingClientRect().width <= 400));
+    assert.equal(await local.getByText('STATISTIK & DOKUMENTATION', { exact: true }).count(), 0);
+    await local.locator('#setup').waitFor({ state: 'visible' });
+    await local.screenshot({ path: join(artifacts, 'server-setup-themed.png') });
     await local.locator('#server-url').fill(second.url);
     await local.locator('#connect').click();
     await waitState(local, 'connected');

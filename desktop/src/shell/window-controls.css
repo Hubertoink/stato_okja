@@ -88,3 +88,14 @@ html.stato-window-fallback .app-shell-sidebar { min-height: calc(100dvh - 36px);
 @media (max-width: 767px) {
   .mobile-header-row.stato-window-drag { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; }
 }
+
+/* Continue the server sidebar behind the local title, without covering its controls. */
+html[data-mode='connected'] #stato-window-titlebar::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--desktop-sidebar-width, 0px);
+  background: var(--desktop-sidebar-color, transparent);
+  pointer-events: none;
+  z-index: -1;
+}

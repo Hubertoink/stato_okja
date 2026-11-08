@@ -243,6 +243,7 @@ async function switchModal(application, local) {
     await remote.evaluate(() => {
       document.documentElement.style.setProperty('--surface-elevated', '#182030');
       document.documentElement.style.setProperty('--text-primary', '#ffffff');
+      document.documentElement.style.setProperty('--border-subtle', '#485468');
       const style = document.createElement('style');
       style.textContent = 'html{scrollbar-gutter:stable}body{margin:0;background:#e4e6ef}::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:#8833ff}';
       document.head.append(style);
@@ -261,6 +262,7 @@ async function switchModal(application, local) {
     });
     await local.waitForFunction(() => getComputedStyle(document.getElementById('stato-window-titlebar'), '::before').width === '64px');
     assert.equal(await local.locator('#stato-window-titlebar').evaluate(el => getComputedStyle(el, '::before').backgroundColor), 'rgb(70, 45, 90)');
+    assert.equal(await local.locator('#stato-window-titlebar').evaluate(el => getComputedStyle(el, '::before').boxShadow), 'rgb(72, 84, 104) -1px 0px 0px 0px inset');
     await remote.evaluate(() => { document.querySelector('.app-sidebar').style.width = '240px'; });
     await local.waitForFunction(() => getComputedStyle(document.getElementById('stato-window-titlebar'), '::before').width === '240px');
     await remote.evaluate(() => { document.querySelector('.app-sidebar').remove(); });

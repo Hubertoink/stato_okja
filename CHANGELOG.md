@@ -9,6 +9,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.23.2] - 2026-11-08
+
+### Fixed
+- Der Desktop-Verbindungsbildschirm ist kompakter, übernimmt das aktive StatO-Theme und verzichtet auf die zusätzliche Überschrift „STATISTIK & DOKUMENTATION“.
+- Die Desktop-Statusleiste und die Passwort-Abfrage folgen den Theme-Farben.
+- Die Seitenleistenfarbe einschließlich ihrer feinen Trennlinie setzt sich in der Desktop-Titelleiste fort, auch beim Auf- und Zuklappen.
+- Der öffentliche Env-Generator passt sich schmalen Bildschirmen an.
+
+### Upgrade-Hinweise
+- Für die Desktop-Korrekturen den Windows-Client auf 1.23.2 aktualisieren. Sie funktionieren auch mit einem StatO-Server auf 1.23.1.
+- Keine neuen Datenbankmigrationen oder Umgebungsvariablen gegenüber 1.23.1.
+
 ## [1.23.1] - 2026-11-08
 
 ### Changed

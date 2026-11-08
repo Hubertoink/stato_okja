@@ -96,6 +96,7 @@ html[data-mode='connected'] #stato-window-titlebar::before {
   inset: 0 auto 0 0;
   width: var(--desktop-sidebar-width, 0px);
   background: var(--desktop-sidebar-color, transparent);
+  box-shadow: inset -1px 0 var(--border-subtle, transparent);
   pointer-events: none;
   z-index: -1;
 }

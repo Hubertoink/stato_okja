@@ -330,10 +330,20 @@
   align-items: flex-start;
   overscroll-behavior: none;
   color: var(--text-primary);
-  background:
-    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--cambridge-blue) 42%, transparent), transparent 34%),
-    radial-gradient(circle at 86% 84%, color-mix(in srgb, var(--accent-purple) 42%, transparent), transparent 38%),
-    linear-gradient(135deg, var(--viridian), var(--cambridge-blue) 42%, var(--accent-purple) 74%, var(--accent-teal));
+  position: relative;
+  isolation: isolate;
+  background: #101014;
+}
+
+.login-fluid-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: transparent;
 }
 
 .login-card {

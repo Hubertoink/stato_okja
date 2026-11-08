@@ -636,7 +636,7 @@ export default function Dashboard() {
         : t('recent.actionSentence', { who, what, title, verb });
 
     return (
-      <div key={entry.id} className="recent-actions-entry rounded-lg px-3 py-2.5 sm:px-4 sm:py-3">
+      <div key={entry.id} className="recent-actions-entry px-3 py-2.5 sm:px-4 sm:py-3">
         <div className="min-w-0">
           <h4 className="recent-actions-entry-title font-semibold">{titleLine}</h4>
           <p className="recent-actions-entry-meta text-xs">{when}</p>

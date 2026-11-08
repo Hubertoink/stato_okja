@@ -2,9 +2,10 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Neuer animierter Login-Hintergrund mit zum Theme passender Hintergrundfarbe und Unterstützung für reduzierte Bewegung.
-- Bereinigte Darstellung der letzten Aktionen.
-- Für diese Änderungen den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren. Der Windows-Client wird als passende Version bereitgestellt; die Weboberfläche kommt vom Server.
+- Kompakter Verbindungsbildschirm im aktiven StatO-Theme ohne zusätzliche Überschrift.
+- Themegerechte untere Statusleiste einschließlich Passwort-Abfrage.
+- Seitenleistenfarbe und Trennlinie reichen bis in die Titelleiste, auch beim Auf- und Zuklappen.
+- Ein Server-Update ist für diese Desktop-Korrekturen nicht erforderlich; StatO 1.23.1 wird unterstützt.
 
 ### Installation und einmaliger Umstieg
 

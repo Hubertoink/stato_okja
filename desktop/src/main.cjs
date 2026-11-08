@@ -449,9 +449,11 @@ function registerIpc() {
       !isServerNavigation(event.senderFrame.url, state.serverUrl)) return;
     // Only a bounded list of presentation colors crosses into the local shell.
     const colors = {};
-    for (const name of ['--surface-elevated', '--text-primary', '--interactive-soft', '--focus-ring']) {
+    for (const name of ['--app-bg', '--surface-1', '--surface-elevated', '--input-bg', '--text-primary', '--text-muted', '--border-subtle', '--viridian', '--interactive-soft', '--focus-ring', '--desktop-sidebar-color']) {
       if (typeof theme?.[name] === 'string' && theme[name].length < 128) colors[name] = theme[name];
     }
+    colors.sidebarWidth = Number.isFinite(theme?.sidebarWidth) ? Math.max(0, Math.min(400, theme.sidebarWidth)) : 0;
+    colors.colorScheme = ['light', 'dark', 'light dark', 'dark light'].includes(theme?.colorScheme) ? theme.colorScheme : 'normal';
     window.webContents.send('stato:chrome-theme', colors);
   });
   const windowHandlers = {

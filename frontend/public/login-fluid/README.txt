@@ -7,8 +7,9 @@ The renderer pauses when hidden and respects prefers-reduced-motion.
 
 StatO integration:
 - LoginBackground.tsx contains the user's exported preset and flow clock.
-- index.html uses centered cover sizing and a 2x visual zoom so the artwork
+- index.html uses centered cover sizing and a 2.6x visual zoom so the artwork
   fills the login background. The renderer and preset remain unchanged.
+- The transparent export sits over the active theme's --app-bg color.
 - Only this HTML document permits same-origin framing in Nginx.
 - The PWA navigation fallback excludes /login-fluid/.
 

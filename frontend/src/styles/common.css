@@ -332,10 +332,13 @@
   color: var(--text-primary);
   position: relative;
   isolation: isolate;
-  background: #101014;
+  background: var(--app-bg, var(--mint-cream));
 }
 
 .login-fluid-background {
+  /* Match the transparent export's scheme so dark themes do not give the
+   * iframe an opaque white canvas at the document boundary. */
+  color-scheme: normal;
   position: fixed;
   inset: 0;
   z-index: -1;

@@ -2,10 +2,9 @@ StatO Desktop fÃ¼r Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Mitwirkende mit individuellen Zeiten, passenden Filtern und Statistiken in der verbundenen WeboberflÃ¤che.
-- Optionale, nach Bereichen gruppierte Sidebar-Farben passend zum aktiven Theme.
-- Erweiterte Projektfilter und einheitliche HinzufÃ¼gen-Aktionen sowie Checkbox-Darstellung.
-- FÃ¼r diese Funktionen den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren. Der Windows-Client wird als passende Version bereitgestellt; die WeboberflÃ¤che kommt vom Server.
+- Neuer animierter Login-Hintergrund mit zum Theme passender Hintergrundfarbe und Unterstützung für reduzierte Bewegung.
+- Bereinigte Darstellung der letzten Aktionen.
+- Für diese Änderungen den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren. Der Windows-Client wird als passende Version bereitgestellt; die Weboberfläche kommt vom Server.
 
 ### Installation und einmaliger Umstieg
 

@@ -2,9 +2,9 @@ StatO Desktop fÃ¼r Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Neuer animierter Login-Hintergrund mit zum Theme passender Hintergrundfarbe und Unterstützung für reduzierte Bewegung.
+- Neuer animierter Login-Hintergrund mit zum Theme passender Hintergrundfarbe und UnterstÃ¼tzung fÃ¼r reduzierte Bewegung.
 - Bereinigte Darstellung der letzten Aktionen.
-- Für diese Änderungen den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren. Der Windows-Client wird als passende Version bereitgestellt; die Weboberfläche kommt vom Server.
+- FÃ¼r diese Ã„nderungen den verbundenen StatO-Server ebenfalls auf __VERSION__ aktualisieren. Der Windows-Client wird als passende Version bereitgestellt; die WeboberflÃ¤che kommt vom Server.
 
 ### Installation und einmaliger Umstieg
 

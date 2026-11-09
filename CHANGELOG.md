@@ -9,6 +9,20 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.24.0] - 2026-11-09
+
+### Added
+- Die Aktivitätenübersicht zeigt zugeordnete Team-Mitglieder und Mitwirkende unter Kategorien und Tags als farbig umrandete Badges. Team-Mitglieder erhalten ein Kronen-Icon, Mitwirkende ein Handschlag-Icon.
+- Die Tagesauswahl im Kalender zeigt Kategorien, Tags, Team-Mitglieder und Mitwirkende in einer eigenen Spalte zwischen Titel / Projekt und Teilnehmenden.
+
+### Fixed
+- Die seitenweise Aktivitätsabfrage liefert das gesamte zugeordnete Team einschließlich archivierter Personen. Auch bei einem Team-Filter bleiben alle zugeordneten Team-Mitglieder sichtbar.
+- Die kurz eingeblendete Lade- und Aktualisierungsmeldung in der Aktivitätenübersicht entfällt.
+
+### Upgrade-Hinweise
+- Server und Windows-Desktop verwenden Version 1.24.0. Für die neuen Badges muss der verbundene StatO-Server aktualisiert werden; ein Desktop-Update allein ergänzt diese Oberfläche nicht.
+- Keine neuen Datenbankmigrationen oder Umgebungsvariablen gegenüber 1.23.2.
+
 ## [1.23.2] - 2026-11-08
 
 ### Fixed

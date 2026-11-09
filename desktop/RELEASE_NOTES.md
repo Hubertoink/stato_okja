@@ -2,10 +2,10 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Kompakter Verbindungsbildschirm im aktiven StatO-Theme ohne zusätzliche Überschrift.
-- Themegerechte untere Statusleiste einschließlich Passwort-Abfrage.
-- Seitenleistenfarbe und Trennlinie reichen bis in die Titelleiste, auch beim Auf- und Zuklappen.
-- Ein Server-Update ist für diese Desktop-Korrekturen nicht erforderlich; StatO 1.23.1 wird unterstützt.
+- Gemeinsamer Versionsstand 1.24.0 mit dem StatO-Server.
+- Mit Server 1.24.0: Aktivitäten zeigen Team-Mitglieder mit Kronen-Icon und Mitwirkende mit Handschlag-Icon als umrandete Badges.
+- Mit Server 1.24.0: Die Kalender-Tagesauswahl zeigt Kategorien, Tags, Team-Mitglieder und Mitwirkende direkt in der Tabelle.
+- Für diese Oberflächenänderungen den verbundenen StatO-Server auf 1.24.0 aktualisieren. Der Desktop-Client enthält keine zusätzlichen funktionalen Änderungen gegenüber 1.23.2.
 
 ### Installation und einmaliger Umstieg
 

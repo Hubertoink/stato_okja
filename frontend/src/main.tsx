@@ -28,10 +28,10 @@ import './styles/common.css';
 import './styles/theme-overrides.css';
 
 import { applyStoredBackground } from './lib/background';
-import { applyStoredThemePreference, listenForSystemThemeChanges } from './lib/theme';
+import { applyStoredThemePreference, applyTheme, listenForSystemThemeChanges } from './lib/theme';
 import { applyStoredViewDensity } from './lib/viewDensity';
 import { attachQueryClientMetrics } from './lib/devMetrics';
-import { demoModeEnabled } from './demo/config';
+import { demoModeEnabled, demoUser } from './demo/config';
 import { configureKeyboardViewport } from './lib/keyboardViewport';
 
 configureKeyboardViewport();
@@ -55,7 +55,11 @@ const queryClient = new QueryClient({
 attachQueryClientMetrics(queryClient);
 
 applyStoredBackground();
-applyStoredThemePreference();
+if (demoModeEnabled) {
+  applyTheme(demoUser.theme, demoUser.themeMode);
+} else {
+  applyStoredThemePreference();
+}
 listenForSystemThemeChanges();
 applyStoredViewDensity();
 

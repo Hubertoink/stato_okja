@@ -1,3 +1,4 @@
+import LoginBackground from '@/components/LoginBackground';
 import { FormEvent, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import {
@@ -138,6 +139,7 @@ export default function Login() {
 
   return (
     <div className="login-screen min-h-screen flex items-center justify-center p-4">
+      <LoginBackground />
       <div className={`login-card backdrop-blur-xl rounded-3xl shadow-2xl w-full ${branding.initialSetupRequired ? 'max-w-3xl p-5 sm:p-6' : 'max-w-md p-8'}`}>
         <div className={`text-center ${branding.initialSetupRequired ? 'mb-5' : 'mb-8'}`}>
           <h1 className="text-3xl md:text-4xl font-extrabold gradient-text leading-tight whitespace-normal break-words">

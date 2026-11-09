@@ -1,4 +1,5 @@
 import { TeamStatisticsSkeleton } from './TeamStatisticsSkeleton';
+import { StatisticsEmptyState } from './StatisticsEmptyState';
 import { formatStatisticsAggregationTooltipLabel } from '../statisticsHelpers';
 import { autoT } from '@/i18n/auto';
 import { TeamChartCard } from './TeamChartCard';
@@ -66,8 +67,9 @@ export const TeamStatistics = forwardRef<
     params: StatisticsOverviewParams;
     query: ReturnType<typeof useTeamStatisticsQuery>;
     staffId?: string;
+    firstActivity?: boolean;
   }
->(function TeamStatistics({ params, query, staffId = '' }, ref) {
+>(function TeamStatistics({ params, query, staffId = '', firstActivity = false }, ref) {
   const all = query.data || [];
   const rows = all.filter((row) => !staffId || row.staffId === staffId);
   const [exportError, setExportError] = useState(false);
@@ -108,6 +110,7 @@ export const TeamStatistics = forwardRef<
         <Button onClick={() => void query.refetch()}>Erneut versuchen</Button>
       </div>
     );
+  if (!rows.length) return <StatisticsEmptyState team firstActivity={firstActivity} />;
   return (
     <div className="space-y-6">
       {exportError && <p role="alert">Der Export ist fehlgeschlagen. Bitte erneut versuchen.</p>}
@@ -133,14 +136,8 @@ export const TeamStatistics = forwardRef<
         />
       </div>
       {(params.projectId || params.type) && <TeamParticipationChart rows={rows} />}
-      {!rows.length ? (
-        <p>Keine zugeordneten Team-Einsätze für diese Auswahl.</p>
-      ) : (
-        <>
-          <TeamTypeChart rows={rows} />
-          <TeamDayCharts rows={rows} singleMember={Boolean(staffId)} />
-        </>
-      )}
+      <TeamTypeChart rows={rows} />
+      <TeamDayCharts rows={rows} singleMember={Boolean(staffId)} />
       {staffId && (
         <TeamActivitiesTable
           key={JSON.stringify([staffId, params])}

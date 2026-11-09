@@ -1,3 +1,6 @@
+import { contributionExportRows } from '@/lib/contributionExport';
+import type { Contributor, Contribution } from '@/lib/contributors';
+import { useContributors } from '@/lib/contributors';
 import { DataTransition, LoadingTableRows } from '@/components/ui/DataTransition';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -7,6 +10,7 @@ import { fetchAllActivities, useActivitiesPaged, type ActivitiesFilter } from '@
 import { fetchAllLogbookEntries, type LogbookEntry } from '@/lib/logbook';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import ActivityTypeBadge from '@/components/ActivityTypeBadge';
+import ActivityPeopleBadges from '@/components/ActivityPeopleBadges';
 import ActivityDayGroup from '@/components/ActivityDayGroup';
 import { useCategories, useCohorts, useTags } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
@@ -135,6 +139,11 @@ export default function Activities() {
   const { data: tags = [] } = useTags({ active: true });
   const { data: projects = [] } = useProjects();
   const { data: locations = [] } = useLocations({ active: true });
+  const contributors = useContributors();
+  const contributorById = useMemo(
+    () => new Map((contributors.data || []).map(person => [person.id, person])),
+    [contributors.data],
+  );
   const { data: staff = [] } = useStaff({ active: true });
   const { data: publicConfig } = usePublicConfig();
   const [exporting, setExporting] = useState(false);
@@ -167,6 +176,8 @@ export default function Activities() {
     uncategorized: effectiveAdvanced.uncategorized,
     tagIds: effectiveAdvanced.tagIds,
     staffIds: effectiveAdvanced.staffIds,
+    contributorIds: effectiveAdvanced.contributorIds,
+    hasContributions: effectiveAdvanced.hasContributions,
     cohortIds: effectiveAdvanced.cohortIds,
     executionStatuses: effectiveAdvanced.executionStatuses,
     hasNotes: effectiveAdvanced.hasNotes,
@@ -204,6 +215,8 @@ export default function Activities() {
         !current.uncategorized &&
         !current.tagIds?.length &&
         !current.staffIds?.length &&
+        !current.contributorIds?.length &&
+        !current.hasContributions &&
         !current.cohortIds?.length &&
         !current.hasNotes &&
         !current.participantsMin &&
@@ -384,6 +397,7 @@ export default function Activities() {
   const goToNextPage = () => setPage((currentPage) => Math.min(currentPage + 1, pageCount));
   const goToLastPage = () => setPage(pageCount);
   type ExportRow = {
+    contributions?: Contribution[] | null;
     id: string;
     projectId?: string | null;
     date: string;
@@ -407,7 +421,8 @@ export default function Activities() {
     const rows = await fetchAllActivities(filters);
     return rows as Array<ExportRow>;
   };
-  const buildExportSheet = (list: ExportRow[]) => {
+  const buildExportSheet = (list: ExportRow[], people: Contributor[]) => {
+    const contributions = contributionExportRows(list, people, filters.contributorIds);
     const cohortOrder = (cohorts as Cohort[])
       .slice()
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
@@ -432,6 +447,8 @@ export default function Activities() {
       autoT('ui_4e1e15e17610'),
       autoT('ui_848eed0fbd54'),
       autoT('ui_7e458d013900'),
+      'Mitwirkende',
+      'Mitwirkungszeit (Minuten)',
     ];
     const rows = [header as (string | number)[]];
     const durationFrom = (activity: ExportRow) => {
@@ -489,6 +506,8 @@ export default function Activities() {
           : (activity.categories || []).map((category) => category.name).join(', '),
         (activity.tags || []).map((tag) => tag.name).join(', '),
         activity.notes || '',
+        contributions.filter(entry => entry.activityId === activity.id).map(entry => entry.name).join(', '),
+        contributions.filter(entry => entry.activityId === activity.id).reduce((sum, entry) => sum + entry.minutes, 0),
       ]);
     }
 
@@ -510,10 +529,13 @@ export default function Activities() {
       setExporting(true);
       setExportProgress(t('export.loadingActivities'));
       const list = await loadExportRows();
+      const peopleResult = await contributors.refetch();
+      if (peopleResult.isError) throw peopleResult.error;
+      const exportPeople = peopleResult.data || [];
       setExportProgress(t('export.preparingFile'));
       await new Promise(requestAnimationFrame);
       const { rows, statusCol, typeCol, firstNumberCol, durationCol, categoriesCol, tagsCol, notesCol } =
-        buildExportSheet(list);
+        buildExportSheet(list, exportPeople);
 
       const xlsx = await import('xlsx-js-style');
       const { utils, writeFile } = xlsx as unknown as typeof import('xlsx-js-style');
@@ -634,6 +656,14 @@ export default function Activities() {
 
       const wb = utils.book_new();
       utils.book_append_sheet(wb, ws, autoT('ui_b6bf5f1a2033'));
+      const contributionRows = contributionExportRows(list, exportPeople, filters.contributorIds);
+      if (contributionRows.length) {
+        const sheet = utils.aoa_to_sheet([['Datum', 'Projekt', 'Aktivität', 'Mitwirkende', 'Minuten', 'Aktivitäts-ID'],
+          ...contributionRows.map(entry => [entry.date, entry.project, entry.title, entry.name, entry.minutes, entry.activityId])]);
+        sheet['!cols'] = [{ wch: 14 }, { wch: 28 }, { wch: 30 }, { wch: 24 }, { wch: 12 }, { wch: 38 }];
+        sheet['!autofilter'] = { ref: 'A1:F1' };
+        utils.book_append_sheet(wb, sheet, 'Mitwirkung');
+      }
 
       if (variant === 'styled') {
         setExportProgress(autoT('ui_6cbf19e20da4'));
@@ -880,6 +910,8 @@ export default function Activities() {
             <ActiveFilterBadge label={t('filters.uncategorized')} />
           ) : null}
           {tagsBadgeLabel ? <ActiveFilterBadge label={tagsBadgeLabel} /> : null}
+          {effectiveAdvanced.hasContributions && <ActiveFilterBadge label="Mitwirkung vorhanden" />}
+          {!!effectiveAdvanced.contributorIds?.length && <ActiveFilterBadge label={formatSelectedFilterBadge('Mitwirkende', effectiveAdvanced.contributorIds, new Map((contributors.data || []).map(person => [person.id, person.name]))) || 'Mitwirkende'} />}
           {staffBadgeLabel ? <ActiveFilterBadge label={staffBadgeLabel} /> : null}
           {cohortsBadgeLabel ? <ActiveFilterBadge label={cohortsBadgeLabel} /> : null}
           {executionStatusBadgeLabel ? (
@@ -942,9 +974,6 @@ export default function Activities() {
         </>}
       />
 
-      <div role="status" className="min-h-6 text-sm text-gray-500" aria-live="polite">
-        {activitiesPending ? `Aktivitäten – Seite ${page} wird geladen …` : activitiesFetching ? 'Wird aktualisiert …' : null}
-      </div>
       {/* Activity List */}
       {/* Desktop Table */}
       <DemoHoverHint
@@ -1063,9 +1092,10 @@ export default function Activities() {
                       <span className="text-xs text-gray-400">–</span>
                     )}
                   </div>
+                  <ActivityPeopleBadges activity={a} contributors={contributorById} />
                   {a.notes && (
                     <div
-                      className="text-xs text-gray-600 flex items-start gap-1"
+                      className="mt-2 text-xs text-gray-600 flex items-start gap-1"
                       title={a.notes || undefined}
                     >
                       <StickyNote className="w-3.5 h-3.5 mt-[2px] text-gray-500" />
@@ -1222,6 +1252,7 @@ export default function Activities() {
                   </span>
                 ))}
               </div>
+                  <ActivityPeopleBadges activity={a} contributors={contributorById} />
                 </div>
                 <div className="activity-mobile-attendance" aria-label={isCompletedActivity(a.executionStatus) ? t('table.participants') : undefined}>
                   <div className="activity-mobile-duration">

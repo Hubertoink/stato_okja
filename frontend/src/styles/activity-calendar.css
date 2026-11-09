@@ -695,6 +695,11 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 
 .calendar-day-list-table {
   table-layout: fixed;
+  min-width: 64rem;
+}
+
+.calendar-day-list-table .activities-col-meta {
+  width: 30%;
 }
 
 .calendar-day-list-table .activities-col-date {

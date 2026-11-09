@@ -9,6 +9,7 @@ import { useAnchoredPopoverPosition } from './useAnchoredPopoverPosition';
 /** A header-anchored filter popover on desktop and a full-width top sheet on phones. */
 export function ResponsiveFilterPanel({
   children,
+  footer,
   anchorRef,
   desktopClassName = '',
   mobileBreakpoint = 768,
@@ -17,6 +18,7 @@ export function ResponsiveFilterPanel({
   title,
 }: {
   children: ReactNode;
+  footer?: ReactNode;
   anchorRef?: RefObject<HTMLElement | null>;
   desktopClassName?: string;
   mobileBreakpoint?: number;
@@ -57,8 +59,11 @@ export function ResponsiveFilterPanel({
   if (!open) return null;
   if (isMobile) {
     return (
-      <Modal onClose={onClose} open title={title} maxWidth="6xl">
-        {children}
+      <Modal onClose={onClose} open title={title} maxWidth="6xl" variant={footer ? 'form' : 'default'}>
+        {footer ? <>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">{children}</div>
+          <div className="shrink-0 bg-[var(--surface-elevated)] px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">{footer}</div>
+        </> : children}
       </Modal>
     );
   }
@@ -69,13 +74,16 @@ export function ResponsiveFilterPanel({
       aria-label={title}
       className={`header-action-popover header-filter-popover ${desktopClassName}`.trim()}
       role="dialog"
-      style={anchorStyle}
+      style={footer ? { ...anchorStyle, display: 'flex', flexDirection: 'column', overflow: 'hidden' } : anchorStyle}
     >
-      <header className="mb-4 flex items-center justify-between gap-3">
+      <header className="mb-4 flex shrink-0 items-center justify-between gap-3">
         <h3 className="text-base font-bold text-[var(--text-primary)]">{title}</h3>
         <CloseButton aria-label={t('actions.close')} onClick={onClose} size="icon-compact" />
       </header>
-      {children}
+      {footer ? <>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3">{children}</div>
+        <div className="shrink-0 bg-[var(--surface-elevated)]">{footer}</div>
+      </> : children}
     </section>
   );
 }

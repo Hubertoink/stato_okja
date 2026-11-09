@@ -250,11 +250,6 @@
   border: 1px solid var(--interactive-soft-border);
 }
 
-.recent-actions-entry {
-  background: color-mix(in srgb, var(--surface-2) 94%, transparent);
-  border: 1px solid var(--border-subtle);
-}
-
 .recent-actions-entry-title {
   color: var(--text-primary);
 }

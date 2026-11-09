@@ -9,6 +9,66 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.24.0] - 2026-11-09
+
+### Added
+- Die Aktivitätenübersicht zeigt zugeordnete Team-Mitglieder und Mitwirkende unter Kategorien und Tags als farbig umrandete Badges. Team-Mitglieder erhalten ein Kronen-Icon, Mitwirkende ein Handschlag-Icon.
+- Die Tagesauswahl im Kalender zeigt Kategorien, Tags, Team-Mitglieder und Mitwirkende in einer eigenen Spalte zwischen Titel / Projekt und Teilnehmenden.
+
+### Fixed
+- Die seitenweise Aktivitätsabfrage liefert das gesamte zugeordnete Team einschließlich archivierter Personen. Auch bei einem Team-Filter bleiben alle zugeordneten Team-Mitglieder sichtbar.
+- Die kurz eingeblendete Lade- und Aktualisierungsmeldung in der Aktivitätenübersicht entfällt.
+
+### Upgrade-Hinweise
+- Server und Windows-Desktop verwenden Version 1.24.0. Für die neuen Badges muss der verbundene StatO-Server aktualisiert werden; ein Desktop-Update allein ergänzt diese Oberfläche nicht.
+- Keine neuen Datenbankmigrationen oder Umgebungsvariablen gegenüber 1.23.2.
+
+## [1.23.2] - 2026-11-08
+
+### Fixed
+- Der Desktop-Verbindungsbildschirm ist kompakter, übernimmt das aktive StatO-Theme und verzichtet auf die zusätzliche Überschrift „STATISTIK & DOKUMENTATION“.
+- Die Desktop-Statusleiste und die Passwort-Abfrage folgen den Theme-Farben.
+- Die Seitenleistenfarbe einschließlich ihrer feinen Trennlinie setzt sich in der Desktop-Titelleiste fort, auch beim Auf- und Zuklappen.
+- Der öffentliche Env-Generator passt sich schmalen Bildschirmen an.
+
+### Upgrade-Hinweise
+- Für die Desktop-Korrekturen den Windows-Client auf 1.23.2 aktualisieren. Sie funktionieren auch mit einem StatO-Server auf 1.23.1.
+- Keine neuen Datenbankmigrationen oder Umgebungsvariablen gegenüber 1.23.1.
+
+## [1.23.1] - 2026-11-08
+
+### Changed
+- Die Anmeldeseite zeigt einen lokal ausgelieferten Fluid-Hintergrund mit Mauswellen. Die Hintergrundfarbe folgt dem aktiven Theme; die Animation ist auf Desktop und Mobilgeräten an die Fläche angepasst.
+- Bei aktivierter Systemeinstellung „Bewegung reduzieren“ bleibt der Login-Hintergrund statisch.
+- Einträge der letzten Aktionen erscheinen ohne zusätzliche Rahmen und Hintergründe.
+
+### Fixed
+- Der eigenständige Animationsexport wird vom PWA-App-Shell-Fallback ausgenommen und darf ausschließlich auf derselben Domain eingebettet werden.
+- Die Quellcode-Prüfung überspringt die bereits kompilierten Toolcraft-Assets.
+
+### Upgrade-Hinweise
+- Server, Backup-Image und Windows-Desktop verwenden Version 1.23.1. Für die neue Anmeldeseite muss der verbundene StatO-Server aktualisiert werden.
+- Mittwald: Backend und Backup auf `1.23.1`, Frontend auf `stack-1.23.1` aktualisieren. Der Demo-Tag bleibt `demo`.
+- Gegenüber 1.23.0 sind keine neuen Datenbankmigrationen oder Umgebungsvariablen erforderlich.
+
+## [1.23.0] - 2026-11-07
+
+### Added
+- Mitwirkende lassen sich in den Stammdaten verwalten und Aktivitäten mit individuellen Mitwirkungszeiten zuordnen. Filter und Statistiken unterstützen die Auswertung der Mitwirkung.
+- Die Seitenleisten-Icons können optional nach Hauptnavigation, Stammdaten/Betrieb und Verwaltung in den Farben des aktiven Themes dargestellt werden. Die Auswahl wird im Benutzerprofil gespeichert.
+- Projekte lassen sich nach Teammitgliedern und Kategorien filtern; aktive Filter werden sichtbar angezeigt.
+
+### Fixed
+- Die Hinzufügen-Aktion für Mitwirkende verwendet denselben transparenten Hover wie Tags und die übrigen Hinzufügen-Aktionen.
+- Die Checkbox für farbige Seitenleisten-Icons entspricht der kompakten Darstellung der übrigen App.
+- Filteraktionen für Aktivitäten bleiben außerhalb des scrollbaren Bereichs erreichbar. Leere Statistikauswertungen erhalten verständliche Hinweise.
+
+### Upgrade-Hinweise
+- Server, Backup-Image und Windows-Desktop verwenden Version 1.23.0. Die neuen Webfunktionen benötigen auch das Update des verbundenen StatO-Servers.
+- Mittwald: Backend und Backup auf `1.23.0`, Frontend auf `stack-1.23.0` aktualisieren. Der Demo-Tag bleibt `demo`.
+- Datenbankmigrationen ergänzen Mitwirkende, ihre Farbzuordnung, Mitwirkungsdaten an Aktivitäten und die persönliche Sidebar-Einstellung. Vor dem Update ein Backup erstellen und die Migrationen ausführen lassen.
+- Farbige Seitenleisten-Icons sind standardmäßig deaktiviert und können unter Einstellungen → Navigation aktiviert werden.
+
 ## [1.22.5] - 2026-11-03
 
 ### Fixed

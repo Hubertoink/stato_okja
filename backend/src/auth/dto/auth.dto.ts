@@ -179,6 +179,10 @@ export class UpdateMeDto {
   navigationLayout?: NavigationLayout;
 
   @IsOptional()
+  @IsBoolean()
+  sidebarColoredIcons?: boolean;
+
+  @IsOptional()
   @IsIn(SUPPORTED_LOCALES)
   locale?: SupportedLocale;
 }

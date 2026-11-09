@@ -1,3 +1,4 @@
+import { resolveContributionTimes, type ContributionTime } from '@/lib/contributionTimes';
 import type { Activity } from '@/lib/activities';
 import {
   DEFAULT_ACTIVITY_EXECUTION_STATUS,
@@ -31,6 +32,7 @@ export type ActivityFormState = {
   notes?: string;
   staffIds?: string[];
   staffTimes?: Array<{ staffId: string; minutes: number }>;
+  contributions?: ContributionTime[];
   cohortCounts?: Record<string, { m: number; w: number; d: number }>;
 };
 
@@ -65,6 +67,7 @@ export function getActivityFormSnapshot(form: ActivityFormState): string {
     staffIds: normalizedIds(form.staffIds),
     staffTimes: customStaffTimes(form.staffTimes, form.staffIds, activityFormMinutes(form)).sort((a, b) => a.staffId.localeCompare(b.staffId)),
     cohortCounts,
+    contributions: resolveContributionTimes(form.contributions || [], activityFormMinutes(form)).sort((a, b) => a.contributorId.localeCompare(b.contributorId)),
   });
 }
 
@@ -213,6 +216,7 @@ export function getActivityFormStateFromActivity(
     staffIds: (activity.staff || []).map((member) => member.id),
     staffTimes: customStaffTimes(activity.staffTimes || [], (activity.staff || []).map(member => member.id), activity.durationMinutes),
     cohortCounts: getActivityCohortCounts(activity),
+    contributions: (activity.contributions || []).map(entry => ({ ...entry, automatic: entry.minutes === (activity.durationMinutes ?? activityFormMinutes({ start: activity.startTime || undefined, end: activity.endTime || undefined })) })),
   };
 }
 
@@ -253,6 +257,7 @@ export function buildActivitySavePayload({
     tagIds: form.tagIds || [],
     staffIds: form.staffIds || [],
     staffTimes: customStaffTimes(form.staffTimes, form.staffIds, durationMinutes),
+    contributions: resolveContributionTimes(form.contributions || [], computedDurationMinutes ?? durationMinutes),
     durationMinutes,
     countMale: cohortSums.m,
     countFemale: cohortSums.w,

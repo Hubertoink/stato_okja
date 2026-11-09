@@ -1,4 +1,7 @@
+import { contributionError } from '@/lib/contributors';
 import { StaffTimesButton, StaffTimeIndicator } from '@/components/StaffTimesButton';
+import { ActivityContributions } from '@/components/ActivityContributions';
+import { activityFormMinutes } from '@/lib/staffTimes';
 import ActivityPlanningNotice from '@/components/ActivityPlanningNotice';
 import { usePublicConfig } from '@/lib/publicConfig';
 import {
@@ -265,7 +268,7 @@ export default function ActivityCreatePage() {
         showToast(t('quickAdd.saved'));
         navigate(-1);
       },
-      onError: () => setErrorOpen(t('quickAdd.saveFailed')),
+      onError: (error) => setErrorOpen(contributionError(error)),
     });
   };
 
@@ -882,6 +885,8 @@ export default function ActivityCreatePage() {
               </div>
             </details>
 
+
+
             <details className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3 md:p-4">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-medium text-[var(--text-primary)]">
                 <span>{t('quickAdd.additionalDetails')}</span>
@@ -889,6 +894,8 @@ export default function ActivityCreatePage() {
                   {t('quickAdd.notesSummary')}
                 </span>
               </summary>
+            <ActivityContributions value={form.contributions || []} onChange={contributions => setForm(current => ({ ...current, contributions }))}
+              startTime={form.start} endTime={form.end} durationMinutes={activityFormMinutes(form)} completed={activityStatusForDate(form.executionStatus, form.date) === 'completed'} />
               <div className="mt-4">
                 <label className="block text-sm font-medium mb-1" htmlFor="activity-notes">
                   {t('quickAdd.notes')}

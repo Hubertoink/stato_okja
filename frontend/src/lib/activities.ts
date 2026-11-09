@@ -40,6 +40,7 @@ export interface Activity {
   endTime?: string | null;
   durationMinutes?: number | null;
   staffTimes?: Array<{ staffId: string; minutes: number }> | null;
+  contributions?: Array<{ contributorId: string; minutes: number }> | null;
   executionStatus?: ActivityExecutionStatus | null;
   type: 'open_door' | 'project_open' | 'project_closed' | 'event' | 'outreach';
   locationId?: string | null;
@@ -73,6 +74,8 @@ export type ActivitiesFilter = {
   uncategorized?: boolean;
   tagIds?: string[];
   staffIds?: string[];
+  contributorIds?: string[];
+  hasContributions?: boolean;
   cohortIds?: string[];
   executionStatuses?: ActivityExecutionStatus[];
   closureState?: OrganizationClosureStateFilter;
@@ -98,7 +101,7 @@ export function buildActivityQueryParams(
   const qp: Record<string, unknown> = { ...params };
   applyOrgScopeParam(qp, scope);
   const arrayKeys: (keyof ActivitiesFilter)[] = [
-    'types', 'locationIds', 'projectIds', 'categoryIds', 'tagIds', 'staffIds', 'cohortIds', 'executionStatuses',
+    'types', 'locationIds', 'projectIds', 'categoryIds', 'tagIds', 'staffIds', 'contributorIds', 'cohortIds', 'executionStatuses',
   ];
   for (const key of arrayKeys) {
     const value = params?.[key];

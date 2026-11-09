@@ -3,7 +3,10 @@ desktop.onContentBottom((bottom) => {
   document.getElementById('desktop-footer').style.top = `${bottom}px`;
 });
 desktop.onChromeTheme((theme) => {
+  document.documentElement.style.colorScheme = theme.colorScheme || 'normal';
+  document.documentElement.style.setProperty('--desktop-sidebar-width', `${theme.sidebarWidth || 0}px`);
   for (const [name, value] of Object.entries(theme)) {
+    if (!name.startsWith('--')) continue;
     if (CSS.supports('color', value)) document.documentElement.style.setProperty(name, value);
     else document.documentElement.style.removeProperty(name);
   }
@@ -22,6 +25,7 @@ function render(state) {
   revision = state.revision;
   const wasSetup = mode === 'setup';
   mode = state.mode;
+  document.documentElement.dataset.mode = mode;
   document.getElementById('setup').hidden = state.mode !== 'setup';
   // In connected mode the splash stays behind the server view until it has loaded.
   document.getElementById('splash').hidden = state.mode === 'setup';

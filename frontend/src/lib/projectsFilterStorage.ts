@@ -1,6 +1,8 @@
 export type StoredProjectsFilters = {
   showArchived: boolean;
   types: string[];
+  staffNames: string[];
+  categoryIds: string[];
 };
 
 const STORAGE_KEY = 'projects:filters:v1';
@@ -8,6 +10,8 @@ const STORAGE_KEY = 'projects:filters:v1';
 const DEFAULT_FILTERS: StoredProjectsFilters = {
   showArchived: false,
   types: [],
+  staffNames: [],
+  categoryIds: [],
 };
 
 export function loadProjectsFilters(): StoredProjectsFilters {
@@ -19,6 +23,10 @@ export function loadProjectsFilters(): StoredProjectsFilters {
     const filters = parsed as Record<string, unknown>;
     return {
       showArchived: filters.showArchived === true,
+      staffNames: Array.isArray(filters.staffNames)
+        ? [...new Set(filters.staffNames.filter((name): name is string => typeof name === 'string'))] : [],
+      categoryIds: Array.isArray(filters.categoryIds)
+        ? [...new Set(filters.categoryIds.filter((id): id is string => typeof id === 'string'))] : [],
       types: Array.isArray(filters.types)
         ? [...new Set(filters.types.filter((type): type is string => typeof type === 'string'))]
         : [],

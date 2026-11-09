@@ -1,4 +1,7 @@
+import { useContributors } from '@/lib/contributors';
+import ContributionStatistics from './statistics/ContributionStatistics';
 import { useStaff } from '@/lib/staff';
+import { StatisticsEmptyState } from './statistics/StatisticsEmptyState';
 import { DataTransition } from '@/components/ui/DataTransition';
 import { MonthActivityIndicator, monthlyActivityCounts } from './statistics/MonthActivityIndicator';
 import { useStatisticsMonthCounts } from './statistics/useStatisticsOverview';
@@ -164,6 +167,7 @@ export default function Statistics() {
     selectedYear,
     selectedMonth,
     filterMode,
+    selectedContributorIds, tempContributorIds, setTempContributorIds,
     customFilterOpen,
     setCustomFilterOpen,
     customFilterTriggerRef,
@@ -294,6 +298,7 @@ export default function Statistics() {
       selectedWeekdays,
     ],
   );
+  const contributors = useContributors();
   const overviewQ = useStatisticsOverview(statsParams, scopeKey, {
     refetchOnWindowFocus: true,
     refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
@@ -1157,6 +1162,7 @@ export default function Statistics() {
             setTempSelectedWeekdays(selectedWeekdays);
             setTempSelectedExecutionStatuses(effectiveExecutionStatuses);
             setTempSelectedClosureState(selectedClosureState);
+            setTempContributorIds(selectedContributorIds);
             setCustomFilterOpen(true);
           };
 
@@ -1744,10 +1750,14 @@ export default function Statistics() {
         })()}
       </SurfaceCard>
 
-      {audience === 'team' ? <TeamStatistics ref={teamStatisticsRef} params={statsParams} query={teamQuery} staffId={selectedTeamMember} /> : <DataTransition variant="statistics" showStatus={false} pending={overviewQ.isPending || overviewQ.isPlaceholderData}
+      {audience === 'team' ? <TeamStatistics ref={teamStatisticsRef} params={statsParams} query={teamQuery} staffId={selectedTeamMember}
+        firstActivity={overviewQ.isSuccess && !overviewQ.isPlaceholderData && activityYears.length === 0} /> : <DataTransition variant="statistics" showStatus={false} pending={overviewQ.isPending || overviewQ.isPlaceholderData}
         refreshing={overviewQ.isFetching} error={overviewQ.isError}
         label={`Statistik für ${formatRangeDisplay(MONTH_NAMES)} wird geladen …`}
         onRetry={() => { void overviewQ.refetch(); }}>
+        {overviewQ.isSuccess && !overviewQ.isPlaceholderData && summary?.totalActivities === 0 ? (
+          <StatisticsEmptyState firstActivity={activityYears.length === 0} />
+        ) : <>
         <StatisticsKpis
           showAverage={showAverage}
           onShowAverageChange={setShowAverage}
@@ -1758,6 +1768,8 @@ export default function Statistics() {
           averageHoursPerActivity={averageHoursPerActivity}
           formatNumber={fmtNumber}
         />
+
+
 
         <div className="mt-6" data-pdf-section>
           <WeeklyProfileHeatmap
@@ -1932,6 +1944,25 @@ export default function Statistics() {
               }))}
             />
           </div>
+
+          <ContributionStatistics entries={overview?.contributions || []} selectedIds={selectedContributorIds}
+            barProps={{
+              exportActions: renderChartExportActions('contribution-assignments', 'Mitwirkungseinsätze'),
+              chartRef: setChartCardRef('contribution-assignments'),
+              margin: compactBarChartMarginWithBottom, gridStroke: chartGridColor, axisTick: chartAxisTick,
+              tooltipContentStyle: chartTooltipContentStyle, tooltipLabelStyle: chartTooltipLabelStyle,
+              tooltipItemStyle: chartTooltipItemStyle, tooltipCursor: barChartCursor,
+              tooltipFormatter: value => value.toLocaleString(getCurrentIntlLocale()), valueLabelContent: <ValueLabel />,
+            }}
+            pieProps={{
+              exportActions: renderChartExportActions('contribution-time', 'Verteilung der Mitwirkungszeit'),
+              chartRef: setChartCardRef('contribution-time'),
+              centerY: genderPieCenterY, innerRadius: genderInnerRadius, outerRadius: genderOuterRadius,
+              showAbsoluteValueLabels: Boolean(activeChartExport?.startsWith('contribution-time:')),
+              createLabelRenderer: renderPieValueLabel, separatorColor: chartSeparatorColor,
+              tooltipContentStyle: chartTooltipContentStyle, tooltipLabelStyle: chartTooltipLabelStyle,
+              tooltipItemStyle: chartTooltipItemStyle, legendWrapperStyle: pieLegendWrapperStyle,
+            }} />
 
           <StatisticsPieChartCard
             title={showAverage ? autoT('ui_784a48af8419') : autoT('ui_4d34ac48c54e')}
@@ -2146,6 +2177,7 @@ export default function Statistics() {
             </div>
           </div>
         </div>
+        </>}
       </DataTransition>}
 
       <ResponsiveFilterPanel
@@ -2602,6 +2634,22 @@ export default function Statistics() {
                 );
               })}
             </div>
+          </div>
+
+          <div className="pt-2 border-t">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div className="text-xs font-medium text-gray-500">Mitwirkende</div>
+              <Button variant="ghost" size="sm" onClick={() => setTempContributorIds([])}>Alle Mitwirkenden</Button>
+            </div>
+            <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
+              {contributors.data?.map(person => <Button key={person.id} size="sm"
+                variant={tempContributorIds.includes(person.id) ? 'primary' : 'secondary'}
+                aria-pressed={tempContributorIds.includes(person.id)}
+                onClick={() => setTempContributorIds(current => current.includes(person.id) ? current.filter(id => id !== person.id) : [...current, person.id])}>
+                {person.name}{!person.active && ' (archiviert)'}
+              </Button>)}
+            </div>
+            {contributors.isError && <p role="alert" className="text-sm">Mitwirkende konnten nicht geladen werden.</p>}
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t">

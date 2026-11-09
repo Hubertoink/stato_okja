@@ -7,6 +7,7 @@ describe('StatsController org scoping', () => {
   let controller: StatsController;
   const service: Partial<StatsService> = {
     getOverview: jest.fn(async () => ({
+      contributions: [],
       summary: {
         totalActivities: 0,
         totalParticipants: 0,

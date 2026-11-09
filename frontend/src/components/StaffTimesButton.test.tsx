@@ -13,6 +13,13 @@ vi.mock('./Modal', () => ({
 const staff = [{ id: 'anna', name: 'Anna', role: 'volunteer' as const }];
 const form = { start: '11:30', end: '15:30', staffIds: ['anna'] };
 describe('staff time editor', () => {
+  it('disables the clock until at least one team member is selected', () => {
+    const view = render(<StaffTimesButton form={{ ...form, staffIds: [] }} staff={staff} onChange={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Einsatzzeiten anpassen' })).toBeDisabled();
+    view.rerender(<StaffTimesButton form={form} staff={staff} onChange={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Einsatzzeiten anpassen' })).toBeEnabled();
+  });
+
   it('returns to automatic when the full duration is entered manually', () => {
     const onChange = vi.fn();
     render(<StaffTimesButton form={{ ...form, staffTimes: [{ staffId: 'anna', minutes: 120 }] }} staff={staff} onChange={onChange} />);

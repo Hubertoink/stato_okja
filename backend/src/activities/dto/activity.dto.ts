@@ -54,7 +54,24 @@ export class ActivityStaffTimeDto {
   minutes!: number;
 }
 
+export class ActivityContributionDto {
+  @IsUUID('4')
+  contributorId!: string;
+
+  @IsInt()
+  @Min(1)
+  @Max(1440)
+  minutes!: number;
+}
+
 export class CreateActivityDto {
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => ActivityContributionDto)
+  contributions?: ActivityContributionDto[];
+
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(100)

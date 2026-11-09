@@ -78,6 +78,8 @@ export function useStatisticsFilters() {
   const [tempSelectedClosureState, setTempSelectedClosureState] = useState<
     OrganizationClosureStateFilter | undefined
   >();
+  const [selectedContributorIds, setSelectedContributorIds] = useState<string[]>([]);
+  const [tempContributorIds, setTempContributorIds] = useState<string[]>([]);
   const [activitiesPage, setActivitiesPage] = useState(1);
 
   useEffect(() => {
@@ -154,6 +156,7 @@ export function useStatisticsFilters() {
     [from, selectedMonth, selectedYear, to],
   );
   const applyCustomRange = () => {
+    setSelectedContributorIds(tempContributorIds);
     const weekdays = normalizeWeekdays(tempSelectedWeekdays);
     const executionStatuses = normalizeActivityExecutionStatuses(tempSelectedExecutionStatuses);
     const nextFrom = tempFrom.trim() || '';
@@ -186,6 +189,8 @@ export function useStatisticsFilters() {
     setCustomFilterOpen(false);
   };
   const resetAdvancedFilters = () => {
+    setSelectedContributorIds([]);
+    setTempContributorIds([]);
     setSelectedWeekdays([]);
     setTempSelectedWeekdays([]);
     setSelectedExecutionStatuses(undefined);
@@ -199,7 +204,7 @@ export function useStatisticsFilters() {
     !isDefaultActivityExecutionStatusFilter(selectedExecutionStatuses);
   const hasClosureStateFilter = typeof selectedClosureState !== 'undefined';
   const hasAdvancedFilter =
-    isCustomRange || hasWeekdayFilter || hasExecutionStatusFilter || hasClosureStateFilter;
+    isCustomRange || hasWeekdayFilter || hasExecutionStatusFilter || hasClosureStateFilter || selectedContributorIds.length > 0;
   const formatRangeDisplay = (monthNames: string[]) => {
     if (isCustomRange) {
       const formatDate = (value: string) => {
@@ -215,6 +220,7 @@ export function useStatisticsFilters() {
   };
   const formatAdvancedFilterDisplay = (monthNames: string[]) =>
     [
+      selectedContributorIds.length ? `Mitwirkende: ${selectedContributorIds.length}` : '',
       isCustomRange ? formatRangeDisplay(monthNames) : '',
       hasExecutionStatusFilter ? formatActivityExecutionStatusList(selectedExecutionStatuses) : '',
       hasClosureStateFilter && selectedClosureState ? closureLabels[selectedClosureState] : '',
@@ -232,6 +238,7 @@ export function useStatisticsFilters() {
       .join(' · ');
 
   return {
+    selectedContributorIds, tempContributorIds, setTempContributorIds,
     currentYear,
     currentMonth,
     from,

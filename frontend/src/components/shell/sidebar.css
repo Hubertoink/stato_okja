@@ -309,3 +309,14 @@
   /* The negative outer margin already compensates for the scrollbar gutter. */
   padding-right: 0;
 }
+
+/* Reuse the active theme's accents for the existing navigation sections. */
+.app-sidebar[data-colored-icons='true'] [data-sidebar-section='main'] .sidebar-link > svg {
+  color: var(--accent-teal);
+}
+.app-sidebar[data-colored-icons='true'] [data-sidebar-section='operations'] .sidebar-link > svg {
+  color: var(--accent-purple);
+}
+.app-sidebar[data-colored-icons='true'] [data-sidebar-section='administration'] .sidebar-link > svg {
+  color: var(--accent-orange);
+}

@@ -288,6 +288,7 @@ describe('StatsService overview cache', () => {
     jest.spyOn(service, 'getTopTags').mockResolvedValue([]);
     jest.spyOn(service, 'getTopProjects').mockResolvedValue([]);
     jest.spyOn(service, 'getAvailableYears').mockResolvedValue([]);
+    jest.spyOn(service, 'getContributions').mockResolvedValue([]);
     jest.spyOn(service as any, 'getWeeklyProfile').mockResolvedValue({
       slotMinutes: 30,
       rangeStart: 480,

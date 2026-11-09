@@ -1,4 +1,4 @@
-import { Handshake, Users } from 'lucide-react';
+import { Crown, Handshake } from 'lucide-react';
 import type { Activity } from '@/lib/activities';
 import type { Contributor } from '@/lib/contributors';
 import { getBadgeBackgroundColor } from '@/lib/colorPalette';
@@ -16,7 +16,7 @@ export default function ActivityPeopleBadges({ activity, contributors }: {
     <div className="mt-2 flex flex-wrap gap-2" aria-label="Team-Mitglieder und Mitwirkende">
       {staff.map(member => (
         <span key={`staff-${member.id}`} className={`${badgeClass} border-viridian`} title={`Team: ${member.name}`}>
-          <Users aria-hidden="true" className="h-3 w-3 shrink-0 text-viridian" />
+          <Crown aria-hidden="true" className="h-3 w-3 shrink-0 text-viridian" />
           {member.name}
         </span>
       ))}

@@ -65,7 +65,7 @@ export class ActivityListQuery {
   async findPaged(
     filters: ActivityListFilters & { page: number; limit: number },
   ): Promise<{ data: Activity[]; total: number; page: number; pageSize: number }> {
-    const qb = await this.build(filters, { includeStaff: false });
+    const qb = await this.build(filters, { includeStaff: true });
     const page = Math.max(filters.page || 1, 1);
     const limit = Math.min(Math.max(filters.limit || 50, 1), 50);
 
@@ -100,8 +100,6 @@ export class ActivityListQuery {
 
     if (options?.includeStaff !== false) {
       qb.leftJoinAndSelect('a.staff', 'staff');
-    } else if (filters?.staffIds && filters.staffIds.length) {
-      qb.leftJoin('a.staff', 'staff');
     }
 
     if (filters?.from && filters?.to) {
@@ -157,7 +155,9 @@ export class ActivityListQuery {
       qb.andWhere('tags.id IN (:...tagIds)', { tagIds: filters.tagIds });
     }
     if (filters?.staffIds && filters.staffIds.length) {
-      qb.andWhere('staff.id IN (:...staffIds)', { staffIds: filters.staffIds });
+      // Filter independently so the selected relation still contains the whole team.
+      qb.leftJoin('a.staff', 'filteredStaff');
+      qb.andWhere('filteredStaff.id IN (:...staffIds)', { staffIds: filters.staffIds });
     }
     if (filters?.hasContributions || filters?.contributorIds?.length) {
       const postgres = this.usesPostgresCohortQuery();

@@ -21,7 +21,7 @@ describe('ActivitiesService audit diff', () => {
     expect(qb.orderBy).toHaveBeenCalledWith('a.date', 'DESC');
   });
 
-  it('joins staff for paged staff filters without selecting the relation', async () => {
+  it.each([{ staffIds: undefined }, { staffIds: ['staff-1'] }])('loads the full team for paged activities with staff filter %j', async ({ staffIds }) => {
     const queryBuilder = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       leftJoin: jest.fn().mockReturnThis(),
@@ -29,6 +29,9 @@ describe('ActivitiesService audit diff', () => {
       andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       addOrderBy: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
     };
     const activityRepository = {
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
@@ -42,16 +45,15 @@ describe('ActivitiesService audit diff', () => {
       orgs as never,
     );
 
-    await activityListQuery.build(
-      { staffIds: ['staff-1'] },
-      { includeStaff: false },
-    );
+    await activityListQuery.findPaged({ staffIds, page: 1, limit: 50 });
 
-    expect(queryBuilder.leftJoin).toHaveBeenCalledWith('a.staff', 'staff');
-    expect(queryBuilder.leftJoinAndSelect).not.toHaveBeenCalledWith('a.staff', 'staff');
-    expect(queryBuilder.andWhere).toHaveBeenCalledWith('staff.id IN (:...staffIds)', {
-      staffIds: ['staff-1'],
-    });
+    expect(queryBuilder.leftJoinAndSelect).toHaveBeenCalledWith('a.staff', 'staff');
+    if (staffIds) {
+      expect(queryBuilder.leftJoin).toHaveBeenCalledWith('a.staff', 'filteredStaff');
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('filteredStaff.id IN (:...staffIds)', { staffIds });
+    }
+    expect(queryBuilder.andWhere).not.toHaveBeenCalledWith('staff.id IN (:...staffIds)', expect.anything());
+    expect(queryBuilder.getManyAndCount).toHaveBeenCalled();
   });
 
   it('logs a curated diff for activity updates', async () => {

@@ -6,6 +6,9 @@ import type { Project } from '@/lib/projects';
 import ActivityQuickAdd from './CalendarQuickAddModal.tsx';
 import ProjectPickerModal from './ProjectPickerModal';
 import { useActivities, Activity } from '@/lib/activities';
+import { useContributors } from '@/lib/contributors';
+import { getBadgeBackgroundColor } from '@/lib/colorPalette';
+import ActivityPeopleBadges from '@/components/ActivityPeopleBadges';
 // colorForActivityType no longer needed after switching to class-based palette
 import { getHolidaysInRange, readHolidayPrefs, type Holiday } from '@/lib/holidays';
 import { getSchoolHolidaysInRange, type SchoolHolidayRange } from '@/lib/schoolHolidays';
@@ -22,7 +25,7 @@ import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
 import { addDevMetricEvent, finishDevFlow, markDevFlow, startDevFlow } from '@/lib/devMetrics';
 import type React from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowRight, Building2, CalendarDays, ChevronLeft, ChevronRight, Clock3, Pencil, Plus, UsersRound } from 'lucide-react';
+import { ArrowRight, Building2, CalendarDays, ChevronLeft, ChevronRight, Clock3, Pencil, Plus, Tag, UsersRound } from 'lucide-react';
 import ProtectedImage from '@/components/ProtectedImage';
 import CalendarClosureModal from '@/components/CalendarClosureModal';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
@@ -470,6 +473,11 @@ export default function Calendar() {
   const { scope } = useOrgScope();
   const scopeKey = useOrgScopeKey();
   const { data: cohorts = [] } = useCohorts();
+  const contributors = useContributors();
+  const contributorById = useMemo(
+    () => new Map((contributors.data || []).map(person => [person.id, person])),
+    [contributors.data],
+  );
   const [view, setView] = useState<View>(() => readStoredCalendarView());
   const [cursor, setCursor] = useState<Date>(() => cursorFromSearch(location.search) ?? loadCalendarCursor());
   const [modal, setModal] = useState<{ date: string; project?: Project } | null>(null);
@@ -1851,13 +1859,14 @@ export default function Calendar() {
           </div>
 
           {selectedDayActivities.length > 0 ? (
-            <div className="overflow-hidden">
-              <table className="calendar-day-list-table activities-desktop-table w-full min-w-0 table-fixed">
+            <div className="overflow-x-auto">
+              <table className="calendar-day-list-table activities-desktop-table w-full table-fixed">
                 <thead className="bg-azure-web">
                   <tr>
                     <th className="activities-col-date px-2 py-3 text-left text-sm font-semibold text-gray-700 lg:px-4">{autoT('ui_d34f8dd0e537')}</th>
                     <th className="activities-col-type px-2 py-3 text-left text-sm font-semibold text-gray-700 lg:px-4">{autoT('ui_edcaf9aaa282')}</th>
                     <th className="activities-col-title px-2 py-3 text-left text-sm font-semibold text-gray-700 lg:px-4">{autoT('ui_e4dfe345c454')}</th>
+                    <th className="activities-col-meta px-2 py-3 text-left text-sm font-semibold text-gray-700 lg:px-4">Kategorien, Tags, Team & Mitwirkende</th>
                     <th className="activities-col-participants px-2 py-3 text-left text-sm font-semibold text-gray-700 lg:px-4">
                       <span className="hidden xl:inline">{autoT('ui_a8a4d6b019af')}</span>
                       <span className="xl:hidden" title={autoT('ui_a8a4d6b019af')}>{autoT('ui_f79fa2d4a0a2')}</span>
@@ -1893,6 +1902,26 @@ export default function Calendar() {
                           <div className="truncate text-xs text-gray-600">{projectTitle}</div>
                           {activity.location?.name && (
                             <div className="truncate text-xs text-gray-500">{activity.location.name}</div>
+                          )}
+                        </td>
+                        <td className="activities-col-meta px-2 py-4 text-sm lg:px-4">
+                          <div className="flex flex-wrap gap-2">
+                            {(activity.categories || []).map(category => (
+                              <span key={category.id} className="inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-xs text-white [overflow-wrap:anywhere]"
+                                style={{ backgroundColor: getBadgeBackgroundColor(category.color) }} title={category.name}>
+                                {category.name}
+                              </span>
+                            ))}
+                            {(activity.tags || []).map(tag => (
+                              <span key={tag.id} className="inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-xs text-white [overflow-wrap:anywhere]"
+                                style={{ backgroundColor: getBadgeBackgroundColor(tag.color, '#64748b') }} title={tag.name}>
+                                <Tag aria-hidden="true" className="h-3 w-3 shrink-0" />{tag.name}
+                              </span>
+                            ))}
+                          </div>
+                          <ActivityPeopleBadges activity={activity} contributors={contributorById} />
+                          {!activity.categories?.length && !activity.tags?.length && !activity.staff?.length && !activity.contributions?.length && (
+                            <span className="text-xs text-gray-400">–</span>
                           )}
                         </td>
                         <td className="activities-col-participants whitespace-nowrap px-2 py-4 text-sm lg:px-4">

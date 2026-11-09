@@ -10,6 +10,7 @@ import { fetchAllActivities, useActivitiesPaged, type ActivitiesFilter } from '@
 import { fetchAllLogbookEntries, type LogbookEntry } from '@/lib/logbook';
 import ActivityExecutionStatusBadge from '@/components/ActivityExecutionStatusBadge';
 import ActivityTypeBadge from '@/components/ActivityTypeBadge';
+import ActivityPeopleBadges from '@/components/ActivityPeopleBadges';
 import ActivityDayGroup from '@/components/ActivityDayGroup';
 import { useCategories, useCohorts, useTags } from '@/lib/taxonomy';
 import type { Cohort } from '@/lib/taxonomy';
@@ -139,6 +140,10 @@ export default function Activities() {
   const { data: projects = [] } = useProjects();
   const { data: locations = [] } = useLocations({ active: true });
   const contributors = useContributors();
+  const contributorById = useMemo(
+    () => new Map((contributors.data || []).map(person => [person.id, person])),
+    [contributors.data],
+  );
   const { data: staff = [] } = useStaff({ active: true });
   const { data: publicConfig } = usePublicConfig();
   const [exporting, setExporting] = useState(false);
@@ -969,9 +974,6 @@ export default function Activities() {
         </>}
       />
 
-      <div role="status" className="min-h-6 text-sm text-gray-500" aria-live="polite">
-        {activitiesPending ? `Aktivitäten – Seite ${page} wird geladen …` : activitiesFetching ? 'Wird aktualisiert …' : null}
-      </div>
       {/* Activity List */}
       {/* Desktop Table */}
       <DemoHoverHint
@@ -1090,9 +1092,10 @@ export default function Activities() {
                       <span className="text-xs text-gray-400">–</span>
                     )}
                   </div>
+                  <ActivityPeopleBadges activity={a} contributors={contributorById} />
                   {a.notes && (
                     <div
-                      className="text-xs text-gray-600 flex items-start gap-1"
+                      className="mt-2 text-xs text-gray-600 flex items-start gap-1"
                       title={a.notes || undefined}
                     >
                       <StickyNote className="w-3.5 h-3.5 mt-[2px] text-gray-500" />
@@ -1249,6 +1252,7 @@ export default function Activities() {
                   </span>
                 ))}
               </div>
+                  <ActivityPeopleBadges activity={a} contributors={contributorById} />
                 </div>
                 <div className="activity-mobile-attendance" aria-label={isCompletedActivity(a.executionStatus) ? t('table.participants') : undefined}>
                   <div className="activity-mobile-duration">

@@ -65,9 +65,9 @@
     "yaml": "^2.9.1"
   },
   "devDependencies": {
-    "@nestjs/cli": "^12.0.10",
-    "@nestjs/schematics": "^12.0.10",
-    "@nestjs/testing": "^12.2.0",
+    "@nestjs/cli": "^12.0.11",
+    "@nestjs/schematics": "^12.0.12",
+    "@nestjs/testing": "^12.3.3",
     "@types/archiver": "^8.0.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/express": "^5.0.6",

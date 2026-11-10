@@ -34,10 +34,10 @@ export default function SettingsContributors() {
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{filtered.map(person => <div key={person.id} className="p-3 rounded border border-gray-200 flex items-center justify-between gap-3">
       <div className="min-w-0 flex items-center gap-3"><span className="inline-block shrink-0 h-4 w-4 rounded" style={{ backgroundColor: person.color || '#7aa39a' }} /><span className="min-w-0 font-medium text-viridian break-words">{person.name}{!person.active && <span className="ml-2 text-xs text-gray-500">Archiviert</span>}</span></div>
       {canEdit && <div className="flex shrink-0 gap-2">
-        <Tooltip text="Bearbeiten"><IconButton size="icon-compact" variant="ghost" className="!rounded-full bg-viridian/10 hover:bg-viridian/20 text-viridian" aria-label={`${person.name} bearbeiten`} onClick={() => setEditing(person)}><Pencil /></IconButton></Tooltip>
         {!person.active && <Tooltip text="Reaktivieren"><ArchiveIconButton size="icon-compact" restore disabled={save.isPending} aria-label={`${person.name} reaktivieren`} onClick={async () => {
           setError(''); try { await save.mutateAsync({ id: person.id, active: true }); } catch (err) { setError(contributionError(err)); }
         }} /></Tooltip>}
+        <Tooltip text="Bearbeiten"><IconButton size="icon-compact" variant="ghost" className="!rounded-full bg-viridian/10 hover:bg-viridian/20 text-viridian" aria-label={`${person.name} bearbeiten`} onClick={() => setEditing(person)}><Pencil /></IconButton></Tooltip>
         <Tooltip text="Löschen"><DeleteIconButton size="icon-compact" aria-label={`${person.name} löschen`} onClick={() => setRemoving(person)} /></Tooltip>
       </div>}
     </div>)}</div>

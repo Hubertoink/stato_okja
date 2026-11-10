@@ -618,7 +618,7 @@ export default function Statistics() {
     // Keep tooltip colors explicit so interactive and exported charts remain legible.
     backgroundColor: isDarkTheme ? 'rgba(30, 34, 52, 0.96)' : 'rgba(255, 255, 255, 0.96)',
     borderColor: isDarkTheme ? 'rgba(148, 163, 184, 0.32)' : 'rgba(107, 114, 128, 0.24)',
-    borderRadius: '12px',
+    borderRadius: 'var(--radius-surface)',
     boxShadow: isDarkTheme
       ? '0 10px 34px rgba(0, 0, 0, 0.38)'
       : '0 8px 26px rgba(76, 79, 105, 0.1)',
@@ -1841,7 +1841,7 @@ export default function Statistics() {
 
           {/* Zeitverlauf Teilnehmende mit Aggregation */}
           <div
-            className="statistics-chart-card group/chart-card bg-white rounded-lg shadow p-3 md:p-6 lg:col-span-2"
+            className="statistics-chart-card group/chart-card modern-card p-3 md:p-6 lg:col-span-2"
             data-pdf-section
             ref={setChartCardRef('participants-trend')}
           >
@@ -1970,7 +1970,7 @@ export default function Statistics() {
               'cohorts',
               showAverage ? 'Ø Alterskohorten' : 'Alterskohorten',
             )}
-            cardClassName="group/chart-card bg-white rounded-lg shadow p-3 md:p-6"
+            cardClassName="group/chart-card modern-card p-3 md:p-6"
             bodyClassName="h-80 md:h-[23rem]"
             chartRef={setChartCardRef('cohorts')}
             data={cohortPieData}
@@ -2115,7 +2115,7 @@ export default function Statistics() {
         />
 
         {/* Konsolidiert (kompakt) */}
-        <div className="bg-white rounded-lg shadow p-6 mt-6" data-pdf-section>
+        <div className="modern-card p-6 mt-6" data-pdf-section>
           <h3 className="text-lg font-semibold mb-4 text-viridian">{autoT('ui_c0d622468344')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div data-pdf-section>

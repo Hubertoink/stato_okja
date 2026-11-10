@@ -16,7 +16,7 @@
   z-index: 65;
   width: 320px;
   max-width: calc(100vw - 32px);
-  border-radius: 16px;
+  border-radius: var(--radius-surface);
   padding: 16px;
   outline: none;
 }

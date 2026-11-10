@@ -104,7 +104,7 @@ export default function SettingsLocations() {
   };
 
   return (
-    <div className="w-full max-w-full min-w-0 overflow-x-hidden bg-white rounded-lg shadow p-6">
+    <div className="w-full max-w-full min-w-0 overflow-x-hidden modern-card p-6">
       <div className="flex min-w-0 items-center justify-between mb-4 gap-3">
         <div className="min-w-0 flex-1">
           <h3 className="text-xl font-semibold text-viridian">{t('locations.title')}</h3>

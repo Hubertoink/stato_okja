@@ -318,7 +318,7 @@ export default function OrgUserManagement() {
       </div>
 
       {/* Search & User List */}
-      <div className="bg-white rounded-lg shadow">
+      <div className="modern-card">
         <div className="px-4 py-3 border-b border-gray-100">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:flex-wrap">
             <div>

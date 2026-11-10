@@ -982,7 +982,7 @@ export default function Activities() {
         placement="bottom"
         className="demo-hover-hint-anchor-top"
       >
-        <div className="activities-desktop-table-shell bg-white rounded-lg shadow hidden md:block overflow-x-auto md:overflow-visible">
+        <div className="activities-desktop-table-shell modern-card hidden md:block overflow-x-auto md:overflow-visible">
         <table className="activities-desktop-table w-full min-w-[700px]">
           <thead className="activities-desktop-table-header bg-azure-web">
             <tr>

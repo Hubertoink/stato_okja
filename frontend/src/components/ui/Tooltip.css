@@ -4,7 +4,7 @@
 .app-tooltip-trigger:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
 }
 .app-action-tooltip {
   position: fixed;

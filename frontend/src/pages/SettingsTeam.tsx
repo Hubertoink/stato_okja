@@ -1,20 +1,21 @@
-import { useState } from 'react';
-import Toggle from '@/components/Toggle';
+import { useCallback, useState } from 'react';
+import SettingsEntityHeader from '@/components/settings/SettingsEntityHeader';
+import EntityRemovalDialog from '@/components/settings/EntityRemovalDialog';
 import {
   StaffMember,
   StaffRole,
   useArchiveStaff,
   useCreateStaff,
+  useDeleteStaff,
   useStaff,
   useUpdateStaff,
 } from '@/lib/staff';
 import { Pencil } from 'lucide-react';
-import ConfirmModal from '@/components/ConfirmModal';
 import { api } from '@/lib/api';
 import { STAFF_ROLE_LABEL, StaffFormModal } from '@/components/settings/EntityFormModals';
 import { autoT } from '@/i18n/auto';
 import { canManageSettingsDestructiveActions, useAuth } from '@/lib/auth';
-import { ArchiveIconButton, DeleteIconButton } from '@/components/ui/Button';
+import { ArchiveIconButton, DeleteIconButton, IconButton } from '@/components/ui/Button';
 
 export default function SettingsTeam() {
   const { user } = useAuth();
@@ -25,15 +26,15 @@ export default function SettingsTeam() {
   const create = useCreateStaff();
   const update = useUpdateStaff();
   const archive = useArchiveStaff();
+  const remove = useDeleteStaff();
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; member?: StaffMember } | null>(
     null,
   );
-  const [confirm, setConfirm] = useState<{
-    open: boolean;
-    member?: StaffMember;
-    count?: number;
-    loading?: boolean;
-  }>({ open: false });
+  const [removing, setRemoving] = useState<StaffMember | null>(null);
+  const loadUsage = useCallback(async () => {
+    const res = await api.get('/activities', { params: { staffIds: removing?.id, page: 1, limit: 1 } });
+    return Number(res.data?.total || 0);
+  }, [removing?.id]);
 
   const members = data || [];
   const canManageTeam = canManageSettingsDestructiveActions(user?.role);
@@ -54,52 +55,17 @@ export default function SettingsTeam() {
 
   return (
     <div className="modern-card p-6">
-      <div className="flex items-center justify-between mb-4 gap-3">
-        <div>
-          <h3 className="text-xl font-semibold text-viridian">{autoT('ui_9261e2edbfdf')}</h3>
-          <p className="text-gray-600">{autoT('ui_cb2d31be2f67')}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {archivedCount > 0 && (
-            <Toggle
-              checked={showArchived}
-              onChange={setShowArchived}
-              label={
-                <span>{autoT('ui_d9431e38c8b6')}{' '}<span className="text-xs text-gray-500">({archivedCount})</span>
-                </span>
-              }
-            />
-          )}
-          <span className="tooltip-wrapper">
-            <button
-              className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-viridian text-white hover:bg-cambridge-blue shadow disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => canManageTeam && setModal({ mode: 'create' })}
-              aria-label={autoT('ui_bb42e5a2eb95')}
-              title={canManageTeam ? autoT('ui_bb42e5a2eb95') : 'Nur Editor oder Organisationsadmin dürfen Teammitglieder verwalten'}
-              disabled={!canManageTeam}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="w-6 h-6"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M12 4.5a.75.75 0 01.75.75v6h6a.75.75 0 010 1.5h-6v6a.75.75 0 01-1.5 0v-6h-6a.75.75 0 010-1.5h6v-6A.75.75 0 0112 4.5z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
-            <span className="tooltip-bubble">{autoT('ui_bb42e5a2eb95')}</span>
-          </span>
-        </div>
-      </div>
+      <SettingsEntityHeader
+        title={autoT('ui_9261e2edbfdf')} description={autoT('ui_cb2d31be2f67')}
+        archivedCount={archivedCount} showArchived={showArchived} onShowArchived={setShowArchived}
+        canCreate={canManageTeam} createLabel={autoT('ui_bb42e5a2eb95')}
+        onCreate={() => setModal({ mode: 'create' })}
+      />
       <div className="divide-y">
         {members.map((m) => (
           <div key={m.id} className="py-3 flex items-start justify-between gap-3">
             <div className="min-w-0 pr-2">
-              <div className="font-medium text-viridian flex flex-wrap items-center gap-2">
+              <div className="font-medium text-viridian break-words flex flex-wrap items-center gap-2">
                 {m.name}
                 {m.active === false && (
                   <span className="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-xs text-[var(--text-muted)]">Archiviert</span>
@@ -140,32 +106,20 @@ export default function SettingsTeam() {
                   }
                 />
               )}
-              {canManageTeam && <button
-                className="opacity-90 hover:opacity-100 inline-flex items-center justify-center rounded-full bg-viridian/10 hover:bg-viridian/20 p-1.5"
+              {canManageTeam && <IconButton
+                size="icon-compact" variant="ghost"
+                className="!rounded-full bg-viridian/10 hover:bg-viridian/20 text-viridian"
                 title={autoT('ui_104f3bfdc340')}
                 aria-label={autoT('ui_3829918a22c4', { value0: m.name })}
                 onClick={() => setModal({ mode: 'edit', member: m })}
               >
                 <Pencil className="w-4 h-4 text-viridian" />
-              </button>}
+              </IconButton>}
               {canManageTeam && <DeleteIconButton
                 size="icon-compact"
                 title={autoT('ui_ffa5a8a7e21d')}
                 aria-label={autoT('ui_b607bbd2d882', { value0: m.name })}
-                onClick={async () => {
-                  setConfirm({ open: true, member: m, loading: true });
-                  try {
-                    const res = await api.get('/activities', { params: { staffIds: m.id, page: 1, limit: 1 } });
-                    setConfirm({
-                      open: true,
-                      member: m,
-                      count: Number(res.data?.total || 0),
-                      loading: false,
-                    });
-                  } catch {
-                    setConfirm({ open: true, member: m, count: 0, loading: false });
-                  }
-                }}
+                onClick={() => setRemoving(m)}
               />}
             </div>
           </div>
@@ -199,37 +153,15 @@ export default function SettingsTeam() {
           onCancel={() => setModal(null)}
         />
       )}
-      <ConfirmModal
-        open={confirm.open}
-        title={autoT('ui_e521836a88a3')}
-        message={
-          <div className="space-y-2">
-            <p>{autoT('ui_bdba6855be5c')}</p>
-            {confirm.loading ? (
-              <p className="text-sm text-gray-500">{autoT('ui_7a67a2dd16a7')}</p>
-            ) : (
-              <p className="text-sm text-gray-700">{autoT('ui_8ae03f3803dd')}{' '}
-                <strong>{typeof confirm.count === 'number' ? confirm.count : 0}</strong>
-              </p>
-            )}
-            <p className="text-sm text-gray-600">{autoT('ui_ec837b4d76ed')}</p>
-          </div>
-        }
-        cancelLabel={autoT('ui_07af7cb30fca')}
-        secondaryLabel={autoT('ui_49471caa9c1f')}
-        onSecondaryConfirm={async () => {
-          if (confirm.member?.id) await archive.mutateAsync({ id: confirm.member.id });
-          setConfirm({ open: false });
-          await refetch();
-        }}
-        confirmLabel={autoT('ui_9df6718de96c')}
-        onConfirm={async () => {
-          if (confirm.member?.id) await api.delete(`/staff/${confirm.member.id}`);
-          setConfirm({ open: false });
-          await refetch();
-        }}
-        onCancel={() => setConfirm({ open: false })}
-      />
+      {removing && <EntityRemovalDialog
+        key={removing.id} title={autoT('ui_e521836a88a3')} name={removing.name}
+        archived={removing.active === false} warning={autoT('ui_bdba6855be5c')}
+        loadUsage={loadUsage}
+        onArchive={() => archive.mutateAsync({ id: removing.id })}
+        onDelete={() => remove.mutateAsync(removing.id)}
+        onClose={() => setRemoving(null)}
+      />}
+
     </div>
   );
 }

@@ -108,7 +108,7 @@ function SessionsSection() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="modern-card p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold text-viridian">{autoT('ui_9d01dab45fb0')}</h3>
@@ -204,7 +204,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, role, locale }: { 
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="modern-card p-6">
       <h3 className="text-lg font-semibold text-viridian mb-4">{autoT('ui_669fe25a324e')}</h3>
       <div className="flex flex-col gap-5 md:flex-row md:items-start">
         <div className="w-full shrink-0 space-y-2 text-center md:w-auto md:text-left">
@@ -361,7 +361,7 @@ function PasswordSection({ mustChangePassword, onPasswordChanged }: { mustChange
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="modern-card p-6">
         <h3 className="text-lg font-semibold text-viridian mb-3">{autoT('ui_fc577f211bd3')}</h3>
         <p className="text-sm text-gray-600 mb-4">
           {mustChangePassword

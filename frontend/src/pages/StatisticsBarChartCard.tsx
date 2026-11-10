@@ -83,7 +83,7 @@ export function StatisticsBarChartCard<T extends StatisticsBarChartDatum>({
   chartRef,
   data,
   bodyClassName,
-  cardClassName = 'group/chart-card bg-white rounded-lg shadow p-3 md:p-6',
+  cardClassName = 'group/chart-card modern-card p-3 md:p-6',
   margin,
   gridStroke,
   axisTick,

@@ -1287,7 +1287,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   border-radius: var(--activity-card-radius);
   background: var(--surface-1);
   color: var(--text-primary);
-  box-shadow: 0 2px 8px #00000008;
+  box-shadow: var(--card-shadow);
 }
 .activity-mobile-header {
   display: flex;

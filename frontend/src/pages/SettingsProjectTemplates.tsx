@@ -271,7 +271,7 @@ export default function SettingsProjectTemplates() {
 
   if (!canManage) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="modern-card p-6">
         <h3 className="text-xl font-semibold text-viridian mb-2">{autoT('ui_5bc191008e77')}</h3>
         <p className="text-gray-600">{autoT('ui_9a69bd6689f9')}</p>
       </div>
@@ -281,7 +281,7 @@ export default function SettingsProjectTemplates() {
   const owned = templates || [];
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="modern-card p-6">
       <div className="mb-4">
         <div className="flex items-start justify-between gap-3">
           <h3 className="min-w-0 text-xl font-semibold text-viridian">

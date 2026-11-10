@@ -19,7 +19,7 @@ export default function SettingsContributors() {
   const canEdit = canManageSettingsDestructiveActions(user?.role);
   const archivedCount = (people.data || []).filter(person => !person.active).length;
   const filtered = (people.data || []).filter(person => (showArchived || person.active) && person.name.toLocaleLowerCase('de').includes(search.toLocaleLowerCase('de')));
-  return <div className="bg-white rounded-lg shadow p-6">
+  return <div className="modern-card p-6">
     <div className="flex items-center justify-between mb-4 gap-3">
       <h3 className="text-xl font-semibold text-viridian">Mitwirkende</h3>
       <div className="flex items-center gap-3">

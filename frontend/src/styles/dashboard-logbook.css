@@ -59,7 +59,7 @@
   .dashboard-mobile-card-rail > .mobile-logbook-card,
   .dashboard-mobile-card-rail > .dashboard-active-survey,
   .dashboard-mobile-card-rail > .dashboard-activity-card {
-    box-shadow: 0 6px 14px -4px rgba(0, 0, 0, 0.22), 0 2px 4px -2px rgba(0, 0, 0, 0.14);
+    box-shadow: var(--card-shadow);
   }
 
   .dashboard-mobile-card-rail > :only-child {
@@ -83,7 +83,7 @@
 .dashboard-accent-panel {
   background: var(--viridian);
   color: #ffffff;
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.18);
+  box-shadow: var(--card-shadow);
 }
 
 .dashboard-trend-card {
@@ -245,7 +245,7 @@
 .theme-accent-panel {
   background: linear-gradient(135deg, var(--viridian) 0%, var(--cambridge-blue) 100%);
   color: #ffffff;
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.18);
+  box-shadow: var(--card-shadow);
 }
 
 .dashboard-accent-button,
@@ -496,7 +496,7 @@
 }
 
 /* Shared mobile logbook hierarchy on dashboard and logbook overview. */
-.mobile-logbook-card { min-width: 0; padding: 16px; border: 1px solid var(--border-subtle); border-radius: var(--radius-surface); background: var(--surface-1); color: var(--text-primary); box-shadow: 0 4px 16px #0000000a; cursor: pointer; }
+.mobile-logbook-card { min-width: 0; padding: 16px; border: 1px solid var(--border-subtle); border-radius: var(--radius-surface); background: var(--surface-1); color: var(--text-primary); box-shadow: var(--card-shadow); cursor: pointer; }
 .mobile-logbook-card:focus-visible { outline: 2px solid var(--viridian); outline-offset: 2px; }
 .mobile-logbook-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
 .mobile-logbook-title { margin: 0 0 7px; font-size: 19px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
@@ -536,7 +536,7 @@
 
 /* Logbook reading view: calm surfaces, clear sections and compact mobile metadata. */
 .logbook-reading-content { display: grid; gap: 12px; min-width: 0; }
-.logbook-reading-panel { min-width: 0; padding: 16px; border: 1px solid var(--border-subtle); border-radius: var(--radius-surface); background: var(--surface-1); box-shadow: 0 3px 12px #00000008; }
+.logbook-reading-panel { min-width: 0; padding: 16px; border: 1px solid var(--border-subtle); border-radius: var(--radius-surface); background: var(--surface-1); box-shadow: none; }
 .logbook-reading-summary h1 { margin: 0 0 10px; font-size: 20px; font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
 .logbook-reading-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
 .logbook-reading-badges > * { max-width: 100%; white-space: normal; }

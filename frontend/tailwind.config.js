@@ -35,9 +35,20 @@ export default {
         '2xl': 'var(--radius-surface)',
         '3xl': 'var(--radius-surface)',
       },
+      // Neutral outlines and list separators follow the active theme everywhere.
+      borderColor: {
+        DEFAULT: 'var(--border-subtle)',
+        gray: { 100: 'var(--border-subtle)', 200: 'var(--border-subtle)', 300: 'var(--border-strong)', 400: 'var(--border-strong)' },
+      },
+      divideColor: {
+        DEFAULT: 'var(--border-subtle)',
+        gray: { 100: 'var(--border-subtle)', 200: 'var(--border-subtle)', 300: 'var(--border-subtle)', 400: 'var(--border-subtle)' },
+      },
       boxShadow: {
-        'modern': '0 4px 24px rgba(91, 108, 255, 0.08)',
-        'modern-lg': '0 8px 32px rgba(91, 108, 255, 0.12)',
+        DEFAULT: 'var(--card-shadow)',
+        sm: 'var(--card-shadow)',
+        'modern': 'var(--card-shadow)',
+        'modern-lg': 'var(--card-shadow)',
         'glow': '0 0 20px rgba(91, 108, 255, 0.2)',
       },
       backgroundImage: {

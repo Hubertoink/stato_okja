@@ -80,7 +80,7 @@
   background: var(--surface-1);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--border-subtle) 45%, transparent);
+  box-shadow: none;
   transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -95,27 +95,30 @@
 }
 
 .org-admin-card {
-  background: color-mix(in srgb, var(--surface-1) 96%, transparent);
+  background: var(--surface-1);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
 }
 
 .org-tree-item {
-  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
-  border: 1px solid var(--border-subtle);
+  background: var(--surface-1);
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
   color: var(--text-primary);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--border-subtle) 42%, transparent);
+  box-shadow: none;
 }
 
 .org-tree-item:hover {
   background: color-mix(in srgb, var(--interactive-soft) 48%, var(--surface-1));
-  border-color: var(--interactive-soft-border);
 }
 
 .org-tree-item-selected {
   background: color-mix(in srgb, var(--interactive-soft-strong) 52%, var(--surface-1));
-  border-color: color-mix(in srgb, var(--viridian) 64%, var(--border-subtle));
   box-shadow: none;
+}
+
+.org-tree-item:last-child {
+  border-bottom: 0;
 }
 
 .org-tree-toggle {
@@ -506,4 +509,16 @@
 :root[data-color-mode='dark'] .taxonomy-config-override-pill {
   background: color-mix(in srgb, #fbbf24 18%, var(--surface-1));
   color: #fde68a;
+}
+
+/* Theme choices use the same single outline as navigation/view-mode choices. */
+.settings-theme-option {
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-1);
+}
+
+.settings-theme-option:hover,
+.settings-theme-option[aria-pressed='true'] {
+  border-color: var(--viridian);
+  background: var(--interactive-soft);
 }

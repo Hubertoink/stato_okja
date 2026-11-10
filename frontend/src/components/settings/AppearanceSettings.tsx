@@ -45,7 +45,7 @@ export default function AppearanceSettings() {
     }
   }
   return (
-    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3">
+    <div className="modern-card p-6">
       <Button
         variant="ghost"
         type="button"
@@ -168,7 +168,8 @@ function ThemePicker({
             key={t.name}
             type="button"
             onClick={() => onChange(t.name)}
-            className={`flex-col items-start border rounded p-2 text-left ${value === t.name ? 'ring-2 ring-viridian' : ''}`}
+            aria-pressed={value === t.name}
+            className="settings-theme-option flex-col items-start rounded-lg p-2 text-left"
           >
             <div className="font-medium text-sm">{t.name}</div>
             <div className="text-xs text-gray-500 mb-2">{t.description}</div>

@@ -21,7 +21,7 @@
   display: flex;
   align-items: center;
   padding: 1.25rem 1.5rem;
-  border: 1px solid color-mix(in srgb, var(--statistics-kpi-accent) 22%, var(--border-subtle));
+  border: 1px solid var(--border-subtle);
   border-radius: var(--card-radius);
   background: var(--surface-1);
   box-shadow: var(--card-shadow);

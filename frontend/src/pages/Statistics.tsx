@@ -1841,7 +1841,7 @@ export default function Statistics() {
 
           {/* Zeitverlauf Teilnehmende mit Aggregation */}
           <div
-            className="statistics-chart-card group/chart-card bg-white rounded-lg shadow p-3 md:p-6 lg:col-span-2"
+            className="statistics-chart-card group/chart-card modern-card p-3 md:p-6 lg:col-span-2"
             data-pdf-section
             ref={setChartCardRef('participants-trend')}
           >
@@ -1970,7 +1970,7 @@ export default function Statistics() {
               'cohorts',
               showAverage ? 'Ø Alterskohorten' : 'Alterskohorten',
             )}
-            cardClassName="group/chart-card bg-white rounded-lg shadow p-3 md:p-6"
+            cardClassName="group/chart-card modern-card p-3 md:p-6"
             bodyClassName="h-80 md:h-[23rem]"
             chartRef={setChartCardRef('cohorts')}
             data={cohortPieData}
@@ -2115,7 +2115,7 @@ export default function Statistics() {
         />
 
         {/* Konsolidiert (kompakt) */}
-        <div className="bg-white rounded-lg shadow p-6 mt-6" data-pdf-section>
+        <div className="modern-card p-6 mt-6" data-pdf-section>
           <h3 className="text-lg font-semibold mb-4 text-viridian">{autoT('ui_c0d622468344')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div data-pdf-section>

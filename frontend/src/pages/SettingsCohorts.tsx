@@ -92,7 +92,7 @@ export default function SettingsCohorts() {
   const canDeleteTaxonomy = canManageTaxonomy;
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="modern-card p-6">
       <div className="flex items-center justify-between mb-4 gap-3">
         <div>
           <h3 className="text-xl font-semibold text-viridian">{autoT('ui_4d34ac48c54e')}</h3>

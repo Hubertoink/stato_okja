@@ -132,11 +132,11 @@
   gap: 1.25rem;
   min-width: 0;
   padding: 1.5rem;
-  border: 1px solid color-mix(in srgb, var(--viridian) 32%, var(--border-subtle));
+  border: 1px solid var(--border-subtle);
   border-radius: var(--card-radius);
   background: var(--surface-1);
   color: var(--text-primary);
-  box-shadow: 0 3px 14px color-mix(in srgb, var(--viridian) 4%, transparent);
+  box-shadow: var(--card-shadow);
 }
 
 .annual-target-project-backdrop {

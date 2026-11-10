@@ -128,7 +128,7 @@ export default function SettingsTestData() {
         <p className="text-gray-600 mt-1">{autoT('ui_76f94040820a')}</p>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6 space-y-5">
+      <div className="modern-card p-6 space-y-5">
       <div className="rounded-2xl border border-gray-200 p-4 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>

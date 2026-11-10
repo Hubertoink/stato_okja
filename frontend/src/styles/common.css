@@ -443,12 +443,12 @@
 }
 
 .system-data-panel {
-  background: var(--surface-elevated);
+  background: var(--surface-1);
   border-color: var(--border-subtle);
 }
 
 .system-data-panel-header {
-  background: var(--surface-2);
+  background: var(--surface-1);
   border-color: var(--border-subtle);
 }
 

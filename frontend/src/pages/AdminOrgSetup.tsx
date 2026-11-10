@@ -1802,7 +1802,7 @@ export default function AdminOrgSetup() {
                 </div>
               )}
               {!loading && orgs.length > 0 && (
-                <ul className="space-y-2">
+                <ul>
                   {tree.map((n) => (
                     <OrgTree
                       key={n.org.id}
@@ -2298,7 +2298,7 @@ function OrgRow({
 
   return (
     <li
-      className={`org-tree-item rounded-lg transition-colors ${selected ? 'org-tree-item-selected' : ''}`}
+      className={`org-tree-item transition-colors ${selected ? 'org-tree-item-selected' : ''}`}
       style={{ marginLeft: depth * 12 }}
     >
       {/* Mobile: Stacked layout */}

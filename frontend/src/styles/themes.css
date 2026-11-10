@@ -33,7 +33,6 @@
   --onyx: #343a40ff;
   --eerie-black: #212529ff;
   /* Card styling */
-  --card-shadow: 0 4px 24px rgba(91, 108, 255, 0.08);
   --card-radius: var(--radius-surface);
 }
 
@@ -83,8 +82,6 @@
   --text-secondary: #c9d5eb;
   --text-muted: #99a7c2;
   --text-faint: #74829c;
-  --border-subtle: rgba(148, 163, 184, 0.16);
-  --border-strong: rgba(148, 163, 184, 0.3);
   --header-surface-bg: rgba(8, 14, 26, 0.72);
   --nav-surface-bg: rgba(10, 18, 31, 0.82);
   --footer-surface-bg: var(--surface-1);
@@ -97,7 +94,7 @@
   --interactive-soft-border: color-mix(in srgb, var(--viridian) 42%, transparent);
   --calendar-surface-bg: #0c1220;
   --calendar-header-bg: #111a2b;
-  --calendar-grid-border: rgba(148, 163, 184, 0.2);
+  --calendar-grid-border: var(--border-subtle);
   --calendar-cell-bg: #0f172a;
   --calendar-cell-hover: #131f34;
   --calendar-cell-other-bg: rgba(30, 41, 59, 0.5);
@@ -114,6 +111,5 @@
   --accent-pink: #f87171;
   --accent-teal: #38bdf8;
   --accent-purple: #a78bfa;
-  --card-shadow: 0 10px 34px rgba(0, 0, 0, 0.38);
 }
 

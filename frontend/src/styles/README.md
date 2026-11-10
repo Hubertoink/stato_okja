@@ -19,6 +19,8 @@ Die Aufteilung ist zunächst verhaltensneutral aus dem früheren `index.css` üb
 
 ## Regeln für neue Styles
 
+- Kacheln, Tabellen, Dialoge und ihre Flächen verwenden `--radius-surface` (8 px). `--card-radius` sowie Tailwinds `rounded-lg`, `rounded-xl`, `rounded-2xl` und `rounded-3xl` verweisen auf denselben Wert. Kreise, Status-Pills, kleine Indikatoren und bewusst gerade Anschlusskanten behalten ihre eigene Form.
+- Schatten dürfen über die Flächen hinausragen. Dekorationen separat beschneiden; keine Clipping- oder Backdrop-Filter auf äußere Dashboard-Container legen. Scrollende Kartenreihen brauchen Innenabstand für ihre Schatten. Jahresziel-Karten verwenden ein Raster statt fragmentierender CSS-Spalten.
 - Desktop-Dichte: `document.css` setzt bei `data-view-density="compact"` am HTML-Element ab 1024 px bei Mausbedienung die Schriftbasis auf 80 %. Die Auswahl „Normal“/„Kompakt“ in Einstellungen → Darstellung oder im Profil wird am Benutzerkonto gespeichert; Standard bleibt „Kompakt“. Schrift, Abstände und Controls deshalb in `rem` halten; kein zusätzliches `zoom`/`transform` auf die App anwenden. Touch-Geräte und Druck behalten die normale Skala. Die Navigation zeigt bei kompakter Desktop-Dichte ab 1280 px ihre Beschriftungen.
 - Dark-Mode-Regeln verwenden `:root[data-color-mode='dark']`, nicht einzelne Theme-Namen.
 - `!important` ist grundsätzlich eine Ausnahme. Es ist für die zentralen Tailwind-Kompatibilitätsadapter sowie isolierte Export-Styles zulässig; jede neue Verwendung braucht eine kurze Begründung.

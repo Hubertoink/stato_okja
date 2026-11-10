@@ -30,9 +30,10 @@ export default {
         'accent-purple': themedColor('accent-purple'),
       },
       borderRadius: {
-        'xl': '16px',
-        '2xl': '20px',
-        '3xl': '24px',
+        'lg': 'var(--radius-surface)',
+        'xl': 'var(--radius-surface)',
+        '2xl': 'var(--radius-surface)',
+        '3xl': 'var(--radius-surface)',
       },
       boxShadow: {
         'modern': '0 4px 24px rgba(91, 108, 255, 0.08)',

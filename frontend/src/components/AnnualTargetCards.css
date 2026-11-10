@@ -26,7 +26,7 @@
 .annual-target-compact {
   min-width: 0;
   border: 1px solid var(--border-subtle);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
   background: var(--surface-1);
 }
 
@@ -112,13 +112,14 @@
 }
 
 .annual-target-grid {
-  column-width: 23rem;
-  column-gap: 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 23rem), 1fr));
+  gap: 1.25rem;
+  align-items: start;
 }
 
 .annual-target-grid > .annual-target-card {
-  break-inside: avoid;
-  margin-bottom: 1.25rem;
+  min-width: 0;
 }
 
 .annual-target-card {
@@ -132,7 +133,7 @@
   min-width: 0;
   padding: 1.5rem;
   border: 1px solid color-mix(in srgb, var(--viridian) 32%, var(--border-subtle));
-  border-radius: calc(var(--card-radius) + 4px);
+  border-radius: var(--card-radius);
   background: var(--surface-1);
   color: var(--text-primary);
   box-shadow: 0 3px 14px color-mix(in srgb, var(--viridian) 4%, transparent);
@@ -186,7 +187,7 @@
   gap: 0.75rem;
   padding: 1rem;
   border: 1px solid var(--interactive-soft-border);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
   background: var(--interactive-soft);
 }
 .annual-target-agreement > svg {
@@ -217,7 +218,7 @@
 .annual-target-calculation {
   padding: 1rem;
   border: 1px solid var(--border-subtle);
-  border-radius: 1rem;
+  border-radius: var(--radius-surface);
   background: var(--surface-2);
 }
 .annual-target-calculation > h3 {
@@ -285,7 +286,7 @@
   gap: 1rem;
   padding: 1rem;
   border: 1px solid var(--border-subtle);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
   background: var(--surface-2);
 }
 .annual-target-action-summary > svg {
@@ -323,7 +324,7 @@
 .annual-target-detail-summary {
   padding: 1rem;
   border: 1px solid var(--border-subtle);
-  border-radius: 1rem;
+  border-radius: var(--radius-surface);
   background: var(--surface-2);
 }
 .annual-target-detail-summary .annual-target-values {
@@ -348,7 +349,7 @@
 }
 .annual-target-disclosure {
   border: 1px solid var(--border-subtle);
-  border-radius: 1rem;
+  border-radius: var(--radius-surface);
 }
 .annual-target-disclosure > summary {
   display: flex;
@@ -404,7 +405,7 @@
   place-items: center;
   width: 2.25rem;
   height: 2.25rem;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
   background: var(--interactive-soft);
   color: var(--viridian);
 }
@@ -459,7 +460,7 @@
   gap: 1rem;
   padding: 1rem;
   border: 1px solid var(--border-subtle);
-  border-radius: 1rem;
+  border-radius: var(--radius-surface);
   background: var(--surface-2);
 }
 .annual-target-metadata dt,
@@ -689,7 +690,7 @@
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   border: 1px solid var(--border-subtle);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
   background: var(--surface-1);
 }
 .annual-target-activities-list:focus-visible {

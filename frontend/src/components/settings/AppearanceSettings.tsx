@@ -7,6 +7,7 @@ import {
   DEFAULT_DARK_THEME,
   DEFAULT_LIGHT_THEME,
   normalizeThemeMode,
+  normalizeThemeName,
   THEME_DEFINITIONS,
   type ThemeMode,
 } from '@/lib/theme';
@@ -18,7 +19,7 @@ import { autoT } from '@/i18n/auto';
 export default function AppearanceSettings() {
   const { user, refresh } = useAuth();
   const { showToast } = useToast();
-  const theme = user?.theme || DEFAULT_LIGHT_THEME;
+  const theme = normalizeThemeName(user?.theme);
   const themeMode = user?.themeMode || 'system';
   const [selectedTheme, setSelectedTheme] = useState(theme);
   const [selectedThemeMode, setSelectedThemeMode] = useState<ThemeMode>(
@@ -108,7 +109,7 @@ export default function AppearanceSettings() {
               <option value="custom">Individuelles Design-Theme</option>
             </Select>
             <p className="mt-1 text-xs text-gray-500">
-              System nutzt hell das Standard-Theme und dunkel Catppuccin Mocha.
+              System nutzt hell das Standard-Theme und dunkel {DEFAULT_DARK_THEME}.
             </p>
           </div>
           {selectedThemeMode === 'custom' && (

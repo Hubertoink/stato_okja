@@ -214,7 +214,7 @@
   align-items: center;
   gap: 0.6rem;
   border: 1px solid var(--border-subtle);
-  border-radius: 0.65rem;
+  border-radius: var(--radius-surface);
   background: color-mix(in srgb, var(--surface-2) 82%, transparent);
   padding: 0.6rem 0.75rem;
 }
@@ -232,7 +232,7 @@
   align-items: center;
   gap: 0.75rem;
   border: 1px solid transparent;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
   background: color-mix(in srgb, var(--surface-2) 72%, var(--surface-1));
   padding: 1rem;
   color: var(--text-secondary);
@@ -245,7 +245,7 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  border-radius: 0.65rem;
+  border-radius: var(--radius-surface);
   background: var(--surface-1);
   color: var(--viridian);
   box-shadow: 0 1px 3px color-mix(in srgb, var(--text-primary) 8%, transparent);
@@ -260,7 +260,7 @@
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--border-subtle);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
   background: var(--surface-2);
   color: var(--text-secondary);
 }
@@ -303,7 +303,7 @@
 }
 
 .taxonomy-rule-summary-card {
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
   padding: 0.875rem;
 }
 
@@ -311,7 +311,7 @@
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
   padding: 0.75rem;
   color: var(--text-secondary);
   transition:
@@ -442,7 +442,7 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  border-radius: 0.625rem;
+  border-radius: var(--radius-surface);
   background: var(--interactive-soft);
   color: var(--viridian);
 }

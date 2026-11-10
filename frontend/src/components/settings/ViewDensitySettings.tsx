@@ -5,6 +5,7 @@ import { api, getAuthSessionGeneration } from '@/lib/api';
 import { Input } from '@/components/ui/Field';
 import { normalizeViewDensity, type ViewDensity } from '@/lib/viewDensity';
 import './ViewDensitySettings.css';
+import DashboardLayoutSettings from './DashboardLayoutSettings';
 
 export default function ViewDensitySettings() {
   const { t } = useTranslation('settings');
@@ -68,6 +69,7 @@ export default function ViewDensitySettings() {
       <p role={status === 'error' ? 'alert' : 'status'} className={`mt-2 min-h-5 text-sm ${status === 'error' ? 'text-red-600' : 'text-[var(--text-secondary)]'}`}>
         {saving ? t('viewDensity.saving') : status ? t(`viewDensity.${status}`) : ''}
       </p>
+      <DashboardLayoutSettings />
     </section>
   );
 }

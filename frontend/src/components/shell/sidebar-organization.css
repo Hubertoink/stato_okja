@@ -10,7 +10,7 @@
   width: 100%;
   min-height: 56px;
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-surface);
   background: color-mix(in srgb, var(--status-success-text) 7%, var(--surface-1));
   color: var(--text-primary);
   overflow: hidden;
@@ -61,7 +61,7 @@
   justify-content: flex-start;
   gap: 12px;
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-surface);
   background: var(--interactive-soft);
   color: var(--text-primary);
   overflow: hidden;
@@ -80,7 +80,7 @@
   width: 16px;
 }
 .sidebar-org-menu {
-  border-radius: 1rem;
+  border-radius: var(--radius-surface);
   background: var(--surface-elevated);
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   position: fixed;

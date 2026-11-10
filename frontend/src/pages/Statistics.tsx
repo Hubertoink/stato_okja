@@ -618,7 +618,7 @@ export default function Statistics() {
     // Keep tooltip colors explicit so interactive and exported charts remain legible.
     backgroundColor: isDarkTheme ? 'rgba(30, 34, 52, 0.96)' : 'rgba(255, 255, 255, 0.96)',
     borderColor: isDarkTheme ? 'rgba(148, 163, 184, 0.32)' : 'rgba(107, 114, 128, 0.24)',
-    borderRadius: '12px',
+    borderRadius: 'var(--radius-surface)',
     boxShadow: isDarkTheme
       ? '0 10px 34px rgba(0, 0, 0, 0.38)'
       : '0 8px 26px rgba(76, 79, 105, 0.1)',

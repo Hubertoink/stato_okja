@@ -9,7 +9,7 @@
 .view-density-option {
   cursor: pointer;
   border: 2px solid var(--border-subtle);
-  border-radius: 1rem;
+  border-radius: var(--radius-surface);
   padding: 1rem;
   background: var(--surface-1);
 }
@@ -43,7 +43,7 @@ fieldset:disabled .view-density-option {
   overflow: hidden;
   margin-bottom: 1rem;
   border: 1px solid var(--border-subtle);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-surface);
   background: var(--app-bg);
 }
 

@@ -1,6 +1,6 @@
 .taxonomy-lock-hint {
   margin-top: 0.5rem;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
   border: 1px solid var(--border-subtle);
   background: color-mix(in srgb, var(--accent-orange) 10%, var(--surface-1));
   color: var(--text-primary);
@@ -138,7 +138,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   background: var(--footer-surface-bg);
   color: var(--text-secondary);
   border-top: 1px solid var(--border-subtle);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: none;
 }
 
 .calendar-surface {
@@ -202,7 +202,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   padding: 0.25rem;
   overflow: hidden;
   border: 1px solid var(--border-subtle);
-  border-radius: 0.875rem;
+  border-radius: var(--radius-surface);
   background: color-mix(in srgb, var(--interactive-soft) 50%, var(--surface-1));
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 7%, transparent);
 }
@@ -217,7 +217,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   min-height: 2.25rem;
   padding: 0.5rem 0.7rem;
   border: 0;
-  border-radius: 0.625rem;
+  border-radius: var(--radius-surface);
   background: transparent;
   color: var(--text-secondary);
   font-size: 0.8125rem;
@@ -268,7 +268,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   bottom: 0.25rem;
   left: 0.25rem;
   width: calc((100% - 0.5rem) / var(--segmented-count));
-  border-radius: 0.625rem;
+  border-radius: var(--radius-surface);
   background: var(--viridian);
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -799,13 +799,13 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 .summary-metric-card {
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
 }
 
 .summary-metric-card-total {
   background: rgba(91, 108, 255, 0.12);
   border: 1px solid rgba(91, 108, 255, 0.18);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
 }
 
 .summary-metric-label {
@@ -1216,7 +1216,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 
 .note-card {
   background-color: #fff;
-  border-radius: 0.5rem; /* matches rounded-lg */
+  border-radius: var(--radius-surface); /* matches rounded-lg */
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   overflow: visible; /* allow pin to overflow */
   /* Perforation dots on the left as background */
@@ -1276,7 +1276,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 
 /* One continuous mobile card image with a soft fade behind the content. */
 .activity-mobile-card {
-  --activity-card-radius: 12px;
+  --activity-card-radius: var(--radius-surface);
   --activity-card-border-width: 1px;
   position: relative;
   isolation: isolate;
@@ -1375,7 +1375,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
 .activity-detail-hero h1 { font-size: 26px; font-weight: 700; line-height: 1.2; margin: 0 0 6px; overflow-wrap: anywhere; }
 .activity-detail-date { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
 .activity-detail-description { font-size: 13px; line-height: 1.5; color: var(--text-secondary); margin-top: 12px; overflow-wrap: anywhere; }
-.activity-detail-section { padding: 16px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-1); color: var(--text-primary); min-width: 0; }
+.activity-detail-section { padding: 16px; border: 1px solid var(--border-subtle); border-radius: var(--radius-surface); background: var(--surface-1); color: var(--text-primary); min-width: 0; }
 .activity-detail-section h2 { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 13px; font-weight: 600; }
 .activity-detail-participants { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); align-items: center; gap: 12px; text-align: center; }
 .activity-detail-participants .activity-mobile-genders { margin: 0; padding-left: 12px; border-left: 1px solid var(--border-subtle); }
@@ -1420,7 +1420,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   .activity-day-heading time { white-space: nowrap; flex-shrink: 0; }
   .activity-day-heading[data-stuck="true"] > span {
     width: var(--day-compact-width);
-    border-radius: 0 0 10px 6px;
+    border-radius: 0 0 var(--radius-surface) 6px;
   }
   .activity-day-heading svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--viridian); }
 }
@@ -1443,7 +1443,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   justify-items: start;
   padding: 0.75rem;
   border: 1px dashed var(--border-strong, var(--text-secondary));
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
   background: var(--surface-2);
   color: var(--text-secondary);
   font-size: 0.875rem;
@@ -1475,7 +1475,7 @@ html[data-keyboard-open='true'] .settings-modal-actions {
   gap: 5px;
   padding: 7px 10px;
   border-style: solid;
-  border-radius: 14px;
+  border-radius: var(--radius-surface);
   font-size: 11px;
   line-height: 16px;
   font-weight: 600;

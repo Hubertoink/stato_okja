@@ -7,7 +7,7 @@
 .fab {
   width: 56px;
   height: 56px;
-  border-radius: 16px;
+  border-radius: var(--radius-surface);
   background: linear-gradient(135deg, var(--viridian) 0%, var(--cambridge-blue) 100%);
   box-shadow:
     0 8px 24px rgba(91, 108, 255, 0.35),
@@ -32,7 +32,7 @@
 .editor-field,
 .input-modern {
   border: 1px solid var(--border-subtle);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
   background: var(--editor-field-bg, var(--input-bg));
   color: var(--text-primary);
   box-shadow: var(--editor-field-shadow);
@@ -71,7 +71,7 @@
   margin-top: 0.5rem;
   width: min(22rem, calc(100vw - 2rem));
   border: 1px solid var(--border-subtle);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
   background: var(--surface-elevated);
   padding: 0.5rem;
   box-shadow: 0 1.25rem 2.75rem rgba(15, 23, 42, 0.18);
@@ -96,7 +96,7 @@
     margin-inline: auto;
     padding: 0.75rem;
     border: 1px solid var(--border-subtle);
-    border-radius: 1.25rem;
+    border-radius: var(--radius-surface);
     background: var(--surface-elevated);
     box-shadow: 0 12px 40px rgb(15 23 42 / 20%);
     animation: page-actions-rise 180ms ease-out;
@@ -252,7 +252,7 @@
   align-items: center;
   gap: 0.5rem;
   border: 1px solid var(--border-subtle);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
   background: var(--surface-2);
   padding: 0.625rem 0.75rem;
   color: var(--text-primary);
@@ -303,7 +303,7 @@
     width: 100%;
     max-height: 85dvh;
     margin: 0;
-    border-radius: 0 0 1.5rem 1.5rem;
+    border-radius: 0 0 var(--radius-surface) var(--radius-surface);
   }
 }
 
@@ -416,7 +416,7 @@
   display: inline-flex;
   align-items: center;
   padding: 4px 12px;
-  border-radius: 20px;
+  border-radius: var(--radius-surface);
   font-size: 0.75rem;
   font-weight: 600;
   background: rgba(91, 108, 255, 0.1);
@@ -634,7 +634,7 @@
   z-index: 70;
   min-width: 18rem;
   max-width: min(28rem, calc(100vw - 2rem));
-  border-radius: 1rem;
+  border-radius: var(--radius-surface);
   border: 1px solid var(--border-subtle);
   background: color-mix(in srgb, var(--surface-elevated) 94%, white 6%);
   box-shadow: 0 20px 48px rgba(15, 23, 42, 0.18);
@@ -796,14 +796,14 @@
 .gradient-border {
   position: relative;
   background: white;
-  border-radius: 16px;
+  border-radius: var(--radius-surface);
 }
 
 .gradient-border::before {
   content: '';
   position: absolute;
   inset: -2px;
-  border-radius: 18px;
+  border-radius: var(--radius-surface);
   background: linear-gradient(135deg, var(--viridian) 0%, var(--cambridge-blue) 50%, #9f7aea 100%);
   z-index: -1;
 }

@@ -388,11 +388,13 @@ export default function AnnualTargetCards({
   scope,
   onOpen,
   compact = false,
+  frameless = false,
 }: {
   year?: number;
   scope?: TargetScope;
   onOpen?: (target: AnnualTarget) => void;
   compact?: boolean;
+  frameless?: boolean;
 }) {
   const config = usePublicConfig();
   const { user } = useAuth();
@@ -411,7 +413,7 @@ export default function AnnualTargetCards({
   );
   if (!config.data?.annualTargetsEnabled || (!scope && !targets?.length && !isError)) return null;
   return (
-    <section className={compact ? 'annual-targets-compact' : 'modern-card mb-6 p-4 sm:p-6'} aria-label="Jahresziele">
+    <section className={compact ? 'annual-targets-compact' : frameless ? 'mb-6' : 'modern-card mb-6 p-4 sm:p-6'} aria-label="Jahresziele">
       <div className={compact ? 'annual-targets-compact-header' : 'mb-4 flex flex-wrap items-center justify-between gap-3'}>
         <h2 className={`flex items-center gap-2 font-semibold ${compact ? 'text-sm' : 'text-lg'}`}>
           <Target className="h-5 w-5" />

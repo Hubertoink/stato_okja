@@ -44,7 +44,7 @@ export default function SettingsHolidays() {
   }, [selected, t]);
 
   return (
-    <div className="bg-white rounded-lg shadow p-4">
+    <div className="modern-card p-4">
       <h3 className="text-xl font-semibold text-viridian mb-2">{t('holidays.title')}</h3>
       <p className="text-gray-600 mb-4">
         {t('holidays.intro')}

@@ -11,7 +11,7 @@ type StatisticsPieChartDatum = {
 export function StatisticsPieChartCard({
   title,
   exportActions,
-  cardClassName = 'group/chart-card bg-white rounded-lg shadow p-6',
+  cardClassName = 'group/chart-card modern-card p-6',
   bodyClassName,
   chartRef,
   data,

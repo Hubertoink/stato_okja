@@ -1,5 +1,5 @@
-.project-overview-card { position: relative; display: flex; flex-direction: column; min-width: 0; container: project-overview / inline-size; border: 1px solid var(--border-subtle); border-radius: 1rem; background: var(--surface-1); color: var(--text-primary); box-shadow: 0 2px 8px #00000008; }
-.project-overview-media { position: relative; height: 180px; flex-shrink: 0; overflow: hidden; border-radius: 1rem 1rem 0 0; }
+.project-overview-card { position: relative; display: flex; flex-direction: column; min-width: 0; container: project-overview / inline-size; border: 1px solid var(--border-subtle); border-radius: var(--radius-surface); background: var(--surface-1); color: var(--text-primary); box-shadow: var(--card-shadow); }
+.project-overview-media { position: relative; height: 180px; flex-shrink: 0; overflow: hidden; border-radius: var(--radius-surface) var(--radius-surface) 0 0; }
 .project-overview-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .project-overview-image-shade { position: absolute; inset: 0; background: linear-gradient(135deg, transparent 40%, #0003); }
 .project-overview-favorite { position: absolute; top: 12px; right: 12px; border-radius: 999px; background: var(--surface-1); }
@@ -34,7 +34,7 @@
 @media (min-width: 768px) {
   .project-overview-filters { flex-wrap: wrap; }
   .project-overview-card--list { display: grid; grid-template-columns: 176px minmax(0, 1fr) auto; }
-  .project-overview-card--list .project-overview-media { height: auto; min-height: 150px; border-radius: 1rem 0 0 1rem; }
+  .project-overview-card--list .project-overview-media { height: auto; min-height: 150px; border-radius: var(--radius-surface) 0 0 var(--radius-surface); }
   .project-overview-card--list .project-overview-favorite { display: none; }
   .project-overview-card--list .project-overview-actions { margin: 16px 0; padding: 0 16px; border-top: 0; border-left: 1px solid var(--border-subtle); justify-content: center; }
   .project-overview-card--list .project-overview-desktop-star { display: block; }
@@ -47,8 +47,8 @@
 @media (max-width: 767px) {
   .project-overview-card--list { display: none; }
   .project-overview-media { height: 165px; }
-  .project-overview-body { z-index: 1; margin-top: -24px; border-radius: 1rem 1rem 0 0; background: var(--surface-1); }
-  .project-overview-actions { position: relative; z-index: 1; padding: 3px 12px; background: var(--surface-1); border-radius: 0 0 1rem 1rem; }
+  .project-overview-body { z-index: 1; margin-top: -24px; border-radius: var(--radius-surface) var(--radius-surface) 0 0; background: var(--surface-1); }
+  .project-overview-actions { position: relative; z-index: 1; padding: 3px 12px; background: var(--surface-1); border-radius: 0 0 var(--radius-surface) var(--radius-surface); }
   .project-overview-actions > button { min-height: 44px; flex: 1; }
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {

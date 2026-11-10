@@ -60,7 +60,7 @@ export default function SettingsOpeningHours() {
 
   if (!effectiveOrgId) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="modern-card p-6">
         <p className="text-gray-600">
           {user?.role === 'superadmin'
             ? t('openingHours.selectOrg')
@@ -71,7 +71,7 @@ export default function SettingsOpeningHours() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="modern-card p-6">
       <div className="flex items-center justify-between mb-4 gap-3">
         <div>
           <h3 className="text-xl font-semibold text-viridian flex items-center gap-2">

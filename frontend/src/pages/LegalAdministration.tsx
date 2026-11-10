@@ -81,17 +81,17 @@ export default function LegalAdministration() {
             bleiben bei App-Updates erhalten.
           </p>
         </div>
-        <div className="space-y-4 p-5">
+        <div className="p-5">
           {documents.map(({ key, label, hint }) => {
             const selectedFile = files[key];
 
             return (
               <div
                 key={key}
-                className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors ${
+                className={`flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-0 py-4 last:border-b-0 transition-colors ${
                   selectedFile
                     ? 'legal-import-document-selected border-violet-400 bg-violet-50 ring-1 ring-violet-200'
-                    : 'border-gray-200 bg-gray-50'
+                    : 'bg-[var(--surface-1)]'
                 }`}
               >
                 <span className="min-w-0">

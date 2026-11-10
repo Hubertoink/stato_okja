@@ -73,7 +73,7 @@ export default function MobileNavigationSettings() {
     else if (targetIsBottom) persist(bottom.map((item) => (item === target ? id : item)));
   };
   return (
-    <div className="settings-profile-card bg-white rounded-lg shadow p-6">
+    <div className="modern-card p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold text-viridian">{autoT('ui_23f0292a1de9')}</h3>

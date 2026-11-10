@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { IsNull, Like, Repository } from 'typeorm';
 import { Activity } from '../activities/entities/activity.entity';
 import { Contributor } from './contributor.entity';
 import { ContributionReportQuery, CreateContributorDto, UpdateContributorDto } from './contributors.dto';
@@ -39,6 +39,37 @@ export class ContributorsService {
     if (data.color !== undefined) person.color = data.color;
     if (data.active !== undefined) person.active = data.active;
     return this.people.save(person);
+  }
+
+  private async linkedActivities(id: string, orgId: string | null, repository = this.activities) {
+    // simple-json is stored as text on both PostgreSQL and the local SQL.js DB.
+    // Narrow by UUID first, then check the parsed ID rather than matching names.
+    const candidates = await repository.find({
+      where: { orgId: orgId ?? IsNull(), contributions: Like(`%${id}%`) },
+      select: { id: true, contributions: true },
+    });
+    return candidates.filter(activity => activity.contributions?.some(entry => entry.contributorId === id));
+  }
+
+  async usage(id: string, orgId: string | null) {
+    const person = await this.people.findOne({ where: { id, orgId: orgId ?? IsNull() } });
+    if (!person) throw new NotFoundException('Mitwirkende Person nicht gefunden.');
+    return { count: (await this.linkedActivities(id, orgId)).length };
+  }
+
+  async remove(id: string, orgId: string | null) {
+    await this.people.manager.transaction('SERIALIZABLE', async manager => {
+      const people = manager.getRepository(Contributor);
+      const activities = manager.getRepository(Activity);
+      const person = await people.findOne({ where: { id, orgId: orgId ?? IsNull() } });
+      if (!person) throw new NotFoundException('Mitwirkende Person nicht gefunden.');
+      for (const activity of await this.linkedActivities(id, orgId, activities)) {
+        await activities.update(activity.id, {
+          contributions: activity.contributions!.filter(entry => entry.contributorId !== id),
+        });
+      }
+      await people.delete({ id, orgId: orgId ?? IsNull() });
+    });
   }
 
   async report(query: ContributionReportQuery, orgId: string | null) {

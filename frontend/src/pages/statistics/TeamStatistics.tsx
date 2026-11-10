@@ -286,7 +286,7 @@ function TeamTypeChart({ rows }: { rows: TeamRow[] }) {
               contentStyle={{
                 backgroundColor: 'var(--surface-1)',
                 borderColor: 'var(--border-subtle)',
-                borderRadius: 12,
+                borderRadius: 'var(--radius-surface)',
                 color: 'var(--text-primary)',
               }}
               formatter={(value: number) =>

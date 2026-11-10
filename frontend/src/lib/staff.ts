@@ -69,3 +69,14 @@ export function useArchiveStaff() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['staff', scopeKey] }),
   });
 }
+
+export function useDeleteStaff() {
+  const qc = useQueryClient();
+  const scopeKey = useOrgScopeKey();
+  return useMutation({
+    mutationFn: async (id: string) => { await api.delete(`/staff/${id}`); },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ predicate: query => query.queryKey[1] === scopeKey });
+    },
+  });
+}

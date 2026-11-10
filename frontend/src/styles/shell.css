@@ -196,3 +196,9 @@
   border: 0;
   border-radius: 0;
 }
+
+/* Let card shadows paint into the page gutter while still clipping wide content.
+   A clip margin does not add scrollable width, unlike negative page margins. */
+.app-main {
+  overflow-clip-margin: 2rem;
+}

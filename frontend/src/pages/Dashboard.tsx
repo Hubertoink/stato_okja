@@ -1,3 +1,6 @@
+import { Fragment } from 'react';
+import { useDashboardLayout, type DashboardSectionId } from '@/lib/dashboardLayout';
+import type { ReactNode } from 'react';
 import MobileLogbookCard from '@/components/MobileLogbookCard';
 import { useMouseDragScroll } from '@/lib/useMouseDragScroll';
 import { useOrganizationModules } from '@/lib/organizationModules';
@@ -240,6 +243,7 @@ export default function Dashboard() {
   const scopeKey = useOrgScopeKey();
   const { scope } = useOrgScope();
   const { user } = useAuth();
+  const dashboardOrder = useDashboardLayout(user?.id);
   const { data: publicConfig } = usePublicConfig();
   const now = new Date();
   const year = now.getFullYear();
@@ -443,7 +447,7 @@ export default function Dashboard() {
   const dashboardChartTooltip = {
     backgroundColor: 'color-mix(in srgb, var(--surface-1) 96%, transparent)',
     borderColor: 'var(--border-strong)',
-    borderRadius: '12px',
+    borderRadius: 'var(--radius-surface)',
     boxShadow: 'var(--card-shadow)',
     color: 'var(--text-primary)',
   } as const;
@@ -689,10 +693,8 @@ export default function Dashboard() {
     };
   }, [dailyLog.map((d) => d.id).join(',')]);
 
-  return (
-    <div>
-      <PageHeader title={t('title')} />
-
+  const sections: Record<DashboardSectionId, ReactNode> = {
+    openingHours: (<>
       {/* Today's Opening Hours */}
       {openingHours && (
         <div className="dashboard-accent-panel rounded-xl p-4 mb-6 flex items-center gap-3">
@@ -705,7 +707,8 @@ export default function Dashboard() {
           </span>
         </div>
       )}
-
+    </>),
+    quickActions: (<>
       {/* Quick Actions */}
       <SurfaceCard className="dashboard-outer-surface mb-8">
         <h3 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">{t('quick.title')}</h3>
@@ -742,12 +745,14 @@ export default function Dashboard() {
           </Button>
         </div>
       </SurfaceCard>
-
+    </>),
+    surveys: (<>
       {modules.data?.surveys && <DashboardActiveSurveys
         surveys={activeSurveys}
         onOpenSurvey={(surveyId) => navigate(`/surveys/${surveyId}`)}
       />}
-
+    </>),
+    logbook: (<>
       {modules.data?.logbook && recentLogbookEntries.length > 0 && (
         <SurfaceCard className="dashboard-outer-surface dashboard-illustrated-surface mb-6 px-0 md:px-6" padding="none">
         <div className="dashboard-illustration-clip" aria-hidden="true">
@@ -816,7 +821,8 @@ export default function Dashboard() {
           </div>
         </SurfaceCard>
       )}
-
+    </>),
+    dailyLog: (<>
       {/* Daily Log */}
       {dailyLog.length > 0 && (
         <div className="modern-card dashboard-outer-surface dashboard-illustrated-surface mb-6 px-0 md:px-6 py-0">
@@ -936,7 +942,8 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
+    </>),
+    trend: (<>
       {/* KPI trend */}
       <section className="dashboard-trend-card" aria-labelledby="dashboard-trend-title">
         <div className="dashboard-trend-card-header">
@@ -1059,8 +1066,11 @@ export default function Dashboard() {
           </div>
         </div>
       </section>
-
+    </>),
+    annualTargets: (<>
       <DashboardAnnualTargets />
+    </>),
+    customKpis: (<>
       <CustomKpiCards
         surface="dashboard"
         from={dashboardTrendRange.from}
@@ -1071,7 +1081,8 @@ export default function Dashboard() {
           refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
         }}
       />
-
+    </>),
+    recentActions: (<>
       {/* Recent Actions */}
       <div className="modern-card dashboard-outer-surface p-4 sm:p-6">
         <h3 className="mb-3 text-lg font-bold text-gray-800 sm:mb-4 sm:text-xl">{t('recent.title')}</h3>
@@ -1134,6 +1145,14 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+    </>),
+  };
+
+  return (
+    <div>
+      <PageHeader title={t('title')} />
+
+      {dashboardOrder.map(id => <Fragment key={id}>{sections[id]}</Fragment>)}
       {picker && (
         <ProjectPickerModal
           onPick={(p) => {

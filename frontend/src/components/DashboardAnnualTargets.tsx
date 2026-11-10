@@ -17,7 +17,7 @@ function DashboardTargetsContent() {
   const [editor, setEditor] = useState<AnnualTarget | null>(null);
   return (
     <>
-      <AnnualTargetCards onOpen={setSelected} />
+      <AnnualTargetCards frameless onOpen={setSelected} />
       {selected && !editor && (
         <TargetDetail
           key={selected.id}

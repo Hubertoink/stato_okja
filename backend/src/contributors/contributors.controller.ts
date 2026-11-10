@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -27,6 +27,18 @@ export class ContributorsController {
   @Roles('superadmin', 'org_admin', 'editor')
   create(@Body() data: CreateContributorDto, @Req() req: ScopedRequest) {
     return this.contributors.create(data, scope(req));
+  }
+
+  @Get(':id/usage')
+  @Roles('superadmin', 'org_admin', 'editor')
+  usage(@Param('id', ParseUUIDPipe) id: string, @Req() req: ScopedRequest) {
+    return this.contributors.usage(id, scope(req));
+  }
+
+  @Delete(':id')
+  @Roles('superadmin', 'org_admin', 'editor')
+  remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: ScopedRequest) {
+    return this.contributors.remove(id, scope(req));
   }
 
   @Patch(':id')

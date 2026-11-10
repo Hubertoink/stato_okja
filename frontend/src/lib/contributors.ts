@@ -40,6 +40,21 @@ export function useSaveContributor() {
   });
 }
 
+export async function contributorUsage(id: string) {
+  return (await api.get<{ count: number }>(`/contributors/${id}/usage`)).data.count;
+}
+
+export function useDeleteContributor() {
+  const qc = useQueryClient();
+  const scopeKey = useOrgScopeKey();
+  return useMutation({
+    mutationFn: async (id: string) => { await api.delete(`/contributors/${id}`); },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ predicate: query => query.queryKey[1] === scopeKey });
+    },
+  });
+}
+
 export function useContributionReport(params: { from: string; to: string; projectId?: string }, enabled = true) {
   const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({ queryKey: ['stats:contributions', scopeKey, params], enabled: ready && enabled,

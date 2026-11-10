@@ -873,6 +873,14 @@ export const resources = {
         deviceHint: 'Wird in deinem Profil gespeichert. Mobil bleibt das Bottom-Menü erhalten.',
         saving: 'Wird gespeichert …', saved: 'Gespeichert', error: 'Speichern fehlgeschlagen. Bitte erneut versuchen.',
       },
+      dashboardLayout: {
+        title: 'Dashboard-Anordnung',
+        description: 'Ziehe die Bereiche in die gewünschte Reihenfolge oder nutze die Pfeile.',
+        hint: 'Wird für dein Benutzerkonto in diesem Browser gespeichert. Leere oder deaktivierte Bereiche erscheinen erst, wenn Inhalte verfügbar sind.',
+        reset: 'Zurücksetzen', up: '{{section}} nach oben', down: '{{section}} nach unten',
+        saved: 'Dashboard-Anordnung gespeichert.', error: 'Die Anordnung konnte nicht gespeichert werden. Bitte erlaube lokalen Browserspeicher.',
+        sections: { openingHours: 'Öffnungszeiten', quickActions: 'Schnellaktionen', surveys: 'Aktive Umfragen', logbook: 'Logbuch', dailyLog: 'Tageslog', trend: 'Verlauf und Kennzahlen', annualTargets: 'Jahresziele', customKpis: 'Eigene Kennzahlen', recentActions: 'Letzte Aktionen' },
+      },
       viewDensity: {
         title: 'Ansichtsmodus',
         description: 'Wähle, wie groß Schrift und Bedienelemente auf deinem Desktop dargestellt werden.',
@@ -2035,6 +2043,14 @@ export const resources = {
         topDescription: 'The familiar horizontal navigation above the content.',
         deviceHint: 'Saved to your profile. Mobile keeps the bottom navigation.',
         saving: 'Saving …', saved: 'Saved', error: 'Could not save. Please try again.',
+      },
+      dashboardLayout: {
+        title: 'Dashboard layout',
+        description: 'Drag sections into your preferred order or use the arrow buttons.',
+        hint: 'Saved for your account in this browser. Empty or disabled sections appear once content is available.',
+        reset: 'Reset', up: 'Move {{section}} up', down: 'Move {{section}} down',
+        saved: 'Dashboard layout saved.', error: 'Could not save the layout. Please enable local browser storage.',
+        sections: { openingHours: 'Opening hours', quickActions: 'Quick actions', surveys: 'Active surveys', logbook: 'Logbook', dailyLog: 'Daily log', trend: 'Trends and metrics', annualTargets: 'Annual targets', customKpis: 'Custom metrics', recentActions: 'Recent actions' },
       },
       viewDensity: {
         title: 'View mode',

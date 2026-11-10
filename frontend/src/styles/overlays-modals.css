@@ -154,7 +154,7 @@
   min-height: 190px;
   background: var(--editor-field-bg, var(--input-bg));
   border: 1px solid var(--border-subtle);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-surface);
   color: var(--text-primary);
   box-shadow: var(--editor-field-shadow);
   transition:

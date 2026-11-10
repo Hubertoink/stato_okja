@@ -9,6 +9,27 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.25.0] - 2026-11-10
+
+### Added
+- Die Reihenfolge der Dashboard-Bereiche lässt sich unter Einstellungen im Ansichtsmodus per Ziehen oder Pfeiltasten anpassen. Die Auswahl wird pro Benutzer im jeweiligen Browser gespeichert.
+- Mitwirkende können mit Nutzungsanzeige und Bestätigungsdialog archiviert oder dauerhaft gelöscht werden. Das dauerhafte Löschen entfernt auch ihre Aktivitätszuordnungen und individuellen Minuten; Archivieren erhält diese Historie.
+
+### Changed
+- Einheitliche, schlichtere Rahmen, dezente Schatten und kompaktere Rundungen für Kacheln, Tabellen, Modale und Einstellungen. Die Fußleiste verwendet eine flache Fläche ohne Verlauf.
+- Die Theme-Auswahl umfasst Default Theme, Ocean Pearl, Catppuccin Latte, Nord, Tokyo Night und Midnight. Nord ist das Standard-Dark-Theme; entfernte Themes werden auf passende helle oder dunkle Standardwerte umgestellt.
+- Jahresziele auf dem Dashboard verzichten auf die zusätzliche äußere Kachel.
+- Team-Mitglieder und Mitwirkende verwenden einheitliche Archivfilter und Aktionen einschließlich Wiederherstellen links neben Bearbeiten und Löschen.
+
+### Fixed
+- Die Kommentarspalte im Logbuch füllt auch ihre untere Ecke vollständig aus.
+- Abgeschnittene Kachelschatten und uneinheitliche Rahmenlinien in den Einstellungen wurden korrigiert.
+- Kompakte Archivfilter verhindern, dass der Plus-Button auf schmalen Mobilansichten aus dem sichtbaren Bereich rutscht.
+
+### Upgrade-Hinweise
+- Server und Windows-Desktop verwenden Version 1.25.0. Die neuen Oberflächenfunktionen benötigen den aktualisierten Server; der Desktop-Client enthält keine zusätzlichen funktionalen Änderungen gegenüber 1.24.0.
+- Keine neuen Datenbankmigrationen oder Umgebungsvariablen gegenüber 1.24.0.
+
 ## [1.24.0] - 2026-11-09
 
 ### Added

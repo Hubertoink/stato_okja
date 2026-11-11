@@ -64,7 +64,11 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
+          check-latest: true
           cache: npm
+
+      - name: Verify build runtime security
+        run: node scripts/check-runtime-security.cjs
 
       - name: Install dependencies
         run: npm ci
@@ -76,7 +80,7 @@ jobs:
         run: node scripts/sync-distribution-version.mjs
 
       - name: Test container security gates
-        run: node --test scripts/container-security.test.mjs
+        run: node --test scripts/container-security.test.mjs scripts/check-runtime-security.test.cjs
 
       - name: Test On-Prem environment generator
         run: npm run test:env-generator
@@ -119,6 +123,10 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+          check-latest: true
+
+      - name: Verify build runtime security
+        run: node scripts/check-runtime-security.cjs
       - name: Build test images
         run: |
           docker build --pull -f backend/Dockerfile -t stato-backend:distribution-review .
@@ -584,6 +592,10 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
+          check-latest: true
+
+      - name: Verify build runtime security
+        run: node scripts/check-runtime-security.cjs
 
       - name: Download repository SBOM
         uses: actions/download-artifact@v8

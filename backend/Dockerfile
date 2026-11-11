@@ -66,5 +66,6 @@ RUN mkdir -p /app/uploads/images \
 	&& chown -R node:node /app
 
 USER node
+RUN node -e "require('sharp')({create:{width:2,height:2,channels:3,background:'white'}}).png().toBuffer().then(buffer => { if (!buffer.length) process.exit(1); console.log('Native image processing OK on ' + process.arch + ' / Node ' + process.versions.node); }).catch(error => { console.error(error); process.exit(1); })"
 EXPOSE 3000
 CMD ["node", "dist/main.js"]

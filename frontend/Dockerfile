@@ -1,7 +1,23 @@
+# Minimum patched Node runtime. The verified fallback covers the delay between
+# Node security downloads and official Docker tags. Other architectures fail
+# closed until their official base image contains this security release.
+FROM node:24-alpine AS node-security-base
+RUN set -eu; \
+    if node -e "const a=process.versions.node.split('.').map(Number),b='24.22.3'.split('.').map(Number);if(a[0]!==b[0]||a[1]<b[1]||(a[1]===b[1]&&a[2]<b[2]))process.exit(1)"; then exit 0; fi; \
+    case "$(uname -m)" in \
+      x86_64) archive="node-v24.22.3-linux-x64-musl.tar.gz"; checksum="5499b663f62c72093715da98f4aea6f83427ad8bab9cf9c75f0924e0e456ce14" ;; \
+      *) echo "Patched Node 24.22.3 base image required for this architecture" >&2; exit 1 ;; \
+    esac; \
+    wget -qO /tmp/node-security.tar.gz "https://nodejs.org/dist/v24.22.3/$archive"; \
+    echo "$checksum  /tmp/node-security.tar.gz" | sha256sum -c -; \
+    tar -xzf /tmp/node-security.tar.gz --strip-components=2 -C /usr/local/bin "${archive%.tar.gz}/bin/node"; \
+    rm /tmp/node-security.tar.gz; \
+    node -e "const a=process.versions.node.split('.').map(Number),b='24.22.3'.split('.').map(Number);if(a[0]!==b[0]||a[1]<b[1]||(a[1]===b[1]&&a[2]<b[2]))process.exit(1)"
+
 # Frontend production Dockerfile (React + Vite) with unprivileged Nginx
 # Build context must be the repository root so npm can use the workspace lockfile.
 
-FROM node:24-alpine AS builder
+FROM node-security-base AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./

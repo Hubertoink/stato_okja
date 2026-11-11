@@ -15,6 +15,7 @@ jobs:
       matrix:
         include: [{"id":"c-yncl6h","repo":"stato_okja","version":"24.22.3","platform":"linux-x64-musl","original":"ghcr.io/hubertoink/stato-backend@sha256:e2809e7b205e8e3bc67be800a553ba0fcd2a52242e1e04631dc63b6f2f7b4dc9","target":"ghcr.io/hubertoink/stato-backend:security-node-24.22.3-20261111-c-yncl6h","sha256":"601b3e1930a593f3d44af2d0dca978dad4bd8b4594c4f8268b67a33553b04c30"},{"id":"c-mfqqtf","repo":"stato_okja","version":"24.22.3","platform":"linux-x64-musl","original":"ghcr.io/hubertoink/stato-backend@sha256:f54316d59baf1048c7c7522318ab2dbe33172323d67b2bf86ac3f5fcdb4ed8e5","target":"ghcr.io/hubertoink/stato-backend:security-node-24.22.3-20261111-c-mfqqtf","sha256":"601b3e1930a593f3d44af2d0dca978dad4bd8b4594c4f8268b67a33553b04c30"}]
     steps:
+      - uses: docker/setup-buildx-action@v3
       - name: Authenticate to existing image registry
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -36,8 +37,8 @@ jobs:
           tar -xJf "$archive" --strip-components=2 -C runtime "node-v$VERSION-$PLATFORM/bin/node"
           chmod 755 runtime/node
           printf 'FROM %s\nCOPY --chmod=755 node /usr/local/bin/node\nENV NODE_VERSION=%s\nLABEL de.hubertoink.security.node-version="%s" de.hubertoink.security.original-image="%s"\nRUN node --version\n' "$ORIGINAL" "$VERSION" "$VERSION" "$ORIGINAL" > runtime/Dockerfile
-          docker build --pull --platform linux/amd64 -t "$TARGET" runtime
+          docker buildx build --load --pull --platform linux/amd64 -t "$TARGET" runtime
           test "$(docker run --rm --network none --entrypoint node "$TARGET" --version)" = "v$VERSION"
-          docker run --rm --network none --entrypoint node "$TARGET" -e 'const fs=require("fs"); const p=require("/app/package.json"); for(const name of Object.keys(p.dependencies||{})) require.resolve(name,{paths:["/app"]}); console.log("Runtime dependencies resolve");'
-          docker push "$TARGET"
+          docker run --rm --network none --entrypoint node "$TARGET" --input-type=module -e 'import fs from "node:fs"; const p=JSON.parse(fs.readFileSync("/app/package.json")); for(const name of Object.keys(p.dependencies||{})) import.meta.resolve(name); console.log("Runtime dependencies resolve");'
+          docker buildx build --push --provenance=false --platform linux/amd64 -t "$TARGET" runtime
           printf '### %s\nNode: %s\nOriginal: %s\nUpdated: %s\n' '${{ matrix.id }}' "$VERSION" "$ORIGINAL" "$TARGET" >> "$GITHUB_STEP_SUMMARY"

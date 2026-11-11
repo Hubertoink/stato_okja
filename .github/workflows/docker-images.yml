@@ -121,9 +121,9 @@ jobs:
           node-version: 24
       - name: Build test images
         run: |
-          docker build -f backend/Dockerfile -t stato-backend:distribution-review .
-          docker build -f frontend/Dockerfile --build-arg NGINX_MODE=proxy --build-arg VITE_API_BASE_URL=/api -t stato-frontend:distribution-review .
-          docker build -f backup/Dockerfile -t stato-backup:distribution-review .
+          docker build --pull -f backend/Dockerfile -t stato-backend:distribution-review .
+          docker build --pull -f frontend/Dockerfile --build-arg NGINX_MODE=proxy --build-arg VITE_API_BASE_URL=/api -t stato-frontend:distribution-review .
+          docker build --pull -f backup/Dockerfile -t stato-backup:distribution-review .
       - name: Test installation and packaged restore
         run: node scripts/test-distribution-lifecycle.mjs
 

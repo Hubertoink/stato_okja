@@ -2,10 +2,9 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Gemeinsamer Versionsstand __VERSION__ mit dem StatO-Server.
-- Mit aktualisiertem Server: individuell anpassbare Dashboard-Reihenfolge, vereinheitlichte Rahmen und Rundungen sowie Nord als Standard-Dark-Theme.
-- Mit aktualisiertem Server: einheitliche Archiv- und Löschdialoge für Team-Mitglieder und Mitwirkende sowie Verbesserungen der mobilen Darstellung.
-- Für diese Änderungen den verbundenen StatO-Server auf __VERSION__ aktualisieren. Der Desktop-Client enthält keine zusätzlichen funktionalen Änderungen gegenüber 1.24.0.
+- Sicherheitsuntergrenze für die eingebettete Node.js-Laufzeit: mindestens 24.22.3 innerhalb Node 24.
+- Der Release-Workflow prüft die tatsächliche Electron-Laufzeit vor dem Erstellen des Installers.
+- Keine funktionalen Änderungen oder Datenbankmigrationen gegenüber 1.25.0.
 
 ### Installation und einmaliger Umstieg
 

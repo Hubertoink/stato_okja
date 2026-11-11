@@ -8,14 +8,18 @@ on:
       - 'VERSION'
       - 'package.json'
       - 'scripts/check-version.mjs'
+      - 'scripts/check-runtime-security.cjs'
+      - 'scripts/check-runtime-security.test.cjs'
       - '.github/workflows/desktop.yml'
   push:
-    branches: [dev, main]
+    branches: [dev, main, demo]
     paths:
       - 'desktop/**'
       - 'VERSION'
       - 'package.json'
       - 'scripts/check-version.mjs'
+      - 'scripts/check-runtime-security.cjs'
+      - 'scripts/check-runtime-security.test.cjs'
       - '.github/workflows/desktop.yml'
     tags: ['v*', 'desktop-v*']
 
@@ -33,8 +37,13 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+          check-latest: true
           cache: npm
           cache-dependency-path: desktop/package-lock.json
+      - name: Verify build runtime security
+        run: node scripts/check-runtime-security.cjs
+      - name: Test runtime security gate
+        run: node --test scripts/check-runtime-security.test.cjs
       - name: Install desktop dependencies
         run: npm ci --prefix desktop
       - name: Check version
@@ -50,6 +59,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Release tag must reference a commit from main' }
       - name: Test connection and Electron client
         run: npm run desktop:test
+      - name: Verify embedded Electron runtime before packaging
+        run: node scripts/check-runtime-security.cjs --desktop
       - name: Build Windows installer
         run: npm run desktop:build
         env:

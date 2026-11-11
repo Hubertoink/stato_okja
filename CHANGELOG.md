@@ -9,6 +9,17 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.25.1] - 2026-11-11
+
+### Security
+- Server-, Demo- und Release-Builds verlangen Node.js 24.22.3 oder eine neuere Version innerhalb von Node 24.
+- Verifizierte offizielle Node-Downloads sichern amd64 und ARM64 auch vor Veröffentlichung aktualisierter Docker-Basisimages ab. Die Node-Stufen verwenden Debian Bookworm; das Nginx-Frontend bleibt unverändert.
+- Desktop-Installer werden nur veröffentlicht, wenn auch die in Electron eingebettete Node-Laufzeit die Sicherheitsuntergrenze erfüllt. Ein aktualisierter Build-Runner allein reicht nicht aus.
+
+### Upgrade-Hinweise
+- Keine neuen Datenbankmigrationen oder Umgebungsvariablen.
+- Desktop 1.25.1 bleibt bis zur Verfügbarkeit einer passenden gepatchten Electron-Version unveröffentlicht.
+
 ## [1.25.0] - 2026-11-10
 
 ### Added

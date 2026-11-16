@@ -78,7 +78,7 @@
     "@types/passport-local": "^1.0.38",
     "@typescript/native-preview": "^7.0.0-dev.20260707.2",
     "jest": "^30.5.2",
-    "prettier": "^3.9.10",
+    "prettier": "^3.10.1",
     "ts-jest": "^29.4.15",
     "ts-loader": "^9.6.2",
     "ts-node": "^10.9.2",

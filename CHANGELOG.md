@@ -9,6 +9,22 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.25.2] - 2026-11-17
+
+### Security
+- Verwundbare minimatch- und glob-Abhängigkeiten wurden auf gepatchte Versionen aktualisiert.
+- Das Backend verwendet wieder das offizielle Alpine-Image mit Node.js mindestens 24.22.3 und aktualisierten Betriebssystempaketen. Die geprüften Images für amd64 und ARM64 enthalten keine Trivy-Funde; Warnungen werden nicht ausgeblendet.
+- Windows-Desktop verwendet Electron 45.3.3 mit eingebettetem Node.js 24.22.3 und erfüllt damit wieder die unveränderte Sicherheitsuntergrenze für Desktop-Releases.
+
+### Fixed
+- Die Demo lädt Mitwirkende wieder und unterstützt Anlegen, Bearbeiten, Archivieren, Löschen sowie die zugehörigen Aktivitätszeiten und Auswertungen.
+- Teiländerungen einer Demo-Aktivität erhalten deren bisherige Dauer.
+
+### Upgrade-Hinweise
+- Server und Windows-Desktop verwenden Version 1.25.2. Der bisher zurückgehaltene Desktop-Sicherheitsrelease steht mit dieser Version zur Verfügung.
+- Keine neuen Datenbankmigrationen oder Umgebungsvariablen gegenüber 1.25.1.
+- Mittwald: Backend und Backup auf `1.25.2`, Frontend auf `stack-1.25.2` aktualisieren. Der Demo-Tag bleibt `demo`.
+
 ## [1.25.1] - 2026-11-11
 
 ### Security

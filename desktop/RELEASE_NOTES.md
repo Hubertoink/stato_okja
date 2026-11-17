@@ -2,9 +2,10 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Sicherheitsuntergrenze für die eingebettete Node.js-Laufzeit: mindestens 24.22.3 innerhalb Node 24.
-- Der Release-Workflow prüft die tatsächliche Electron-Laufzeit vor dem Erstellen des Installers.
-- Keine funktionalen Änderungen oder Datenbankmigrationen gegenüber 1.25.0.
+- Electron 45.3.3 enthält die gepatchte Node.js-Laufzeit 24.22.3. Damit kann der bisher zurückgehaltene Desktop-Sicherheitsrelease veröffentlicht werden.
+- Verwundbare minimatch-Abhängigkeiten wurden aktualisiert.
+- Der Release-Workflow prüft weiterhin die tatsächliche Electron-Laufzeit vor dem Erstellen des Installers.
+- Keine neuen Datenbankmigrationen oder Änderungen an der Serververbindung.
 
 ### Installation und einmaliger Umstieg
 

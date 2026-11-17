@@ -274,6 +274,18 @@ function handleProcesses(method: string, segments: string[], body: Record<string
   return undefined;
 }
 
+function handleContributors(method: string, segments: string[], params: Record<string, unknown>, body: Record<string, unknown>): HandlerResult | undefined {
+  if (segments[0] !== 'contributors') return undefined;
+  if (method === 'get' && segments.length === 1) return ok(demo.listDemoContributors());
+  if (method === 'post' && segments.length === 1) return ok(demo.createDemoContributor(body), 201);
+  if (method === 'get' && segments[1] === 'report' && segments.length === 2) return ok(demo.getDemoContributionReport(params));
+  const id = segments[1] ? decodeURIComponent(segments[1]) : '';
+  if (method === 'get' && segments[2] === 'usage' && segments.length === 3) return ok(demo.getDemoContributorUsage(id));
+  if (method === 'patch' && segments.length === 2) return ok(demo.updateDemoContributor(id, body));
+  if (method === 'delete' && segments.length === 2) { demo.deleteDemoContributor(id); return noContent(); }
+  return undefined;
+}
+
 function handleRequest(method: string, path: string, params: Record<string, unknown>, body: Record<string, unknown>): HandlerResult {
   const segments = path.split('/').filter(Boolean);
   const authResult = handleAuth(method, path, body);
@@ -294,6 +306,8 @@ function handleRequest(method: string, path: string, params: Record<string, unkn
   if (surveyResult) return surveyResult;
   const processResult = handleProcesses(method, segments, body);
   if (processResult) return processResult;
+  const contributorResult = handleContributors(method, segments, params, body);
+  if (contributorResult) return contributorResult;
 
   if (method === 'get' && path === '/locations') return ok(demo.listDemoLocations(params));
   if (method === 'post' && path === '/locations') return ok(demo.createDemoLocation(body), 201);
@@ -336,6 +350,7 @@ export const demoAxiosAdapter: AxiosAdapter = async (config) => {
     return response(config, result);
   } catch (error) {
     if (error instanceof DemoHttpError) return failure(config, error);
+    if (error instanceof demo.DemoStoreError) return failure(config, new DemoHttpError(error.status, error.message));
     const message = error instanceof Error ? error.message : 'Demo request failed';
     return failure(config, new DemoHttpError(500, message));
   }

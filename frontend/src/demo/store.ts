@@ -4,6 +4,7 @@ import { DEMO_ORG_ID, DEMO_USER_ID, demoUser } from './config';
 import type { Activity, PagedActivitiesResult } from '../lib/activities';
 import type { AuditLog, AuditLogAction } from '../lib/audit';
 import type { AuthUser } from '../lib/auth';
+import type { Contributor, ContributionEntry } from '../lib/contributors';
 import type { Location } from '../lib/locations';
 import type { OpeningHours, OrganizationClosureDay, OrgDto, OrgTaxonomySettingsSnapshot } from '../lib/orgs';
 import type { ProjectTemplateDto } from '../lib/projectTemplatesApi';
@@ -40,6 +41,7 @@ type DemoStore = {
   cohorts: Cohort[];
   locations: Location[];
   staff: StaffMember[];
+  contributors: Contributor[];
   projects: DemoProject[];
   activities: DemoActivityRecord[];
   projectTemplates: DemoProjectTemplate[];
@@ -79,9 +81,16 @@ type StatsOverviewResponse = {
   topProjects: Array<{ id: string; name: string; count: number }>;
   availableYears: string[];
   weeklyProfile: WeeklyProfile;
+  contributions: ContributionEntry[];
 };
 
 type DemoQueryParams = Record<string, unknown>;
+
+export class DemoStoreError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -234,6 +243,14 @@ function staffSeed(): StaffMember[] {
     { id: 'staff-lea', name: 'Lea Sommer', email: 'lea.sommer@example.org', role: 'volunteer', roles: ['volunteer'], active: true },
     { id: 'staff-tom', name: 'Tom Becker', email: 'tom.becker@example.org', role: 'helper', roles: ['helper'], active: true },
     { id: 'staff-nora', name: 'Nora Stein', email: 'nora.stein@example.org', role: 'analyst', roles: ['analyst'], active: true },
+  ];
+}
+
+function contributorSeed(): Contributor[] {
+  return [
+    { id: 'contributor-alex', name: 'Alex Fischer', color: '#7aa39a', active: true },
+    { id: 'contributor-jamie', name: 'Jamie Weber', color: '#6366f1', active: true },
+    { id: 'contributor-robin', name: 'Robin Wagner', color: '#d97706', active: false },
   ];
 }
 
@@ -839,6 +856,14 @@ function createDemoStore(now = new Date()): DemoStore {
   const staff = staffSeed();
   const projects = projectSeed(windowStart, windowEnd);
   const activities = activitySeed(windowStart, windowEnd, projects, tags, staff);
+  const contributors = contributorSeed();
+  activities.forEach((activity, index) => {
+    if (activity.executionStatus !== 'completed' || !activity.durationMinutes || index % 12 !== 0) return;
+    activity.contributions = [{
+      contributorId: contributors[(index / 12) % contributors.length].id,
+      minutes: Math.min(activity.durationMinutes, 60),
+    }];
+  });
   const surveyData = surveySeed(now);
   const processes = processSeed(now);
   return {
@@ -853,6 +878,7 @@ function createDemoStore(now = new Date()): DemoStore {
     cohorts,
     locations,
     staff,
+    contributors,
     projects,
     activities,
     projectTemplates: projectTemplateSeed(),
@@ -1191,6 +1217,7 @@ function filterActivityRecords(params: DemoQueryParams = {}): DemoActivityRecord
   const categoryIds = new Set(readStringList(params.categoryIds));
   const tagIds = new Set(readStringList(params.tagIds));
   const staffIds = new Set(readStringList(params.staffIds));
+  const contributorIds = new Set(readStringList(params.contributorIds));
   const cohortIds = new Set(readStringList(params.cohortIds));
   const executionStatuses = new Set(readStringList(params.executionStatuses));
   const weekdays = new Set(readStringList(params.weekdays).map((value) => Number(value)).filter(Number.isFinite));
@@ -1210,6 +1237,7 @@ function filterActivityRecords(params: DemoQueryParams = {}): DemoActivityRecord
     if (categoryIds.size > 0 && !activity.categoryIds.some((id) => categoryIds.has(id))) return false;
     if (tagIds.size > 0 && !activity.tagIds.some((id) => tagIds.has(id))) return false;
     if (staffIds.size > 0 && !activity.staffIds.some((id) => staffIds.has(id))) return false;
+    if (contributorIds.size > 0 && !activity.contributions?.some((entry) => contributorIds.has(entry.contributorId))) return false;
     if (cohortIds.size > 0 && !(activity.cohorts || []).some((cohort) => cohortIds.has(cohort.cohortId))) return false;
     if (executionStatuses.size > 0 && !executionStatuses.has(activity.executionStatus || 'completed')) return false;
     if (weekdays.size > 0 && !weekdays.has(parseDate(activity.date).getDay())) return false;
@@ -1559,6 +1587,95 @@ export function deleteDemoProject(id: string) {
   addAudit('project', id, 'delete', id);
 }
 
+export function listDemoContributors(): Contributor[] {
+  return clone([...store.contributors].sort((a, b) => a.name.localeCompare(b.name, 'de') || a.id.localeCompare(b.id)));
+}
+
+function findDemoContributor(id: string): Contributor {
+  const person = store.contributors.find(entry => entry.id === id);
+  if (!person) throw new DemoStoreError(404, 'Mitwirkende Person nicht gefunden.');
+  return person;
+}
+
+function contributorFields(data: Record<string, unknown>, existing?: Contributor): Omit<Contributor, 'id'> {
+  const name = data.name === undefined ? existing?.name : typeof data.name === 'string' ? data.name.trim() : '';
+  if (!name || name.length > 120) throw new DemoStoreError(400, 'Bitte einen Anzeigenamen mit höchstens 120 Zeichen eingeben.');
+  if (store.contributors.some(person => person.id !== existing?.id && person.name.toLocaleLowerCase('de') === name.toLocaleLowerCase('de'))) {
+    throw new DemoStoreError(409, 'Dieser Name ist bereits vorhanden (gegebenenfalls archiviert). Bitte die vorhandene Person verwenden oder einen unterscheidbaren Anzeigenamen wählen.');
+  }
+  const color = data.color === undefined ? existing?.color ?? '#7aa39a' : data.color;
+  if (typeof color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(color)) throw new DemoStoreError(400, 'Bitte eine gültige Farbe wählen.');
+  if (data.active !== undefined && typeof data.active !== 'boolean') throw new DemoStoreError(400, 'Ungültiger Aktivstatus.');
+  const active = existing && typeof data.active === 'boolean' ? data.active : existing?.active ?? true;
+  return { name, color, active };
+}
+
+export function createDemoContributor(data: Record<string, unknown>): Contributor {
+  const fields = contributorFields(data);
+  const person = { id: nextId('contributor'), ...fields };
+  store.contributors.push(person);
+  return clone(person);
+}
+
+export function updateDemoContributor(id: string, data: Record<string, unknown>): Contributor {
+  const person = findDemoContributor(id);
+  Object.assign(person, contributorFields(data, person));
+  return clone(person);
+}
+
+export function getDemoContributorUsage(id: string): { count: number } {
+  findDemoContributor(id);
+  return { count: store.activities.filter(activity => activity.contributions?.some(entry => entry.contributorId === id)).length };
+}
+
+export function deleteDemoContributor(id: string) {
+  findDemoContributor(id);
+  store.activities.forEach(activity => {
+    if (activity.contributions) activity.contributions = activity.contributions.filter(entry => entry.contributorId !== id);
+  });
+  store.contributors = store.contributors.filter(person => person.id !== id);
+}
+
+export function getDemoContributionReport(params: DemoQueryParams = {}): ContributionEntry[] {
+  const people = new Map(store.contributors.map(person => [person.id, person]));
+  return filterActivityRecords(params)
+    .filter(activity => activity.executionStatus === 'completed')
+    .sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id))
+    .flatMap(activity => (activity.contributions || []).flatMap(entry => {
+      const person = people.get(entry.contributorId);
+      if (!person) return [];
+      const project = store.projects.find(item => item.id === activity.projectId);
+      return [{ ...entry, name: person.name, color: person.color, active: person.active,
+        activityId: activity.id, date: activity.date, title: activity.title || project?.title || 'Aktivität',
+        projectId: activity.projectId ?? null, projectTitle: project?.title || null }];
+    }));
+}
+
+function normalizeDemoContributions(value: unknown, duration: number | null, executionStatus: Activity['executionStatus'], previous: NonNullable<Activity['contributions']>) {
+  if (value == null) return [];
+  if (!Array.isArray(value) || value.length > 100) throw new DemoStoreError(400, 'Ungültige Mitwirkung.');
+  if (value.length && executionStatus !== 'completed') {
+    throw new DemoStoreError(400, 'Mitwirkung kann nur für durchgeführte Aktivitäten erfasst werden. Vor einem Statuswechsel Einträge ausdrücklich entfernen.');
+  }
+  const ids = new Set<string>();
+  return value.map((entry: unknown) => {
+    if (!entry || typeof entry !== 'object' || !('contributorId' in entry) || !('minutes' in entry) || typeof entry.contributorId !== 'string') {
+      throw new DemoStoreError(400, 'Ungültige Mitwirkung.');
+    }
+    const { contributorId, minutes } = entry;
+    if (ids.has(contributorId)) throw new DemoStoreError(400, 'Jede Person kann nur einmal je Aktivität mitwirken.');
+    ids.add(contributorId);
+    if (typeof minutes !== 'number' || !Number.isInteger(minutes) || minutes <= 0 || minutes > 1440 || (duration != null && minutes > duration)) {
+      throw new DemoStoreError(400, 'Bitte eine positive Dauer bis höchstens zur Aktivitätsdauer eingeben.');
+    }
+    const person = store.contributors.find(item => item.id === contributorId);
+    if (!person || (!person.active && !previous.some(item => item.contributorId === contributorId))) {
+      throw new DemoStoreError(400, 'Mitwirkende müssen zur Einrichtung gehören und aktiv sein.');
+    }
+    return { contributorId, minutes };
+  });
+}
+
 export function listDemoActivities(params: DemoQueryParams = {}): Activity[] | PagedActivitiesResult {
   const order = params.order === 'asc' ? 'asc' : 'desc';
   const records = filterActivityRecords(params).sort(order === 'asc' ? compareActivityRecordsAsc : compareActivityRecordsDesc);
@@ -1603,13 +1720,19 @@ function normalizeActivityPayload(data: Partial<Activity> & Record<string, unkno
   if ((isPlannedActivity(executionStatus) || isFutureActivityDate(date)) && countTotal > 0) {
     throw new Error('Besucherzahlen können erst nach der Durchführung erfasst werden.');
   }
+  const timeChanged = data.startTime !== undefined || data.endTime !== undefined;
+  const duration = readNumber(data.durationMinutes) ?? (fallback && !timeChanged ? fallback.durationMinutes ?? null : durationMinutes(startTime, endTime));
+  const contributions = normalizeDemoContributions(
+    data.contributions === undefined ? fallback?.contributions : data.contributions,
+    duration, executionStatus, fallback?.contributions || [],
+  );
   return {
     id: fallback?.id || nextId('act'),
     orgId: DEMO_ORG_ID,
     date: String(data.date || fallback?.date || localIsoDate(new Date())).slice(0, 10),
     startTime,
     endTime,
-    durationMinutes: readNumber(data.durationMinutes) ?? durationMinutes(startTime, endTime),
+    durationMinutes: duration,
     executionStatus,
     type: activityType(data.type || project.type || fallback?.type),
     locationId: typeof data.locationId === 'string' ? data.locationId : fallback?.locationId ?? null,
@@ -1619,7 +1742,8 @@ function normalizeActivityPayload(data: Partial<Activity> & Record<string, unkno
     categoryIds,
     tagIds,
     staffIds,
-    staffTimes: customStaffTimes(data.staffTimes ?? fallback?.staffTimes ?? [], staffIds, readNumber(data.durationMinutes) ?? durationMinutes(startTime, endTime)),
+    staffTimes: customStaffTimes(data.staffTimes ?? fallback?.staffTimes ?? [], staffIds, duration),
+    contributions,
     ...counts,
     cohorts: Array.isArray(data.cohorts) ? data.cohorts : fallback?.cohorts ?? cohortBreakdown(counts, `${fallback?.id || 'new'}:${Date.now()}`),
   };
@@ -1899,6 +2023,7 @@ export function getDemoStatsOverview(params: DemoQueryParams = {}): StatsOvervie
     topProjects: Array.from(byProject.entries()).map(([id, count]) => ({ id, name: store.projects.find((project) => project.id === id)?.title || id, count })).sort((left, right) => right.count - left.count),
     availableYears,
     weeklyProfile: getDemoWeeklyProfile(activities),
+    contributions: getDemoContributionReport(params),
   };
 }
 

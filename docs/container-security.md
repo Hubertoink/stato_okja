@@ -70,3 +70,76 @@ Node 26 Docker updates are deferred while the project requires Node 24 LTS.
 TypeScript 7 is deferred because ts-jest still needs the TypeScript 5 compiler API.
 Dependabot ignores those major updates until a deliberate toolchain migration.
 The optional Lucide and concurrently major updates remain separate reviews.
+
+## Triage on 2026-11-17
+
+The default-branch scan reported 227 open Trivy findings: 226 Debian Bookworm
+package findings and one npm finding, representing 105 distinct vulnerability
+identifiers. Frontend and backup scans were empty. The increase followed the
+2026-11-11 backend switch from Alpine to Bookworm for the Node security release;
+the scan immediately before that change contained only the npm finding.
+
+### npm dependencies
+
+The root and desktop manifests override only affected minimatch versions
+(`>=7 <11.0.1`) to 11.0.1. This covers the runtime archiver/readdir-glob chain,
+Nest CLI, lint/test/build tooling and electron-builder, including nested 9.x
+copies. Unaffected 3.x and 5.x consumers retain their existing major-version API.
+The root also overrides affected glob versions (`>=9 <=14.0.1`) to 14.0.2 after
+the follow-up audit identified its cancellation bug in development dependencies.
+Keep these overrides until the parent packages require patched versions.
+
+- [minimatch advisory, CVE-2026-118764](https://github.com/advisories/GHSA-g3hv-75wg-m249)
+- [glob advisory, CVE-2026-118773](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4)
+
+Both lockfile audits reported zero vulnerabilities after these changes. This is
+a point-in-time result, not a guarantee against future advisories. Validation
+covered backend tests (including streamed ZIP exports), frontend tests and PWA
+build, and desktop tests and Windows directory packaging.
+
+### Desktop runtime
+
+Electron 44.11.1 and 44.11.3 still embed Node 24.22.2, so the existing runtime
+gate correctly blocks their installers. Desktop moves to Electron 45.3.3,
+whose embedded Node 24.22.3 passes the unchanged gate. This is a major Electron
+upgrade; the real Electron smoke suite covers startup, server connections,
+sandbox/IPC isolation, previews/downloads, updater integrity, saved credentials,
+offline recovery and window controls.
+Source: [Electron 45.3.3 release](https://github.com/electron/electron/releases/tag/v45.3.3).
+
+### Bookworm findings that do not affect the reported binary packages
+
+| Finding | GitHub alerts | Vendor evidence |
+| --- | --- | --- |
+| CVE-2023-45853, zlib1g | #812 | Debian does not build the affected contrib/minizip code into the Bookworm zlib binaries. |
+| CVE-2026-3184, util-linux binaries | #421, #492, #699, #718, #756, #767, #801, #809 | Bookworm's util-linux source does not build the affected login program; it moved there only in 2.40.2-3. |
+
+Sources: [Debian zlib assessment](https://security-tracker.debian.org/tracker/CVE-2023-45853)
+and [Debian util-linux assessment](https://security-tracker.debian.org/tracker/CVE-2026-3184).
+These conclusions apply to those specific Bookworm packages, not every package
+or future version with the same CVE. A missing fixed version alone is not a
+reason to dismiss an alert. For example, Bookworm's PAM CVE-2025-6020 and zlib
+CVE-2026-85091 remain vendor-confirmed package issues, whose exploitability also
+depends on which functionality the application invokes.
+
+All-severity reporting and publication gates remain enabled. No blanket CVE
+ignore list or bulk alert dismissal is introduced by this triage.
+
+### Backend runtime
+
+The official Node 24 Alpine images now supply Node 24.22.3 for AMD64 and ARM64.
+The backend returns to that image family, updates Alpine packages, and rejects
+any base below the existing Node 24.22.3 security baseline. No manually downloaded
+Node binary or curl dependency stack is added. The native sharp smoke test still
+runs inside every built architecture before publication.
+
+Both AMD64 and ARM64 backend candidates had zero Trivy findings across all
+severities with the 2026-11-17 database and passed native sharp image processing.
+The AMD64 backend also started against an isolated PostgreSQL 16 database,
+applied all 53 migrations and served a healthy API with a read-only rootfs,
+non-root user and all capabilities dropped.
+A Trixie comparison still had 202 findings, including
+46 HIGH, so switching to newer Debian alone was not selected. Scan counts are
+vendor/package-based and do not substitute for compatibility tests or prove that
+every reported CVE is reachable from StatO. Existing Bookworm deployments need
+an updated image; source changes alone do not remediate installed containers.

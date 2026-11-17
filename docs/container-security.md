@@ -97,6 +97,16 @@ a point-in-time result, not a guarantee against future advisories. Validation
 covered backend tests (including streamed ZIP exports), frontend tests and PWA
 build, and desktop tests and Windows directory packaging.
 
+### Desktop runtime
+
+Electron 44.11.1 and 44.11.3 still embed Node 24.22.2, so the existing runtime
+gate correctly blocks their installers. Desktop moves to Electron 45.3.3,
+whose embedded Node 24.22.3 passes the unchanged gate. This is a major Electron
+upgrade; the real Electron smoke suite covers startup, server connections,
+sandbox/IPC isolation, previews/downloads, updater integrity, saved credentials,
+offline recovery and window controls.
+Source: [Electron 45.3.3 release](https://github.com/electron/electron/releases/tag/v45.3.3).
+
 ### Bookworm findings that do not affect the reported binary packages
 
 | Finding | GitHub alerts | Vendor evidence |
@@ -123,8 +133,12 @@ any base below the existing Node 24.22.3 security baseline. No manually download
 Node binary or curl dependency stack is added. The native sharp smoke test still
 runs inside every built architecture before publication.
 
-The AMD64 backend candidate had zero Trivy findings across all severities with
-the 2026-11-17 database. A Trixie comparison still had 202 findings, including
+Both AMD64 and ARM64 backend candidates had zero Trivy findings across all
+severities with the 2026-11-17 database and passed native sharp image processing.
+The AMD64 backend also started against an isolated PostgreSQL 16 database,
+applied all 53 migrations and served a healthy API with a read-only rootfs,
+non-root user and all capabilities dropped.
+A Trixie comparison still had 202 findings, including
 46 HIGH, so switching to newer Debian alone was not selected. Scan counts are
 vendor/package-based and do not substitute for compatibility tests or prove that
 every reported CVE is reachable from StatO. Existing Bookworm deployments need

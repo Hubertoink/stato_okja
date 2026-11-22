@@ -34,6 +34,9 @@ export type ActivityFormState = {
   staffTimes?: Array<{ staffId: string; minutes: number }>;
   contributions?: ContributionTime[];
   cohortCounts?: Record<string, { m: number; w: number; d: number }>;
+  // Existing records may store attendance totals without an age breakdown.
+  // Keep these until someone explicitly changes or clears the attendance.
+  recordedAttendance?: Record<GenderKey | 'total', number>;
 };
 
 /**
@@ -67,6 +70,7 @@ export function getActivityFormSnapshot(form: ActivityFormState): string {
     staffIds: normalizedIds(form.staffIds),
     staffTimes: customStaffTimes(form.staffTimes, form.staffIds, activityFormMinutes(form)).sort((a, b) => a.staffId.localeCompare(b.staffId)),
     cohortCounts,
+    attendance: getFormAttendance(form),
     contributions: resolveContributionTimes(form.contributions || [], activityFormMinutes(form)).sort((a, b) => a.contributorId.localeCompare(b.contributorId)),
   });
 }
@@ -108,6 +112,22 @@ export function getCohortSums(
   });
 
   return sums;
+}
+
+export function getFormAttendance(form: ActivityFormState) {
+  if (form.recordedAttendance) return form.recordedAttendance;
+  const sums = getCohortSums(form.cohortCounts);
+  return { ...sums, total: sums.m + sums.w + sums.d };
+}
+
+export function setActivityCohortCount(form: ActivityFormState, id: string, gender: GenderKey, value: number): ActivityFormState {
+  const entry = form.cohortCounts?.[id] ?? { m: 0, w: 0, d: 0 };
+  if (entry[gender] === value) return form;
+  return {
+    ...form,
+    recordedAttendance: undefined,
+    cohortCounts: { ...form.cohortCounts, [id]: { ...entry, [gender]: value } },
+  };
 }
 
 function hasStaffRole(member: StaffMember, roles: StaffRole[]) {
@@ -202,6 +222,11 @@ export function getActivityFormStateFromActivity(
   activity: Activity,
   fallback?: { date?: string; projectId?: string; start?: string; end?: string },
 ): ActivityFormState {
+  const cohortCounts = getActivityCohortCounts(activity);
+  const sums = getCohortSums(cohortCounts);
+  const m = activity.countMale ?? sums.m;
+  const w = activity.countFemale ?? sums.w;
+  const d = activity.countDiverse ?? sums.d;
   return {
     date: (activity.date || fallback?.date || '').slice(0, 10) || undefined,
     projectId: activity.projectId || activity.project?.id || fallback?.projectId || undefined,
@@ -215,7 +240,8 @@ export function getActivityFormStateFromActivity(
     notes: activity.notes || undefined,
     staffIds: (activity.staff || []).map((member) => member.id),
     staffTimes: customStaffTimes(activity.staffTimes || [], (activity.staff || []).map(member => member.id), activity.durationMinutes),
-    cohortCounts: getActivityCohortCounts(activity),
+    cohortCounts,
+    recordedAttendance: { m, w, d, total: activity.countTotal ?? m + w + d },
     contributions: (activity.contributions || []).map(entry => ({ ...entry, automatic: entry.minutes === (activity.durationMinutes ?? activityFormMinutes({ start: activity.startTime || undefined, end: activity.endTime || undefined })) })),
   };
 }
@@ -259,16 +285,18 @@ export function buildActivitySavePayload({
     staffTimes: customStaffTimes(form.staffTimes, form.staffIds, durationMinutes),
     contributions: resolveContributionTimes(form.contributions || [], computedDurationMinutes ?? durationMinutes),
     durationMinutes,
-    countMale: cohortSums.m,
-    countFemale: cohortSums.w,
-    countDiverse: cohortSums.d,
-    countTotal: cohortSums.m + cohortSums.w + cohortSums.d,
-    cohorts: Object.entries(form.cohortCounts || {}).map(([cohortId, genderCounts]) => ({
-      cohortId,
-      m: genderCounts.m || 0,
-      w: genderCounts.w || 0,
-      d: genderCounts.d || 0,
-    })),
+    ...(form.recordedAttendance ? {} : {
+      countMale: cohortSums.m,
+      countFemale: cohortSums.w,
+      countDiverse: cohortSums.d,
+      countTotal: cohortSums.m + cohortSums.w + cohortSums.d,
+      cohorts: Object.entries(form.cohortCounts || {}).map(([cohortId, genderCounts]) => ({
+        cohortId,
+        m: genderCounts.m || 0,
+        w: genderCounts.w || 0,
+        d: genderCounts.d || 0,
+      })),
+    }),
   };
 }
 

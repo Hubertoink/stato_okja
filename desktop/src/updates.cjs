@@ -37,9 +37,9 @@ async function discoverDesktopRelease(fetchImpl) {
     const batch = await response.json();
     if (!Array.isArray(batch)) throw new Error('Ungültige Release-Antwort.');
     releases.push(...batch);
-    if (batch.length < 100) return selectDesktopRelease(releases);
+    if (batch.length < 100) break;
   }
-  throw new Error('Release-Liste ist zu lang. Bitte später erneut prüfen.');
+  return selectDesktopRelease(releases);
 }
 
 function createUpdateController({ updater, currentVersion, enabled,

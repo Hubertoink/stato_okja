@@ -13,6 +13,12 @@ describe('demo statistics', () => {
     expect(overview.weeklyProfile.rangeEnd).toBeGreaterThan(overview.weeklyProfile.rangeStart);
   });
 
+  it('preserves a recorded total without an age or gender breakdown during a notes edit', () => {
+    const activity = createDemoActivity({ date: '2001-01-15', countTotal: 12, cohorts: [] });
+    expect(updateDemoActivity(activity.id, { notes: 'Added notes' })).toMatchObject({ countTotal: 12, cohorts: [] });
+    expect(updateDemoActivity(activity.id, { countMale: 3 })).toMatchObject({ countTotal: 3, countMale: 3 });
+  });
+
   it('retains a plan without counting it in actual statistics', () => {
     const before = getDemoStatsOverview().summary;
     const planned = createDemoActivity({ date: '2099-11-19', startTime: '15:00', endTime: '18:00', executionStatus: 'planned' });

@@ -237,17 +237,14 @@ export class AuthService {
       ? await this.orgs.findOne({ where: { id: user.orgId } })
       : null);
     const orgName = org?.name ?? null;
-    const avatarUrl = normalizeUploadPath(
-      (user as unknown as { avatarUrl?: string | null }).avatarUrl ?? null,
-    );
-    const rawTheme = (user as unknown as { theme?: string }).theme;
+    const avatarUrl = normalizeUploadPath(user.avatarUrl);
+    const rawTheme = user.theme;
     const theme =
       !rawTheme || rawTheme === 'light' || rawTheme === 'Light Steel'
         ? 'Default Theme'
         : rawTheme;
-    const rawThemeMode = (user as unknown as { themeMode?: string }).themeMode;
-    const themeMode: ThemeMode = SUPPORTED_THEME_MODES.includes(rawThemeMode as ThemeMode)
-      ? rawThemeMode as ThemeMode
+    const themeMode = SUPPORTED_THEME_MODES.includes(user.themeMode)
+      ? user.themeMode
       : 'system';
 
     return {
@@ -1058,15 +1055,13 @@ export class AuthService {
     if (!user) throw new Error('User not found');
     if (typeof patch.name === 'string') user.name = patch.name;
     if (typeof patch.avatarUrl !== 'undefined') {
-      (user as unknown as { avatarUrl?: string | null }).avatarUrl = normalizeUploadPath(
-        patch.avatarUrl,
-      );
+      user.avatarUrl = normalizeUploadPath(patch.avatarUrl);
     }
     if (typeof patch.theme === 'string') {
-      (user as unknown as { theme?: string }).theme = patch.theme;
+      user.theme = patch.theme;
     }
     if (typeof patch.themeMode === 'string' && SUPPORTED_THEME_MODES.includes(patch.themeMode)) {
-      (user as unknown as { themeMode?: ThemeMode }).themeMode = patch.themeMode;
+      user.themeMode = patch.themeMode;
     }
     if (typeof patch.locale === 'string') user.locale = resolveLocale(patch.locale);
     if (typeof patch.sidebarColoredIcons === 'boolean') {

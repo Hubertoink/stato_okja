@@ -37,6 +37,7 @@ export class SystemDataUploadStore {
     fileCount: number;
     totalBytes: number;
     warnings: string[];
+    rootMissing?: true;
   }> {
     const uploadsRoot = this.uploadsRoot;
     const warnings: string[] = [];
@@ -75,10 +76,15 @@ export class SystemDataUploadStore {
 
     try {
       await stat(uploadsRoot);
-      await walk(uploadsRoot);
-    } catch {
-      return { files: [], fileCount: 0, totalBytes: 0, warnings: [] };
+    } catch (error) {
+      // A fresh installation can have no uploads directory before its first write.
+      // Its absence cannot establish that previously registered files are gone.
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return { files: [], fileCount: 0, totalBytes: 0, warnings: [], rootMissing: true };
+      }
+      throw error;
     }
+    await walk(uploadsRoot);
 
     return {
       files,
@@ -107,7 +113,9 @@ export class SystemDataUploadStore {
     }
 
     const verification = await this.scanUploads();
-    warnings.push(...verification.warnings);
+    if (verification.rootMissing || verification.warnings.length) {
+      throw new InternalServerErrorException('Die Löschung der Upload-Dateien konnte nicht überprüft werden.');
+    }
     if (verification.fileCount > 0) {
       throw new InternalServerErrorException(
         `Upload-Dateien konnten nicht vollständig gelöscht werden (${verification.fileCount} Dateien verbleiben).`,

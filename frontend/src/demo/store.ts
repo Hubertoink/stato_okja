@@ -1710,7 +1710,10 @@ function normalizeActivityPayload(data: Partial<Activity> & Record<string, unkno
   const countMale = readNumber(data.countMale) ?? fallback?.countMale ?? 0;
   const countFemale = readNumber(data.countFemale) ?? fallback?.countFemale ?? 0;
   const countDiverse = readNumber(data.countDiverse) ?? fallback?.countDiverse ?? 0;
-  const countTotal = readNumber(data.countTotal) ?? countMale + countFemale + countDiverse;
+  const attendanceChanged = data.countMale !== undefined || data.countFemale !== undefined ||
+    data.countDiverse !== undefined || data.cohorts !== undefined;
+  const previousTotal = attendanceChanged ? undefined : fallback?.countTotal;
+  const countTotal = readNumber(data.countTotal) ?? previousTotal ?? countMale + countFemale + countDiverse;
   const counts = { countMale, countFemale, countDiverse, countTotal };
   const date = String(data.date || fallback?.date || localIsoDate(new Date())).slice(0, 10);
   const executionStatus = activityStatusForDate(status(data.executionStatus ?? fallback?.executionStatus), date);

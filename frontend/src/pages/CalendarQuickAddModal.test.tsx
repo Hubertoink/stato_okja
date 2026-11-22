@@ -52,6 +52,34 @@ function activity(version: number, youngWomen: number): Activity {
 beforeEach(() => { state.categoryMode = 'multiple'; state.activity = undefined; state.staff = []; state.mutate.mockReset(); });
 
 describe('activity editor refresh', () => {
+  it.each(['page', 'calendar'])('keeps aggregate-only attendance when only notes change in the %s editor', (editor) => {
+    const initial = { ...activity(1, 0), cohorts: [], countMale: 4, countFemale: 6, countTotal: 12 };
+    state.activity = initial;
+    render(editor === 'page' ? <MemoryRouter><ActivityEditPage /></MemoryRouter> :
+      <ActivityQuickAdd dateISO={initial.date} activity={initial} onClose={vi.fn()} />);
+    expect(screen.getByText('12')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Notizen'), { target: { value: 'New notes' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    const { data } = state.mutate.mock.calls[0][0];
+    expect(data).toMatchObject({ notes: 'New notes', expectedVersion: 1 });
+    for (const field of ['cohorts', 'countTotal', 'countMale', 'countFemale', 'countDiverse']) {
+      expect(data).not.toHaveProperty(field);
+    }
+  });
+
+  it.each(['page', 'calendar'])('allows explicitly clearing legacy attendance before planning in the %s editor', (editor) => {
+    const initial = { ...activity(1, 0), cohorts: [], countTotal: 12 };
+    state.activity = initial;
+    render(editor === 'page' ? <MemoryRouter><ActivityEditPage /></MemoryRouter> :
+      <ActivityQuickAdd dateISO={initial.date} activity={initial} onClose={vi.fn()} />);
+    fireEvent.change(document.querySelector('input[type="date"]')!, { target: { value: '2099-11-19' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Besucherzahlen entfernen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(state.mutate.mock.calls[0][0].data).toMatchObject({
+      executionStatus: 'planned', cohorts: [], countTotal: 0, countMale: 0, countFemale: 0, countDiverse: 0,
+    });
+  });
+
   it('offers contributions in the calendar modal and saves explicit minutes', () => {
     const initial = activity(1, 4);
     render(<ActivityQuickAdd dateISO={initial.date} activity={initial} onClose={vi.fn()} />);
@@ -193,7 +221,8 @@ describe('planned activity workflow', () => {
     fireEvent.click(screen.getByRole('menuitemradio', { name: 'Ausgefallen' }));
     expect(screen.getByLabelText('6-9 Jahre W')).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
-    expect(state.mutate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ executionStatus: 'cancelled', countTotal: 0 }) }), expect.anything());
+    expect(state.mutate.mock.calls[0][0].data).toMatchObject({ executionStatus: 'cancelled' });
+    expect(state.mutate.mock.calls[0][0].data).not.toHaveProperty('countTotal');
   });
 });
 

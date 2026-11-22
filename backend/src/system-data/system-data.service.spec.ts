@@ -438,7 +438,10 @@ describe('SystemDataService', () => {
     expect(auditService.log).toHaveBeenCalled();
   });
 
-  it('rolls back the database and files when restored sizes cannot be scanned', async () => {
+  it.each([
+    { warnings: ['images: permission denied'] },
+    { warnings: [], rootMissing: true },
+  ])('rolls back the database and files when restored sizes cannot be scanned (%j)', async (scan) => {
     const { service, queryRunner, uploadStore, importArchiveReader } = createService();
     Object.assign(queryRunner, { isTransactionActive: true });
     jest.spyOn(importArchiveReader, 'read').mockResolvedValue({
@@ -450,7 +453,7 @@ describe('SystemDataService', () => {
     const applied = { backupRoot: '/tmp/previous', uploadsRoot: '/uploads' };
     jest.spyOn(uploadStore, 'applyImportedUploads').mockResolvedValue(applied);
     jest.spyOn(uploadStore, 'scanUploads').mockResolvedValue({
-      files: [], fileCount: 0, totalBytes: 0, warnings: ['images: permission denied'],
+      files: [], fileCount: 0, totalBytes: 0, ...scan,
     });
     jest.spyOn(uploadStore, 'restorePreviousUploads').mockResolvedValue(undefined);
     jest.spyOn(uploadStore, 'removePath').mockResolvedValue(undefined);

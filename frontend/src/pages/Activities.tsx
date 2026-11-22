@@ -1,4 +1,5 @@
 import { contributionExportRows } from '@/lib/contributionExport';
+import { createProjectSheetNamer } from '@/lib/projectSheetNames';
 import type { Contributor, Contribution } from '@/lib/contributors';
 import { useContributors } from '@/lib/contributors';
 import { DataTransition, LoadingTableRows } from '@/components/ui/DataTransition';
@@ -684,18 +685,7 @@ export default function Activities() {
             if (cell) cell.s = { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: 'FF5B6CFF' } }, alignment: { vertical: 'center', wrapText: true } };
           }
         };
-        const usedSheetNames = new Set<string>([autoT('ui_b6bf5f1a2033')]);
-        const uniqueSheetName = (value: string) => {
-          const base = (value.replace(/[\\/?*[\]:]/g, ' ').trim() || autoT('ui_20bda6d2e725')).slice(0, 31);
-          let name = base;
-          let suffix = 2;
-          while (usedSheetNames.has(name)) {
-            name = `${base.slice(0, Math.max(1, 31 - String(suffix).length - 1))} ${suffix}`;
-            suffix += 1;
-          }
-          usedSheetNames.add(name);
-          return name;
-        };
+        const uniqueSheetName = createProjectSheetNamer(wb);
         const projectsById = new Map(projects.map((project) => [project.id, project]));
         const activitiesByProject = new Map<string, ExportRow[]>();
         for (const activity of list) {

@@ -22,7 +22,7 @@ import {
 } from '../auth/org-scope-access';
 import { ActivityListQuery, type ActivityListFilters } from './activity-list-query';
 import { validateActivityStaffTimes } from './activity-staff-times';
-import { normalizeActivityMetrics } from './activity-metrics';
+import { normalizeActivityDuration, normalizeActivityMetrics } from './activity-metrics';
 import { assertActivityCategorySelection } from '../config/activity-category.config';
 
 type ActivityAuditSnapshot = {
@@ -592,7 +592,14 @@ export class ActivitiesService {
       await this.applyActivityCohorts(existing, activityOrgId, cohorts);
     }
 
-    normalizeActivityMetrics(existing);
+    // Historical totals can include people without a recorded gender.
+    // Recalculate attendance only when the PATCH actually supplies attendance.
+    if (Array.isArray(cohorts) || rest.countMale !== undefined || rest.countFemale !== undefined ||
+        rest.countDiverse !== undefined || rest.countTotal !== undefined) {
+      normalizeActivityMetrics(existing);
+    } else {
+      normalizeActivityDuration(existing);
+    }
     validateActivityStaffTimes(existing);
     await validateActivityContributions(existing, ids => this.activityRepository.manager.getRepository(Contributor).findBy({ id: In(ids) }), beforeActivityForAudit.contributions || []);
 

@@ -59,7 +59,8 @@ import {
   getActivityCohortCounts,
   getActivityFormStateFromActivity,
   getActivityFormSnapshot,
-  getCohortSums,
+  getFormAttendance,
+  setActivityCohortCount,
   type GenderKey,
   getProjectCategoryIds,
   getProjectTagIds,
@@ -133,7 +134,6 @@ export default function ActivityQuickAdd({
       return {
         ...activityForm,
         executionStatus: activityStatusForDate(activity.executionStatus, activity.date),
-        cohortCounts: getActivityCohortCounts(activity),
       };
     }
     return {
@@ -157,12 +157,11 @@ export default function ActivityQuickAdd({
     const nextForm = {
       ...getActivityFormStateFromActivity(activity),
       executionStatus: activityStatusForDate(activity.executionStatus, activity.date),
-      cohortCounts: getActivityCohortCounts(activity),
     };
     // Refresh the form and its version together. Never advance the version of
     // a dirty form, which must still conflict instead of overwriting remote edits.
     formVersionRef.current = activity.version;
-    initialCohortCountsRef.current = nextForm.cohortCounts;
+    initialCohortCountsRef.current = nextForm.cohortCounts || {};
     setForm(nextForm);
     reset(nextForm);
   }, [activity, isDirty, reset]);
@@ -171,8 +170,8 @@ export default function ActivityQuickAdd({
     [projects, form.projectId, initialProject],
   );
   const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date, true), [form.date]);
-  const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
-  const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
+  const cohortSums = getFormAttendance(form);
+  const cohortTotal = cohortSums.total;
   const countsLocked = isPlannedActivity(form.executionStatus) || isFutureActivityDate(form.date);
   const isCohortValueChanged = (cohortId: string, gender: GenderKey, value: number) =>
     Boolean(activity) && (initialCohortCountsRef.current[cohortId]?.[gender] || 0) !== value;
@@ -635,7 +634,7 @@ export default function ActivityQuickAdd({
                 </p>
               ) : null}
               <ActivityPlanningNotice status={form.executionStatus} date={form.date} hasCounts={cohortTotal > 0}
-                onClearCounts={() => setForm((current) => ({ ...current, cohortCounts: {} }))}
+                onClearCounts={() => setForm((current) => ({ ...current, recordedAttendance: undefined, cohortCounts: {} }))}
                 onDocument={() => setForm((current) => ({ ...current, executionStatus: 'completed' }))} />
             <fieldset disabled={countsLocked} className="min-w-0">
                 <div className="mb-1 flex items-center justify-between gap-3">
@@ -650,6 +649,9 @@ export default function ActivityQuickAdd({
                     />
                   )}
                 </div>
+                {form.recordedAttendance && cohortTotal > 0 && !Object.keys(form.cohortCounts || {}).length && (
+                  <p className="mb-2 text-sm text-gray-600">{t('quickAdd.aggregateAttendanceHint')}</p>
+                )}
                 {tapModeEnabled && (
                   <div className="mb-2 text-[11px] text-gray-500">{t('quickAdd.tapHelp')}</div>
                 )}
@@ -689,13 +691,7 @@ export default function ActivityQuickAdd({
                     const entry = form.cohortCounts?.[c.id] || { m: 0, w: 0, d: 0 };
                     const rowTotal = (entry.m || 0) + (entry.w || 0) + (entry.d || 0);
                     const update = (g: GenderKey, val: number) => {
-                      setForm({
-                        ...form,
-                        cohortCounts: {
-                          ...form.cohortCounts!,
-                          [c.id]: { ...entry, [g]: val },
-                        },
-                      });
+                      setForm(current => setActivityCohortCount(current, c.id, g, val));
                     };
                     const genders: GenderKey[] = ['m', 'w', 'd'];
                     const handleKeyDown = (

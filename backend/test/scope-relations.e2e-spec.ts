@@ -87,9 +87,6 @@ describe('Organization scope and activity relation regression (HTTP)', () => {
     const orgs = {
       listActiveMemberships: jest.fn(async () => [{ orgId: CHILD_ORG_ID, role: 'editor' }]),
       getSubtreeOrgIds: jest.fn(async (orgId: string) => subtree(orgId)),
-      getResolvedOrgScope: jest.fn(async (orgId: string | null) =>
-        orgId === null ? { orgId: null } : { orgId, orgIds: subtree(orgId) },
-      ),
       assertTaxonomyIdsVisibleForOrg: jest.fn(async () => undefined),
     };
     const activityRepository = {

@@ -477,7 +477,7 @@ export class SystemDataService {
       // Use actual restored bytes, never size values from an imported manifest.
       // Keep accounting in this transaction so no zero-sized backfill is visible.
       const restoredFiles = await this.uploadStore.scanUploads();
-      if (restoredFiles.warnings.length) {
+      if (restoredFiles.rootMissing || restoredFiles.warnings.length) {
         throw new InternalServerErrorException('Wiederhergestellte Upload-Größen konnten nicht ermittelt werden.');
       }
       const uploadRepository = queryRunner.manager.getRepository(StoredUpload);

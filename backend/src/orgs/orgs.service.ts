@@ -19,7 +19,6 @@ import { Activity } from '../activities/entities/activity.entity';
 import { Project } from '../projects/entities/project.entity';
 import { type SupportedLocale, type UserRole, User } from '../users/entities/user.entity';
 import { OrganizationMembership } from '../users/entities/organization-membership.entity';
-import type { ResolvedOrgScope } from '../auth/org-scope-access';
 
 const SUBTREE_CACHE_TTL_MS = 10_000;
 const ORGANIZATION_BANNER_URL_PATTERN = /^\/uploads\/images\/[a-z0-9][a-z0-9_.-]*$/i;
@@ -596,22 +595,9 @@ export class OrgsService {
     const uniqueIds = this.dedupeIds(ids);
     if (!uniqueIds.length) return;
     const visibleIds = new Set(await this.getVisibleTaxonomyIdsForOrg(orgId, kind));
-    const invalidIds = uniqueIds.filter((id) => !visibleIds.has(id));
-    if (!invalidIds.length) return;
-
-    const visibleItems = await this.listVisibleTaxonomiesForOrg(kind, orgId);
-    const visibleSet = new Set(visibleItems.map((item) => item.id));
-    const allItems = await this.loadTaxonomies(kind);
-    const invalidNames = allItems
-      .filter((item) => invalidIds.includes(item.id) && !visibleSet.has(item.id))
-      .map((item) => item.name)
-      .filter(Boolean);
-
-    throw new BadRequestException(
-      invalidNames.length
-        ? `Nicht erlaubte ${kind}: ${invalidNames.join(', ')}`
-        : `Nicht erlaubte ${kind} für diese Organisation.`,
-    );
+    if (uniqueIds.some((id) => !visibleIds.has(id))) {
+      throw new BadRequestException(`Nicht erlaubte ${kind} für diese Organisation.`);
+    }
   }
 
   private getCurrentSubtreeIdsFromOrgs(root: Organization, orgs: Organization[]): string[] {
@@ -753,6 +739,7 @@ export class OrgsService {
     return { ...saved, path } as Organization;
   }
 
+  /** Organization hierarchy for administrative views. Data access uses exact membership scopes. */
   async getSubtreeOrgIds(rootId: string) {
     const cached = this.subtreeCache.get(rootId);
     if (cached && cached.expiresAt > Date.now()) {
@@ -771,16 +758,6 @@ export class OrgsService {
     const ids = rows.map((row) => row.id);
     this.subtreeCache.set(rootId, { ids, expiresAt: Date.now() + SUBTREE_CACHE_TTL_MS });
     return ids;
-  }
-
-  /**
-   * Returns the same organization boundary that list endpoints use. Keeping
-   * this here prevents detail and mutation paths from accidentally treating a
-   * selected subtree as the user's root organization.
-   */
-  async getResolvedOrgScope(orgId: string | null): Promise<ResolvedOrgScope> {
-    if (orgId === null) return { orgId: null };
-    return { orgId, orgIds: await this.getSubtreeOrgIds(orgId) };
   }
 
   async getAncestorOrgIds(id: string) {

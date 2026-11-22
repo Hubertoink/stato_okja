@@ -39,8 +39,9 @@ Electron-Test prüft die Suche über einen lokalen Proxy.
 **Einmaliger Umstieg:** Desktop 1.16.0 und ältere Versionen enthalten keinen Updater.
 Die erste Version mit dieser Funktion muss einmal manuell installiert werden.
 
-Die Release-Suche liest die öffentliche GitHub-API ohne Token und berücksichtigt nur
-vollständige `desktop-vX.Y.Z`-Releases einschließlich der bisherigen Vorschau-Releases.
+Die Release-Suche liest bis zu 500 Releases über die öffentliche GitHub-API ohne
+Token. Unter diesen Einträgen wählt sie die höchste vollständige Desktop-Version
+mit dem Tag `desktop-vX.Y.Z`, einschließlich der bisherigen Vorschau-Releases.
 Server-Releases, Entwürfe und unvollständige Uploads werden ignoriert; ältere Versionen
 werden nicht installiert. `electron-updater` lädt vom ausgewählten Desktop-Release
 und prüft den Download gegen die SHA-512-Prüfsumme in `latest.yml`.

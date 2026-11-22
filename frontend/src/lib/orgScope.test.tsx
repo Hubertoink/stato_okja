@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Button } from '@/components/ui/Button';
 import { api } from './api';
 import { AuthProvider, useAuth, type AuthUser } from './auth';
 import { storeAuthToken } from './authStorage';
@@ -22,7 +23,7 @@ function ScopedChild({ record }: { record: (org: unknown, role: unknown) => void
     if (user) record(api.defaults.headers.common['X-Org-Scope'], user.role);
   }, [scope, user, record]);
   if (!user) return null;
-  return <button onClick={() => setScope('second')}>{scope}</button>;
+  return <Button onClick={() => setScope('second')}>{scope}</Button>;
 }
 
 describe('tenant scope at session bootstrap', () => {

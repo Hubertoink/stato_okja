@@ -5,18 +5,14 @@ import { ActivityType, AuditAction } from '../common/enums';
 describe('ProjectsService idempotent create', () => {
   function createService(
     projectRepository: Record<string, unknown>,
-    scopeOrgIds: Record<string, string[]> = {},
+    audit = { log: jest.fn().mockResolvedValue(undefined) },
   ) {
     return new ProjectsService(
       projectRepository as never,
       {} as never,
       {} as never,
-      {
-        getResolvedOrgScope: jest.fn(async (orgId: string | null) =>
-          orgId === null ? { orgId: null } : { orgId, orgIds: scopeOrgIds[orgId] || [orgId] },
-        ),
-      } as never,
-      { log: jest.fn().mockResolvedValue(undefined) } as never,
+      {} as never,
+      audit as never,
       {} as never,
       { retainProjectImage: jest.fn().mockResolvedValue(undefined) } as never,
     );
@@ -142,12 +138,13 @@ describe('ProjectsService idempotent create', () => {
         }),
       update: jest.fn().mockResolvedValue(undefined),
     };
-    const service = createService(projectRepository);
-
+    const audit = { log: jest.fn() };
+    const service = createService(projectRepository, audit);
+    const actor = { id: 'admin-1', name: 'Ada', role: 'superadmin', orgId: null, effectiveOrgId: 'child-1' };
     const result = await service.updateScoped(
       'project-1',
       { title: 'Child edit' },
-      { role: 'superadmin', orgId: null, effectiveOrgId: 'child-1' },
+      actor,
     );
 
     expect(projectRepository.update).toHaveBeenCalledWith(
@@ -155,11 +152,31 @@ describe('ProjectsService idempotent create', () => {
       expect.objectContaining({ title: 'Child edit' }),
     );
     expect(result).toMatchObject({ id: 'project-1', orgId: 'child-1' });
+    expect(audit.log).toHaveBeenCalledTimes(1);
+    expect(audit.log).toHaveBeenCalledWith(expect.objectContaining({
+      action: AuditAction.UPDATE, entityId: 'project-1', orgId: 'child-1',
+      details: { scoped: true }, user: actor,
+    }));
+  });
+
+  it.each([true, false])('audits the archive state %s once with the requesting user', async (archived) => {
+    const project = { id: 'project-1', orgId: 'org-1', title: 'Werkraum' };
+    const repository = { findOne: jest.fn().mockResolvedValue(project), update: jest.fn() };
+    const audit = { log: jest.fn() };
+    const service = createService(repository, audit);
+    const actor = { id: 'admin-1', name: 'Ada', role: 'org_admin', orgId: 'org-1' };
+    await service.archiveScoped(project.id, archived, actor);
+    expect(repository.update).toHaveBeenCalledWith(project.id, { archived });
+    expect(audit.log).toHaveBeenCalledTimes(1);
+    expect(audit.log).toHaveBeenCalledWith(expect.objectContaining({
+      action: AuditAction.UPDATE, entityId: project.id, orgId: project.orgId,
+      details: { archived }, user: actor,
+    }));
   });
 
   it('lists only projects from the selected organization, not its children', async () => {
     const projectRepository = { find: jest.fn().mockResolvedValue([]) };
-    const service = createService(projectRepository, { 'parent-1': ['parent-1', 'child-1'] });
+    const service = createService(projectRepository);
 
     await service.findAllScoped(undefined, undefined, {
       role: 'superadmin',

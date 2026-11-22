@@ -161,6 +161,7 @@ function handleOrgs(method: string, segments: string[], params: Record<string, u
 
 function handleActivities(method: string, segments: string[], params: Record<string, unknown>, body: Record<string, unknown>): HandlerResult | undefined {
   if (segments[0] !== 'activities') return undefined;
+  if (method === 'get' && segments[1] === 'filter-availability') return ok(demo.getDemoActivityFilterAvailability());
   if (method === 'get' && segments[1] === 'acks') return ok(demo.getDemoActivityAcks(String(params.activityIds || '').split(',').filter(Boolean)));
   if (method === 'get' && segments.length === 1) return ok(demo.listDemoActivities(params));
   if (method === 'post' && segments.length === 1) return ok(demo.createDemoActivity(body), 201);
@@ -323,6 +324,7 @@ function handleRequest(method: string, path: string, params: Record<string, unkn
   if (method === 'patch' && segments[0] === 'users' && segments[1]) return ok({ ok: true });
   if (method === 'delete' && segments[0] === 'users' && segments[1]) return noContent();
 
+  if (method === 'get' && path === '/stats/years') return ok(demo.getDemoStatisticsYears());
   if (method === 'get' && path === '/stats/team') return ok(demo.getDemoTeamStats(params));
   if (method === 'get' && path === '/stats/summary') return ok(demo.getDemoStatsSummary(params));
   if (method === 'get' && path === '/stats/overview') return ok(demo.getDemoStatsOverview(params));

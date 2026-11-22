@@ -6,7 +6,6 @@ import ActivityPlanningNotice from '@/components/ActivityPlanningNotice';
 import { usePublicConfig } from '@/lib/publicConfig';
 import {
   selectActivityCategory,
-  mergeActivityCategoryDefaults,
   SINGLE_CATEGORY_MESSAGE,
 } from '@/lib/activityCategories';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -14,7 +13,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Boxes, Plus as PlusIcon, Save as SaveIcon } from 'lucide-react';
 import ActivityExecutionStatusControl from '@/components/ActivityExecutionStatusControl';
 import { useCreateActivity } from '@/lib/activities';
-import { activityStatusForDate, activityToday, isPlannedActivity, isFutureActivityDate } from '@/lib/activityExecutionStatus';
+import { activityStatusForDate, activityToday } from '@/lib/activityExecutionStatus';
 import { useProjects, type Project } from '@/lib/projects';
 import { useLocations } from '@/lib/locations';
 import {
@@ -46,14 +45,15 @@ import { useActivityInlineCreation } from './useActivityInlineCreation';
 import {
   type ActivityFormState,
   buildActivitySavePayload,
+  applyActivityProjectDefaults,
+  getActivityEditorValidation,
+  createActivityDraft,
+  useNewActivityDefaults,
   type GenderKey,
   getCohortSums,
   getActivityFormSnapshot,
-  getProjectCategoryIds,
-  getProjectTagIds,
   getStaffGroupMembers,
   getWeekdayLabel,
-  mergeProjectStaffIds,
 } from './activityEditorShared';
 import { useTranslation } from 'react-i18next';
 import { autoT } from '@/i18n/auto';
@@ -61,7 +61,6 @@ import { EditorActions, EditorHeader, EditorSurface } from '@/components/ui/Edit
 import { Button } from '@/components/ui/Button';
 import SingleLineTextField from '@/components/SingleLineTextField';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
-import { getTimeRangeValidationIssue } from '@/lib/timeRange';
 
 export default function ActivityCreatePage() {
   const { t } = useTranslation(['activities', 'common']);
@@ -101,12 +100,7 @@ export default function ActivityCreatePage() {
   const [validationErrors, setValidationErrors] = useState<{ date?: string; project?: string }>({});
   const dateFieldRef = useRef<HTMLInputElement | null>(null);
   const projectFieldRef = useRef<HTMLButtonElement | null>(null);
-  const [form, setForm] = useState<ActivityFormState>(() => ({
-    cohortCounts: {},
-    date: (qpDate || activityToday()).slice(0, 10),
-    executionStatus: activityStatusForDate(undefined, qpDate || activityToday()),
-    projectId: qpProjectId,
-  }));
+  const [form, setForm] = useState<ActivityFormState>(() => createActivityDraft(qpDate || activityToday(), qpProjectId));
   const { discardDialog, requestDiscard, reset } = useUnsavedChangesGuard(form, {
     getSnapshot: getActivityFormSnapshot,
   });
@@ -119,8 +113,7 @@ export default function ActivityCreatePage() {
   const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date, true), [form.date]);
   const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
-  const countsLocked = isPlannedActivity(form.executionStatus) || isFutureActivityDate(form.date);
-  const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end, true);
+  const { countsLocked, mustClearCounts, tooManyCategories, timeRangeIssue } = getActivityEditorValidation(form, categoryMode, selectedProject);
   const timeRangeError = timeRangeIssue
     ? t(
         timeRangeIssue === 'incomplete'
@@ -156,61 +149,8 @@ export default function ActivityCreatePage() {
     openStaffCreate,
   } = activityInlineCreation;
 
-  // Default times; if project provided, prefill from defaults
-  useEffect(() => {
-    setForm((f) => ({
-      ...f,
-      start: f.start ?? selectedProject?.defaultStartTime ?? undefined,
-      end: f.end ?? selectedProject?.defaultEndTime ?? undefined,
-      projectId: f.projectId || qpProjectId,
-      date: (f.date || qpDate || activityToday()).slice(0, 10),
-    }));
-  }, [selectedProject, qpProjectId, qpDate]);
-
-  // Prefill tags from project defaults when none selected yet
-  useEffect(() => {
-    const proj = selectedProject;
-    if (!proj) return;
-    const current = form.tagIds || [];
-    if (current.length > 0) return;
-    const ids = getProjectTagIds(proj, tags);
-    if (ids.length > 0) setForm((f) => ({ ...f, tagIds: ids }));
-  }, [selectedProject, tags, form.tagIds]);
-
-  // Prefill the single project category when none is selected yet
-  useEffect(() => {
-    const proj = selectedProject;
-    if (!proj) return;
-    if (proj.type === 'open_door') {
-      if (form.categoryIds?.length) setForm((f) => ({ ...f, categoryIds: [] }));
-      return;
-    }
-    const cur = form.categoryIds || [];
-    if (cur.length > 0) return;
-    if (!categoryConfig.data) return;
-    const categoryIds = mergeActivityCategoryDefaults([], getProjectCategoryIds(proj), categoryMode);
-    if (categoryIds.length > 0) setForm((f) => ({ ...f, categoryIds: categoryIds }));
-  }, [selectedProject, form.categoryIds, categoryMode, categoryConfig.data]);
-
-  // Clear categories when switching to open-door
-  useEffect(() => {
-    if (selectedProject?.type === 'open_door') setForm((f) => ({ ...f, categoryIds: [] }));
-  }, [selectedProject?.type]);
-
-  // If there is exactly one location, auto-select it to reduce friction
-  useEffect(() => {
-    if ((locations || []).length === 1 && !form.locationId) {
-      setForm((f) => ({ ...f, locationId: locations![0]?.id }));
-    }
-  }, [locations, form.locationId]);
-
-  // Prefill staff from project's defaultStaff and defaultVolunteers by matching names
-  useEffect(() => {
-    if (!selectedProject) return;
-    setForm((f) => {
-      return { ...f, staffIds: mergeProjectStaffIds(f.staffIds, selectedProject, staff) };
-    });
-  }, [selectedProject, staff]);
+  useNewActivityDefaults(setForm, selectedProject, { tags, staff, categoryMode: categoryConfig.data?.activityCategoryMode },
+    locations?.length === 1 ? locations[0].id : undefined);
 
   // Project defaults are loaded asynchronously. Treat that initial prefill as the
   // starting point, not as an edit the user needs to discard.
@@ -226,11 +166,11 @@ export default function ActivityCreatePage() {
   }, [categories, form, initialFormReady, locations, projects, reset, staff, tags]);
 
   const handleSave = () => {
-    if (countsLocked && cohortTotal > 0) {
+    if (mustClearCounts) {
       setErrorOpen(t('common:executionStatus.clearCountsHint'));
       return;
     }
-    if (categoryMode === 'single' && (form.categoryIds?.length ?? 0) > 1 && selectedProject?.type !== 'open_door') {
+    if (tooManyCategories) {
       showToast(SINGLE_CATEGORY_MESSAGE, { type: 'error' });
       return;
     }
@@ -256,10 +196,7 @@ export default function ActivityCreatePage() {
     }
     setValidationErrors({});
     const payload = buildActivitySavePayload({
-      form: {
-        ...form,
-        executionStatus: activityStatusForDate(form.executionStatus, form.date),
-      },
+      form,
       selectedProject,
     });
     submitLockedRef.current = true;
@@ -377,7 +314,7 @@ export default function ActivityCreatePage() {
                 <select
                   id="location-select"
                   value={form.locationId || ''}
-                  onChange={(e) => setForm({ ...form, locationId: e.target.value || undefined })}
+                  onChange={(e) => setForm({ ...form, locationId: e.target.value })}
                   className="editor-field w-full border px-3 py-2"
                 >
                   <option value="">{t('quickAdd.selectLocation')}</option>
@@ -936,27 +873,8 @@ export default function ActivityCreatePage() {
 
       {picker && (
         <ProjectPickerModal
-          onPick={(p) => {
-            // Prefill tags if none selected yet from project's tag string
-            const names = (p.tag || '')
-              .split(',')
-              .map((s) => s.trim())
-              .filter(Boolean);
-            const byName = new Map((tags || []).map((t) => [t.name, t.id] as const));
-            const defaultTagIds = Array.from(
-              new Set(names.map((n) => byName.get(n)).filter(Boolean)),
-            ) as string[];
-            setForm((prev) => ({
-              ...prev,
-              projectId: p.id,
-              tagIds: prev.tagIds && prev.tagIds.length > 0 ? prev.tagIds : defaultTagIds,
-              categoryIds:
-                p.type === 'open_door'
-                  ? []
-                  : mergeActivityCategoryDefaults(prev.categoryIds, getProjectCategoryIds(p), categoryMode),
-              start: prev.start || p.defaultStartTime || '',
-              end: prev.end || p.defaultEndTime || '',
-            }));
+          onPick={(project) => {
+            setForm(form => applyActivityProjectDefaults(form, project, { tags, staff, categoryMode }));
             setValidationErrors((errors) => ({ ...errors, project: undefined }));
             setPicker(false);
           }}

@@ -1,3 +1,4 @@
+import { writeMemberships } from '../users/membership-write';
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Repository } from 'typeorm';
@@ -17,9 +18,8 @@ import { Tag } from '../taxonomy/entities/tag.entity';
 import { Cohort } from '../taxonomy/entities/cohort.entity';
 import { Activity } from '../activities/entities/activity.entity';
 import { Project } from '../projects/entities/project.entity';
-import { type SupportedLocale, type UserRole, User } from '../users/entities/user.entity';
+import { type SupportedLocale, User } from '../users/entities/user.entity';
 import { OrganizationMembership } from '../users/entities/organization-membership.entity';
-import type { ResolvedOrgScope } from '../auth/org-scope-access';
 
 const SUBTREE_CACHE_TTL_MS = 10_000;
 const ORGANIZATION_BANNER_URL_PATTERN = /^\/uploads\/images\/[a-z0-9][a-z0-9_.-]*$/i;
@@ -192,24 +192,6 @@ export class OrgsService {
       relations: { organization: true },
       order: { createdAt: 'ASC' },
     });
-  }
-
-  /**
-   * Creating a child organization does not create a hierarchy-wide data grant.
-   * The creator receives one explicit membership so they can intentionally
-   * switch into and administer the new organization.
-   */
-  async grantActiveMembership(
-    userId: string,
-    orgId: string,
-    role: Exclude<UserRole, 'superadmin'>,
-  ) {
-    if (!this.memberships) return null;
-    const existing = await this.memberships.findOne({ where: { userId, orgId } });
-    const membership = existing
-      ? Object.assign(existing, { role, status: 'active' as const })
-      : this.memberships.create({ userId, orgId, role, status: 'active' });
-    return this.memberships.save(membership);
   }
 
   findUsersByOrg(orgId: string | null) {
@@ -596,22 +578,9 @@ export class OrgsService {
     const uniqueIds = this.dedupeIds(ids);
     if (!uniqueIds.length) return;
     const visibleIds = new Set(await this.getVisibleTaxonomyIdsForOrg(orgId, kind));
-    const invalidIds = uniqueIds.filter((id) => !visibleIds.has(id));
-    if (!invalidIds.length) return;
-
-    const visibleItems = await this.listVisibleTaxonomiesForOrg(kind, orgId);
-    const visibleSet = new Set(visibleItems.map((item) => item.id));
-    const allItems = await this.loadTaxonomies(kind);
-    const invalidNames = allItems
-      .filter((item) => invalidIds.includes(item.id) && !visibleSet.has(item.id))
-      .map((item) => item.name)
-      .filter(Boolean);
-
-    throw new BadRequestException(
-      invalidNames.length
-        ? `Nicht erlaubte ${kind}: ${invalidNames.join(', ')}`
-        : `Nicht erlaubte ${kind} für diese Organisation.`,
-    );
+    if (uniqueIds.some((id) => !visibleIds.has(id))) {
+      throw new BadRequestException(`Nicht erlaubte ${kind} für diese Organisation.`);
+    }
   }
 
   private getCurrentSubtreeIdsFromOrgs(root: Organization, orgs: Organization[]): string[] {
@@ -739,20 +708,29 @@ export class OrgsService {
 
   findAll() { return this.repo.find(); }
 
-  async create(name: string, parentId?: string | null) {
-    const parent = parentId ? await this.repo.findOne({ where: { id: parentId } }) : null;
-    const o = this.repo.create({ name, parentId: parent?.id ?? null, taxonomySettings: null, childTaxonomyDefaults: null });
-    const saved = await this.repo.save(o);
-    // compute materialized path: parent.path + '/' + id or id for root
-    const path = parent?.path ? `${parent.path}/${saved.id}` : saved.id;
-    await this.repo.update({ id: saved.id }, { path });
-    // Create default Location with same name, scoped to org
-    const loc = this.locations.create({ name, active: true, orgId: saved.id });
-    await this.locations.save(loc);
+  async create(name: string, parentId?: string | null, initialAdminId?: string) {
+    const created = await writeMemberships(this.repo.manager, async write => {
+      const organizations = write.manager.getRepository(Organization);
+      const locations = write.manager.getRepository(this.locations.target);
+      const parent = parentId ? await organizations.findOneBy({ id: parentId }) : null;
+      if (parentId && !parent) throw new BadRequestException('Übergeordnete Organisation nicht gefunden');
+      const organization = await organizations.save(organizations.create({
+        name, parentId: parent?.id ?? null, taxonomySettings: null, childTaxonomyDefaults: null,
+      }));
+      const path = parent?.path ? `${parent.path}/${organization.id}` : organization.id;
+      await organizations.update({ id: organization.id }, { path });
+      await locations.save(locations.create({ name, active: true, orgId: organization.id }));
+      if (initialAdminId) {
+        const user = await write.account(initialAdminId);
+        await write.grant(user, organization.id, 'org_admin');
+      }
+      return { ...organization, path } as Organization;
+    });
     this.clearSubtreeCache();
-    return { ...saved, path } as Organization;
+    return created;
   }
 
+  /** Organization hierarchy for administrative views. Data access uses exact membership scopes. */
   async getSubtreeOrgIds(rootId: string) {
     const cached = this.subtreeCache.get(rootId);
     if (cached && cached.expiresAt > Date.now()) {
@@ -771,16 +749,6 @@ export class OrgsService {
     const ids = rows.map((row) => row.id);
     this.subtreeCache.set(rootId, { ids, expiresAt: Date.now() + SUBTREE_CACHE_TTL_MS });
     return ids;
-  }
-
-  /**
-   * Returns the same organization boundary that list endpoints use. Keeping
-   * this here prevents detail and mutation paths from accidentally treating a
-   * selected subtree as the user's root organization.
-   */
-  async getResolvedOrgScope(orgId: string | null): Promise<ResolvedOrgScope> {
-    if (orgId === null) return { orgId: null };
-    return { orgId, orgIds: await this.getSubtreeOrgIds(orgId) };
   }
 
   async getAncestorOrgIds(id: string) {

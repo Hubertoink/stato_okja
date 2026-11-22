@@ -10,6 +10,20 @@ const api = axios.create({ baseURL: '/api', adapter: demoAxiosAdapter });
 describe('demo contributor API', () => {
   beforeEach(() => resetDemoStore());
 
+  it('lists available years and pages only matching activities when the contribution checkbox is set', async () => {
+    const person = (await api.post('/contributors', { name: 'Filtertest' })).data;
+    const date = '2002-01-14';
+    await api.post('/activities', { date, durationMinutes: 60 });
+    const included = (await api.post('/activities', { date, durationMinutes: 60, contributions: [{ contributorId: person.id, minutes: 30 }] })).data;
+    const params = { from: date, to: date, page: 1, limit: 1, hasContributions: '1' };
+    const result = (await api.get('/activities', { params })).data;
+    expect(result).toMatchObject({ total: 1, data: [{ id: included.id }] });
+    expect((await api.get('/activities', { params: { ...params, hasContributions: 'false' } })).data.total).toBe(2);
+    const availability = (await api.get('/activities/filter-availability')).data;
+    expect(availability).toMatchObject({ availableYears: expect.arrayContaining(['2002']), hasUncategorized: true });
+    expect(availability.availableYears).toEqual([...new Set<string>(availability.availableYears)].sort().reverse());
+  });
+
   it('loads the master data and supports creating, editing, archiving and restoring people', async () => {
     const initial = (await api.get<Contributor[]>('/contributors')).data;
     expect(initial.some(person => person.active)).toBe(true);

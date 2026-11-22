@@ -50,6 +50,22 @@ test('release discovery paginates and surfaces HTTP failures', async () => {
   await assert.rejects(discoverDesktopRelease(async () => ({ ok: false, status: 403 })), { status: 403 });
 });
 
+test('five full pages still return the highest complete desktop release in the search window', async () => {
+  const serverRelease = { tag_name: 'v9.0.0', assets: [] };
+  let calls = 0;
+  const selected = await discoverDesktopRelease(async () => {
+    calls += 1;
+    assert.ok(calls <= 5);
+    const batch = Array(100).fill(serverRelease);
+    if (calls === 1) batch[0] = release('1.25.2');
+    if (calls === 3) batch[30] = release('1.27.0', { assets: [] });
+    if (calls === 5) batch[99] = release('1.26.0');
+    return { ok: true, json: async () => batch };
+  });
+  assert.equal(calls, 5);
+  assert.equal(selected.version, '1.26.0');
+});
+
 test('default discovery uses the updater Chromium session with an abort deadline', async () => {
   const f = fixture({ discover: undefined });
   let calls = 0;

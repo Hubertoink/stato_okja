@@ -39,6 +39,7 @@ export class UploadMaintenanceService implements OnApplicationBootstrap, OnModul
   private async reconcile() {
     const referenced = await this.systemData.getReferencedUploadPaths();
     const scan = await this.store.scanUploads();
+    if (scan.rootMissing) return;
     if (scan.warnings.length) throw new Error(scan.warnings.join('; '));
     const repository = this.dataSource.getRepository(StoredUpload);
     const records = await repository.find();

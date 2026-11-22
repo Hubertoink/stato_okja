@@ -22,6 +22,13 @@ Bestandteil des vollständigen Backups.
 
 Der Export ist read-only und verändert keine Daten.
 
+JSON, CSV und Tabellenzählungen stammen aus derselben Datenbanksicht. PostgreSQL
+hält dafür eine Lesetransaktion mit `REPEATABLE READ` während der Tabellenausgabe.
+SQL.js übernimmt die Tabellen vor der Ausgabe in den Arbeitsspeicher. Läuft dort
+gerade eine Schreibtransaktion, muss der Export erneut gestartet werden. Uploads
+liegen auf dem Dateisystem. Für einen gemeinsamen Sicherungszeitpunkt von Tabellen
+und Dateien während des Exports Änderungen an Uploads pausieren.
+
 Das Manifest enthält zusätzlich ein Exportformat und eine Schema-Version, damit spätere Restores die ZIP vorab validieren können.
 
 ## Import / Restore
@@ -46,6 +53,14 @@ Der ausführende Superadmin bleibt beim Restore erhalten. Dadurch bleiben die
 laufende Sitzung und die Login-Fähigkeit auch dann stabil, wenn Benutzer aus dem
 Backup ersetzt werden. Ein im Backup enthaltenes Konto mit derselben ID oder
 E-Mail wird für diesen einen Superadmin nicht darübergeschrieben.
+
+Vor dem Austausch der Live-Dateien erstellt der Restore eine vollständige Kopie
+der bisherigen Uploads. Bei einem Fehler in dieser Sicherungsphase bleiben die
+Originale erhalten. Während des Austauschs und der Größenprüfung bleibt die
+Datenbanktransaktion offen. Scheitert die Rücksicherung selbst oder ist das
+Datenbankergebnis unklar, bleibt die abgeschlossene Dateisicherung unter dem im
+Serverprotokoll genannten Pfad erhalten. Den Restore in einem Wartungsfenster
+ausführen und bei einem solchen Fehler Datenbankstand und Dateibestand gemeinsam prüfen.
 
 Der Import ist damit ein vollständiger Replace-All-Restore. Bestehende Daten werden nicht zusammengeführt.
 

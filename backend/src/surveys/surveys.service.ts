@@ -2,13 +2,14 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes } from 'crypto';
-import { In, IsNull, Repository } from 'typeorm';
+import { In, IsNull, LessThanOrEqual, Repository } from 'typeorm';
 import { Survey, type SurveyQuestion } from './entities/survey.entity';
 import { SurveyResponse } from './entities/survey-response.entity';
 import { AuditService } from '../common/audit.service';
@@ -40,6 +41,8 @@ type SurveyAnalyticsData = {
 
 @Injectable()
 export class SurveysService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(SurveysService.name);
+  private purgeInFlight?: Promise<void>;
   private purgeTimer?: NodeJS.Timeout;
   constructor(
     @InjectRepository(Survey) private readonly surveys: Repository<Survey>,
@@ -50,13 +53,17 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    void this.purgeExpiredRawResponses();
-    this.purgeTimer = setInterval(() => void this.purgeExpiredRawResponses(), 60 * 60 * 1000);
+    const run = () => void this.purgeExpiredRawResponses().catch((error: unknown) => {
+      this.logger.error('Survey response retention failed', error instanceof Error ? error.stack : String(error));
+    });
+    run();
+    this.purgeTimer = setInterval(run, 60 * 60 * 1000);
     this.purgeTimer.unref?.();
   }
 
-  onModuleDestroy() {
+  async onModuleDestroy() {
     if (this.purgeTimer) clearInterval(this.purgeTimer);
+    await this.purgeInFlight?.catch(() => undefined);
   }
 
   private token() {
@@ -133,70 +140,99 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
     return survey;
   }
 
-  async purgeExpiredRawResponses() {
-    const expired = await this.surveys
-      .createQueryBuilder('survey')
-      .where('survey.rawResponsesPurgeAt IS NOT NULL')
-      .andWhere('survey.rawResponsesPurgeAt <= :now', { now: new Date() })
-      .andWhere('survey.aggregateSnapshot IS NULL')
+  purgeExpiredRawResponses(): Promise<void> {
+    this.purgeInFlight ??= this.purgeExpiredSurveys().finally(() => { this.purgeInFlight = undefined; });
+    return this.purgeInFlight;
+  }
+
+  private async purgeExpiredSurveys() {
+    const cutoff = new Date();
+    const expired = await this.surveys.createQueryBuilder('survey')
+      .select('survey.id')
+      .where('survey.rawResponsesPurgeAt <= :cutoff', { cutoff })
+      .andWhere('(survey.aggregateSnapshot IS NULL OR EXISTS (SELECT 1 FROM survey_responses r WHERE r."surveyId" = survey.id))')
       .getMany();
-    for (const survey of expired) {
-      const liveAnalytics = await this.buildAnalytics(survey, false);
-      const snapshot =
-        liveAnalytics.responsesCount >= 5
-          ? liveAnalytics
-          : {
-              responsesCount: liveAnalytics.responsesCount,
-              expectedParticipants: survey.expectedParticipants,
-              responseRate: liveAnalytics.responseRate,
-              questions: [],
-              suppressed: true,
-              generatedAt: new Date().toISOString(),
-            };
-      survey.aggregateSnapshot = snapshot;
-      await this.surveys.save(survey);
-      await this.responses.delete({ surveyId: survey.id });
-      await this.audit.log({
+
+    for (const { id } of expired) {
+      const purged = await this.surveys.manager.transaction(async manager => {
+        const surveys = manager.getRepository(Survey);
+        const responses = manager.getRepository(SurveyResponse);
+        const survey = await surveys.findOne({
+          where: { id, rawResponsesPurgeAt: LessThanOrEqual(cutoff) },
+          ...(manager.dataSource.options.type === 'postgres' ? { lock: { mode: 'pessimistic_write' as const } } : {}),
+        });
+        if (!survey) return;
+        const existingSnapshot = survey.aggregateSnapshot;
+        if (!existingSnapshot) {
+          const analytics = await this.buildAnalytics(survey, false, responses);
+          survey.aggregateSnapshot = analytics.responsesCount >= 5
+            ? analytics
+            : { ...analytics, questions: [], suppressed: true };
+          await surveys.save(survey);
+        }
+        const deleted = await responses.delete({ surveyId: id });
+        if (existingSnapshot && !deleted.affected) return;
+        return { title: survey.title, orgId: survey.orgId, responsesCount: survey.aggregateSnapshot?.responsesCount };
+      });
+      if (purged) await this.audit.log({
         action: AuditAction.PURGE,
         entityType: 'survey_responses',
-        entityId: survey.id,
-        entityTitle: survey.title,
-        orgId: survey.orgId,
-        details: { responsesCount: snapshot.responsesCount, reason: '30-day retention reached' },
+        entityId: id,
+        entityTitle: purged.title,
+        orgId: purged.orgId,
+        details: { responsesCount: purged.responsesCount, reason: '30-day retention reached' },
       });
     }
   }
 
   async findAll(orgId: string | null, search?: string, archived?: boolean) {
     await this.purgeExpiredRawResponses();
-    const qb = this.surveys
-      .createQueryBuilder('survey')
-      .where('survey.orgId IS NOT DISTINCT FROM :orgId', { orgId });
-    qb.andWhere('survey.id = survey.seriesId');
+    const org = orgId === null ? IsNull() : orgId;
+    const qb = this.surveys.createQueryBuilder('survey')
+      .where({ orgId: org })
+      .andWhere('survey.id = survey.seriesId');
     if (typeof archived === 'boolean') qb.andWhere('survey.archived = :archived', { archived });
     if (search?.trim())
       qb.andWhere('LOWER(survey.title) LIKE :search', {
         search: `%${search.trim().toLowerCase()}%`,
       });
-    qb.orderBy('survey.updatedAt', 'DESC');
-    const rows = await qb.getMany();
-    return Promise.all(
-      rows.map(async (survey) => {
-        const rounds = await this.roundsFor(survey);
-        const latest = rounds[rounds.length - 1] || survey;
-        const rootDto = await this.staffDto(survey);
-        const latestDto = await this.staffDto(latest);
-        return {
-          ...rootDto,
-          status: latestDto.status,
-          publicToken: latestDto.publicToken,
-          responsesCount: latestDto.responsesCount,
-          rawResponsesAvailable: latestDto.rawResponsesAvailable,
-          roundNumber: latestDto.roundNumber,
-          roundsCount: rounds.length,
-        };
-      }),
-    );
+    const roots = await qb.orderBy('survey.updatedAt', 'DESC').getMany();
+    if (!roots.length) return [];
+
+    const rounds = await this.surveys.find({
+      where: { orgId: org, seriesId: In(roots.map(root => root.id)) },
+      select: { id: true, seriesId: true, roundNumber: true, status: true, publicToken: true, aggregateSnapshot: true },
+      order: { roundNumber: 'ASC' },
+    });
+    const latest = new Map<string, Survey>();
+    const roundCounts = new Map<string, number>();
+    for (const round of rounds) {
+      const series = this.seriesIdOf(round);
+      latest.set(series, round);
+      roundCounts.set(series, (roundCounts.get(series) ?? 0) + 1);
+    }
+    const liveIds = roots.map(root => latest.get(root.id) ?? root)
+      .filter(round => !round.aggregateSnapshot).map(round => round.id);
+    const totals = liveIds.length ? await this.responses.createQueryBuilder('response')
+      .select('response.surveyId', 'surveyId')
+      .addSelect('COUNT(*)', 'total')
+      .where('response.surveyId IN (:...liveIds)', { liveIds })
+      .groupBy('response.surveyId')
+      .getRawMany<{ surveyId: string; total: string | number }>() : [];
+    const counts = new Map(totals.map(row => [row.surveyId, Number(row.total)]));
+    return roots.map(root => {
+      const round = latest.get(root.id) ?? root;
+      return {
+        ...root,
+        seriesId: this.seriesIdOf(root),
+        status: round.status,
+        publicToken: round.publicToken,
+        responsesCount: Number(round.aggregateSnapshot?.responsesCount ?? counts.get(round.id) ?? 0),
+        rawResponsesAvailable: !round.aggregateSnapshot,
+        roundNumber: round.roundNumber || 1,
+        roundsCount: roundCounts.get(root.id) ?? 0,
+      };
+    });
   }
 
   async hasArchived(orgId: string | null) {
@@ -657,11 +693,15 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
     return { ok: true };
   }
 
+  private rawResponsesUnavailable(survey: Survey) {
+    return !!survey.aggregateSnapshot || (survey.rawResponsesPurgeAt != null && survey.rawResponsesPurgeAt.getTime() <= Date.now());
+  }
+
   async listResponses(id: string, user: SurveyActor) {
     const survey = await this.surveys.findOneBy({ id });
     if (!survey) throw new NotFoundException('Umfrage nicht gefunden.');
     assertExactOrgScopedEntityAccess(survey, user);
-    if (survey.aggregateSnapshot) return { rawResponsesAvailable: false, responses: [] };
+    if (this.rawResponsesUnavailable(survey)) return { rawResponsesAvailable: false, responses: [] };
     const responses = await this.responses.find({
       where: { surveyId: id },
       order: { submittedAt: 'DESC' },
@@ -679,8 +719,8 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
     const survey = await this.surveys.findOneBy({ id: surveyId });
     if (!survey) throw new NotFoundException('Umfrage nicht gefunden.');
     assertExactOrgScopedEntityAccess(survey, user);
-    if (survey.aggregateSnapshot)
-      throw new BadRequestException('Einzelantworten wurden bereits anonymisiert gelöscht.');
+    if (this.rawResponsesUnavailable(survey))
+      throw new BadRequestException('Einzelantworten sind nach Ablauf der Aufbewahrungsfrist nicht mehr verfügbar.');
     const response = await this.responses.findOneBy({ id: responseId, surveyId });
     if (!response) throw new NotFoundException('Antwort nicht gefunden.');
     await this.responses.remove(response);
@@ -696,8 +736,8 @@ export class SurveysService implements OnModuleInit, OnModuleDestroy {
     return { ok: true };
   }
 
-  private async buildAnalytics(survey: Survey, includeTexts = true): Promise<SurveyAnalyticsData> {
-    const responses = await this.responses.find({
+  private async buildAnalytics(survey: Survey, includeTexts = true, repository = this.responses): Promise<SurveyAnalyticsData> {
+    const responses = await repository.find({
       where: { surveyId: survey.id },
       order: { submittedAt: 'ASC' },
     });

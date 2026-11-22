@@ -127,7 +127,7 @@ export function useTaxonomyAccess() {
 }
 
 // Tags
-export function useTags(params?: { active?: boolean; search?: string }) {
+export function useTags(params?: { active?: boolean; search?: string }, enabled = true) {
   const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['tags', scopeKey, params],
@@ -135,7 +135,7 @@ export function useTags(params?: { active?: boolean; search?: string }) {
       const res = await api.get('/taxonomy/tags', { params });
       return res.data as Tag[];
     },
-    enabled: ready,
+    enabled: ready && enabled,
   });
 }
 
@@ -176,7 +176,7 @@ export function useDeleteTag() {
 }
 
 // Cohorts
-export function useCohorts(params?: { active?: boolean }) {
+export function useCohorts(params?: { active?: boolean }, enabled = true) {
   const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['cohorts', scopeKey, params],
@@ -184,7 +184,7 @@ export function useCohorts(params?: { active?: boolean }) {
       const res = await api.get('/taxonomy/cohorts', { params });
       return res.data as Cohort[];
     },
-    enabled: ready,
+    enabled: ready && enabled,
   });
 }
 

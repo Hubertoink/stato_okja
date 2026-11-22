@@ -8,22 +8,11 @@ import { teamTimeSeries } from './teamTimeSeries';
 import { TeamActivitiesTable } from './TeamActivitiesTable';
 import { TeamParticipationChart } from './TeamParticipationChart';
 import { forwardRef, useImperativeHandle, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { useOrgScopedQueryState } from '@/lib/orgScope';
+import type { TeamRow, useTeamStatisticsQuery } from './useStatisticsAudienceQueries';
 import { Button } from '@/components/ui/Button';
 import type { StatisticsOverviewParams } from './types';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-type TeamRow = {
-  date?: string;
-  staffId: string;
-  name: string;
-  type: string;
-  status: string;
-  minutes: number;
-  assignments: number;
-};
 export type TeamStatisticsHandle = { export: () => void };
 const statuses = [
   { key: 'completed', label: 'Durchgeführt' },
@@ -41,25 +30,6 @@ const hours = (minutes: number) =>
   (minutes / 60).toLocaleString('de-DE', { maximumFractionDigits: 2 });
 const sum = (rows: TeamRow[], key: 'minutes' | 'assignments') =>
   rows.reduce((total, row) => total + row[key], 0);
-
-export function useTeamStatisticsQuery(params: StatisticsOverviewParams, enabled = true) {
-  const { scope, scopeKey, ready } = useOrgScopedQueryState();
-  const queryParams = {
-    from: params.from,
-    to: params.to,
-    type: params.type,
-    projectId: params.projectId,
-    weekdays: params.weekdays?.join(','),
-    closureState: params.closureState,
-    orgId: scope === null ? '' : scope,
-  };
-  return useQuery<TeamRow[]>({
-    queryKey: ['stats:team', scopeKey, queryParams],
-    enabled: ready && enabled,
-    queryFn: async () => (await api.get('/stats/team', { params: queryParams })).data,
-    refetchOnWindowFocus: true,
-  });
-}
 
 export const TeamStatistics = forwardRef<
   TeamStatisticsHandle,

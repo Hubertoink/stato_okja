@@ -1,7 +1,10 @@
+import { useEffect, type Dispatch, type SetStateAction } from 'react';
+import { mergeActivityCategoryDefaults, type ActivityCategoryMode } from '@/lib/activityCategories';
+import { getTimeRangeValidationIssue } from '@/lib/timeRange';
 import { resolveContributionTimes, type ContributionTime } from '@/lib/contributionTimes';
 import type { Activity } from '@/lib/activities';
 import {
-  DEFAULT_ACTIVITY_EXECUTION_STATUS,
+  DEFAULT_ACTIVITY_EXECUTION_STATUS, activityStatusForDate, isPlannedActivity, isFutureActivityDate,
   type ActivityExecutionStatus,
 } from '@/lib/activityExecutionStatus';
 import type { Project } from '@/lib/projects';
@@ -34,6 +37,9 @@ export type ActivityFormState = {
   staffTimes?: Array<{ staffId: string; minutes: number }>;
   contributions?: ContributionTime[];
   cohortCounts?: Record<string, { m: number; w: number; d: number }>;
+  // Existing records may store attendance totals without an age breakdown.
+  // Keep these until someone explicitly changes or clears the attendance.
+  recordedAttendance?: Record<GenderKey | 'total', number>;
 };
 
 /**
@@ -67,6 +73,7 @@ export function getActivityFormSnapshot(form: ActivityFormState): string {
     staffIds: normalizedIds(form.staffIds),
     staffTimes: customStaffTimes(form.staffTimes, form.staffIds, activityFormMinutes(form)).sort((a, b) => a.staffId.localeCompare(b.staffId)),
     cohortCounts,
+    attendance: getFormAttendance(form),
     contributions: resolveContributionTimes(form.contributions || [], activityFormMinutes(form)).sort((a, b) => a.contributorId.localeCompare(b.contributorId)),
   });
 }
@@ -108,6 +115,22 @@ export function getCohortSums(
   });
 
   return sums;
+}
+
+export function getFormAttendance(form: ActivityFormState) {
+  if (form.recordedAttendance) return form.recordedAttendance;
+  const sums = getCohortSums(form.cohortCounts);
+  return { ...sums, total: sums.m + sums.w + sums.d };
+}
+
+export function setActivityCohortCount(form: ActivityFormState, id: string, gender: GenderKey, value: number): ActivityFormState {
+  const entry = form.cohortCounts?.[id] ?? { m: 0, w: 0, d: 0 };
+  if (entry[gender] === value) return form;
+  return {
+    ...form,
+    recordedAttendance: undefined,
+    cohortCounts: { ...form.cohortCounts, [id]: { ...entry, [gender]: value } },
+  };
 }
 
 function hasStaffRole(member: StaffMember, roles: StaffRole[]) {
@@ -179,6 +202,58 @@ export function mergeProjectStaffIds(
   return Array.from(ids);
 }
 
+export function createActivityDraft(date: string, projectId?: string): ActivityFormState {
+  return { date: date.slice(0, 10), projectId, cohortCounts: {}, executionStatus: activityStatusForDate(undefined, date) };
+}
+
+type ProjectDefaults = { tags?: Tag[]; staff?: StaffMember[]; categoryMode?: ActivityCategoryMode };
+
+export function applyActivityProjectDefaults(form: ActivityFormState, project: Project, { tags, staff, categoryMode }: ProjectDefaults): ActivityFormState {
+  const switched = form.projectId !== project.id;
+  const patch: Partial<ActivityFormState> = {};
+  if (switched) patch.projectId = project.id;
+  if (form.start === undefined && project.defaultStartTime) patch.start = project.defaultStartTime;
+  if (form.end === undefined && project.defaultEndTime) patch.end = project.defaultEndTime;
+  // Undefined means the defaults haven't arrived. An empty selection is a deliberate edit.
+  if (tags && (form.tagIds === undefined || (switched && !form.tagIds.length))) {
+    patch.tagIds = getProjectTagIds(project, tags);
+  }
+  if (staff && (form.staffIds === undefined || switched)) {
+    patch.staffIds = mergeProjectStaffIds(form.staffIds, project, staff);
+  }
+  if (project.type === 'open_door') {
+    if (form.categoryIds?.length) patch.categoryIds = [];
+  } else if (categoryMode && (form.categoryIds === undefined || switched)) {
+    patch.categoryIds = mergeActivityCategoryDefaults(form.categoryIds, getProjectCategoryIds(project), categoryMode);
+  }
+  return Object.keys(patch).length ? { ...form, ...patch } : form;
+}
+
+export function useNewActivityDefaults(
+  setForm: Dispatch<SetStateAction<ActivityFormState>>,
+  project: Project | undefined,
+  { tags, staff, categoryMode }: ProjectDefaults,
+  singleLocationId?: string,
+) {
+  useEffect(() => {
+    if (!project && !singleLocationId) return;
+    setForm(form => {
+      const draft = project ? applyActivityProjectDefaults(form, project, { tags, staff, categoryMode }) : form;
+      return draft.locationId === undefined && singleLocationId ? { ...draft, locationId: singleLocationId } : draft;
+    });
+  }, [setForm, project, tags, staff, categoryMode, singleLocationId]);
+}
+
+export function getActivityEditorValidation(form: ActivityFormState, mode: ActivityCategoryMode, project?: Project) {
+  const countsLocked = isPlannedActivity(form.executionStatus) || isFutureActivityDate(form.date);
+  return {
+    countsLocked,
+    mustClearCounts: countsLocked && getFormAttendance(form).total > 0,
+    tooManyCategories: mode === 'single' && (form.categoryIds?.length ?? 0) > 1 && project?.type !== 'open_door',
+    timeRangeIssue: getTimeRangeValidationIssue(form.start, form.end, true),
+  };
+}
+
 export function getActivityCohortCounts(
   activity: Pick<Activity, 'cohorts'> | null | undefined,
 ): NonNullable<ActivityFormState['cohortCounts']> {
@@ -198,25 +273,32 @@ export function getActivityCohortCounts(
   return cohortCounts;
 }
 
-export function getActivityFormStateFromActivity(
-  activity: Activity,
-  fallback?: { date?: string; projectId?: string; start?: string; end?: string },
-): ActivityFormState {
+export function getActivityFormStateFromActivity(activity: Activity): ActivityFormState {
+  const cohortCounts = getActivityCohortCounts(activity);
+  const sums = getCohortSums(cohortCounts);
+  const m = activity.countMale ?? sums.m;
+  const w = activity.countFemale ?? sums.w;
+  const d = activity.countDiverse ?? sums.d;
+  const start = activity.startTime || undefined;
+  const end = activity.endTime || undefined;
+  const duration = activity.durationMinutes ?? activityFormMinutes({ start, end });
+  const staffIds = (activity.staff || []).map(member => member.id);
   return {
-    date: (activity.date || fallback?.date || '').slice(0, 10) || undefined,
-    projectId: activity.projectId || activity.project?.id || fallback?.projectId || undefined,
+    date: (activity.date || '').slice(0, 10) || undefined,
+    projectId: activity.projectId || activity.project?.id || undefined,
     locationId: activity.locationId || activity.location?.id || undefined,
-    start: activity.startTime || fallback?.start || undefined,
-    end: activity.endTime || fallback?.end || undefined,
-    executionStatus: activity.executionStatus || undefined,
+    start,
+    end,
+    executionStatus: activityStatusForDate(activity.executionStatus, activity.date),
     title: activity.title || undefined,
     categoryIds: (activity.categories || []).map((category) => category.id),
     tagIds: (activity.tags || []).map((tag) => tag.id),
     notes: activity.notes || undefined,
-    staffIds: (activity.staff || []).map((member) => member.id),
-    staffTimes: customStaffTimes(activity.staffTimes || [], (activity.staff || []).map(member => member.id), activity.durationMinutes),
-    cohortCounts: getActivityCohortCounts(activity),
-    contributions: (activity.contributions || []).map(entry => ({ ...entry, automatic: entry.minutes === (activity.durationMinutes ?? activityFormMinutes({ start: activity.startTime || undefined, end: activity.endTime || undefined })) })),
+    staffIds,
+    staffTimes: customStaffTimes(activity.staffTimes ?? undefined, staffIds, duration),
+    cohortCounts,
+    recordedAttendance: { m, w, d, total: activity.countTotal ?? m + w + d },
+    contributions: (activity.contributions || []).map(entry => ({ ...entry, automatic: entry.minutes === duration })),
   };
 }
 
@@ -225,57 +307,45 @@ export function buildActivitySavePayload({
   selectedProject,
   fallbackDate,
   fallbackType,
-  durationMinutesOverride,
+  fallbackDurationMinutes,
 }: {
   form: ActivityFormState;
   selectedProject?: Project;
   fallbackDate?: string;
   fallbackType?: Activity['type'];
-  durationMinutesOverride?: number | null;
+  fallbackDurationMinutes?: number | null;
 }): Partial<Activity> & Record<string, unknown> {
   const cohortSums = getCohortSums(form.cohortCounts);
-  const startMinutes = toMinutes(form.start || null);
-  const endMinutes = toMinutes(form.end || null);
-  const computedDurationMinutes =
-    startMinutes !== undefined && endMinutes !== undefined && endMinutes >= startMinutes
-      ? endMinutes - startMinutes
-      : undefined;
-  const durationMinutes = durationMinutesOverride ?? computedDurationMinutes;
-  const isOpenDoor = selectedProject?.type === 'open_door';
-
+  const durationMinutes = activityFormMinutes(form) ?? fallbackDurationMinutes ?? undefined;
+  const type = selectedProject?.type ?? fallbackType ?? 'project_open';
+  const date = (form.date || fallbackDate || '').slice(0, 10);
   return {
-    date: (form.date || fallbackDate || '').slice(0, 10),
+    date,
     startTime: form.start || null,
     endTime: form.end || null,
-    executionStatus: form.executionStatus,
-    type: (selectedProject?.type as Activity['type'] | undefined) || fallbackType || 'project_open',
+    executionStatus: activityStatusForDate(form.executionStatus, date),
+    type: type as Activity['type'],
     projectId: form.projectId,
-    ...(form.locationId ? { locationId: form.locationId } : {}),
+    ...(form.locationId !== undefined ? { locationId: form.locationId || null } : {}),
     title: form.title || null,
     notes: form.notes || null,
-    categoryIds: isOpenDoor ? [] : form.categoryIds || [],
+    categoryIds: type === 'open_door' ? [] : form.categoryIds || [],
     tagIds: form.tagIds || [],
     staffIds: form.staffIds || [],
     staffTimes: customStaffTimes(form.staffTimes, form.staffIds, durationMinutes),
-    contributions: resolveContributionTimes(form.contributions || [], computedDurationMinutes ?? durationMinutes),
+    contributions: resolveContributionTimes(form.contributions || [], durationMinutes),
     durationMinutes,
-    countMale: cohortSums.m,
-    countFemale: cohortSums.w,
-    countDiverse: cohortSums.d,
-    countTotal: cohortSums.m + cohortSums.w + cohortSums.d,
-    cohorts: Object.entries(form.cohortCounts || {}).map(([cohortId, genderCounts]) => ({
-      cohortId,
-      m: genderCounts.m || 0,
-      w: genderCounts.w || 0,
-      d: genderCounts.d || 0,
-    })),
+    ...(form.recordedAttendance ? {} : {
+      countMale: cohortSums.m,
+      countFemale: cohortSums.w,
+      countDiverse: cohortSums.d,
+      countTotal: cohortSums.m + cohortSums.w + cohortSums.d,
+      cohorts: Object.entries(form.cohortCounts || {}).map(([cohortId, genderCounts]) => ({
+        cohortId,
+        m: genderCounts.m || 0,
+        w: genderCounts.w || 0,
+        d: genderCounts.d || 0,
+      })),
+    }),
   };
-}
-
-function toMinutes(hhmm?: string | null): number | undefined {
-  if (!hhmm) return undefined;
-
-  const [hh, mm] = hhmm.split(':').map((value) => parseInt(value, 10));
-  if (Number.isNaN(hh) || Number.isNaN(mm)) return undefined;
-  return hh * 60 + mm;
 }

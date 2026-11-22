@@ -11,7 +11,6 @@ import {
   JoinColumn,
   OneToMany,
   BeforeInsert,
-  BeforeUpdate,
 } from 'typeorm';
 import { ActivityExecutionStatus, ActivityType } from '../../common/enums';
 import { Location } from '../../locations/entities/location.entity';
@@ -28,7 +27,6 @@ import { normalizeActivityMetrics } from '../activity-metrics';
 @Index('IDX_activities_orgId_projectId_date', ['orgId', 'projectId', 'date'])
 export class Activity {
   @BeforeInsert()
-  @BeforeUpdate()
   normalizeMetrics() {
     normalizeActivityMetrics(this);
   }

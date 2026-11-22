@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { cloneElement, useState, type ReactElement } from 'react';
-import { TeamStatistics, TeamMemberChips, useTeamStatisticsQuery } from './TeamStatistics';
+import { TeamStatistics, TeamMemberChips } from './TeamStatistics';
+import { useTeamStatisticsQuery } from './useStatisticsAudienceQueries';
 vi.mock('./TeamActivitiesTable', () => ({
   TeamActivitiesTable: ({ staffId }: { staffId: string }) => (
     <div data-testid="member-activities">{staffId}</div>

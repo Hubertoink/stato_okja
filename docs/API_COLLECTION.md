@@ -50,6 +50,10 @@ Content-Type: application/json
 
 ## 📋 Activities
 
+Normale Konten setzen für alle organisationsgebundenen Beispiele im REST-Client den
+zusätzlichen Standardheader `X-Org-Scope: {orgId}`. Eine aktive `orgId`
+liefert `GET /auth/me` in `memberships`.
+
 ### Get All Activities
 ```http
 GET /activities?from=2025-10-01&to=2025-10-31&type=open_door

@@ -288,10 +288,11 @@ export class AuthController {
     return { ok: true };
   }
 
-  @UseGuards(JwtAuthGuard, OrgScopeGuard)
+  // Account bootstrap returns the signed-in user's own memberships before a tenant is selected.
+  @UseGuards(JwtAuthGuard)
   @Get('me')
-  me(@Req() req: { user: { id: string; role: string; orgId?: string | null }; effectiveOrgId?: string | null }) {
-    return this.auth.getProfile(req.user.id, req.effectiveOrgId);
+  me(@Req() req: { user: { id: string } }, @Headers('x-org-scope') selectedOrg?: string) {
+    return this.auth.getProfile(req.user.id, selectedOrg);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -461,8 +462,9 @@ export class AuthController {
   updateMe(
     @Req() req: { user: { id: string } },
     @Body() body: UpdateMeDto,
+    @Headers('x-org-scope') selectedOrg?: string,
   ) {
-    return this.auth.updateProfile(req.user.id, body);
+    return this.auth.updateProfile(req.user.id, body, selectedOrg);
   }
 
   @UseGuards(JwtAuthGuard)

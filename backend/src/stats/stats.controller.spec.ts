@@ -6,6 +6,7 @@ import { OrgsService } from '../orgs/orgs.service';
 describe('StatsController org scoping', () => {
   let controller: StatsController;
   const service: Partial<StatsService> = {
+    getAvailableYears: jest.fn(async () => ['2026']),
     getOverview: jest.fn(async () => ({
       contributions: [],
       summary: {
@@ -60,6 +61,13 @@ describe('StatsController org scoping', () => {
 
     controller = module.get(StatsController);
     jest.clearAllMocks();
+  });
+
+  it('loads available years within the active organization without building the overview', async () => {
+    const request = { user: { role: 'editor', orgId: 'org-b' }, effectiveOrgId: 'org-a' };
+    await expect(controller.getYears(request)).resolves.toEqual(['2026']);
+    expect(service.getAvailableYears).toHaveBeenCalledWith('org-a', undefined);
+    expect(service.getOverview).not.toHaveBeenCalled();
   });
 
   it('monthly indicators: forwards all filters and preserves organization scope', async () => {

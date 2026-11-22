@@ -9,7 +9,7 @@ import { StatisticsTabs } from '@/components/AnnualTargetCards';
 import { formatStatisticsReportPeriod } from './statistics/reportPeriod';
 import { useTranslation } from 'react-i18next';
 import { useActiveOrganizationName } from '@/lib/useActiveOrganizationName';
-import { TeamStatistics, TeamMemberChips, useTeamStatisticsQuery, type TeamStatisticsHandle } from './statistics/TeamStatistics';
+import { TeamStatistics, TeamMemberChips, type TeamStatisticsHandle } from './statistics/TeamStatistics';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   ResponsiveContainer,
@@ -22,11 +22,11 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { useAuth } from '@/lib/auth';
-import { fetchAllActivities, useActivitiesPaged, type Activity } from '@/lib/activities';
+import { fetchAllActivities, type Activity } from '@/lib/activities';
 import { fetchAllLogbookEntries } from '@/lib/logbook';
 import { useCohorts, useTags, type Cohort } from '@/lib/taxonomy';
 import { useProjects } from '@/lib/projects';
-import { useOrgScope, useOrgScopeKey } from '@/lib/orgScope';
+import { useOrgScopedQueryState } from '@/lib/orgScope';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { colorForActivityType, translucent } from '@/lib/colors';
 import { isDarkThemeName, resolveThemeName } from '../lib/theme';
@@ -82,7 +82,7 @@ import { getCurrentIntlLocale } from '@/i18n/formatters';
 import { captureExportNode } from '@/lib/htmlCanvasExport';
 import WeeklyProfileHeatmap from '@/components/WeeklyProfileHeatmap';
 import type { OrganizationClosureStateFilter } from '@/lib/orgs';
-import { useStatisticsOverview } from './statistics/useStatisticsOverview';
+import { useStatisticsAudienceQueries } from './statistics/useStatisticsAudienceQueries';
 import { useStatisticsFilters } from './statistics/useStatisticsFilters';
 import { StatisticsKpis } from './statistics/StatisticsKpis';
 import { StatisticsActivitiesTable } from './statistics/StatisticsActivitiesTable';
@@ -231,8 +231,7 @@ export default function Statistics() {
 
   const { user } = useAuth();
   const { showToast } = useToast();
-  const { scope } = useOrgScope();
-  const scopeKey = useOrgScopeKey();
+  const { scope, scopeKey, ready } = useOrgScopedQueryState();
   const { data: publicConfig } = usePublicConfig();
   const effectiveExecutionStatuses = useMemo(
     () => normalizeActivityExecutionStatuses(selectedExecutionStatuses),
@@ -265,19 +264,6 @@ export default function Statistics() {
       selectedWeekdays,
     ],
   );
-  const teamQuery = useTeamStatisticsQuery(statsParams, audience === 'team');
-  const { data: teamMembers = [] } = useStaff();
-  const teamPeople = useMemo(
-    () => [...new Map([
-      ...teamMembers.map(member => [member.id, member.name] as [string, string]),
-      ...(teamQuery.data || []).map(row => [row.staffId, row.name] as [string, string]),
-    ]).entries()].sort((a, b) => a[1].localeCompare(b[1])),
-    [teamMembers, teamQuery.data],
-  );
-  useEffect(() => { setSelectedTeamMember(''); }, [scopeKey]);
-  const teamMemberFilter = audience === 'team' ? (
-    <TeamMemberChips people={teamPeople} selectedId={selectedTeamMember} onChange={setSelectedTeamMember} />
-  ) : null;
   const activitiesParams = useMemo(
     () => ({
       from: from || undefined,
@@ -299,11 +285,23 @@ export default function Statistics() {
     ],
   );
   const contributors = useContributors();
-  const overviewQ = useStatisticsOverview(statsParams, scopeKey, {
-    refetchOnWindowFocus: true,
-    refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
+  const { overviewQ, activitiesPageQ, teamQuery, activityYears, firstActivity } = useStatisticsAudienceQueries({
+    audience, statsParams, activitiesParams, page: activitiesPage, limit: ACTIVITIES_PER_PAGE,
+    refreshInterval: publicConfig?.liveRefreshIntervalMs,
   });
-  const monthCountsQ = useStatisticsMonthCounts(statsParams, scopeKey, selectedYear, filterMode === 'month' && !isCustomRange);
+  const { data: teamMembers = [] } = useStaff(undefined, audience === 'team');
+  const teamPeople = useMemo(
+    () => [...new Map([
+      ...teamMembers.map(member => [member.id, member.name] as [string, string]),
+      ...(teamQuery.data || []).map(row => [row.staffId, row.name] as [string, string]),
+    ]).entries()].sort((a, b) => a[1].localeCompare(b[1])),
+    [teamMembers, teamQuery.data],
+  );
+  useEffect(() => { setSelectedTeamMember(''); }, [scopeKey]);
+  const teamMemberFilter = audience === 'team' ? (
+    <TeamMemberChips people={teamPeople} selectedId={selectedTeamMember} onChange={setSelectedTeamMember} />
+  ) : null;
+  const monthCountsQ = useStatisticsMonthCounts(statsParams, scopeKey, selectedYear, ready && filterMode === 'month' && !isCustomRange);
   const monthCounts = monthlyActivityCounts(monthCountsQ.data ?? [], selectedYear);
   const monthMaximum = Math.max(0, ...monthCounts);
   const monthDescription = (month: number, name: string) => monthCountsQ.data
@@ -320,22 +318,12 @@ export default function Statistics() {
   const weeklyProfile = overview?.weeklyProfile;
   const topTags = overview?.topTags ?? [];
   const topProjects = overview?.topProjects ?? [];
-  const activityYears = overview?.availableYears ?? [];
-  const activitiesPageQ = useActivitiesPaged(
-    activitiesParams,
-    activitiesPage,
-    ACTIVITIES_PER_PAGE,
-    {
-      refetchOnWindowFocus: true,
-      refetchIntervalMs: publicConfig?.liveRefreshIntervalMs,
-    },
-  );
   const pagedActivities = activitiesPageQ.data?.data ?? [];
   const reportActivities = pagedActivities;
   const totalActivities = activitiesPageQ.data?.total ?? summary?.totalActivities ?? 0;
-  const { data: tagsAll = [] } = useTags({ active: true });
-  const { data: cohortsAll = [] } = useCohorts({ active: true });
-  const { data: cohortsForStatistics = [] } = useCohorts();
+  const { data: tagsAll = [] } = useTags({ active: true }, audience === 'visitors');
+  const { data: cohortsAll = [] } = useCohorts({ active: true }, audience === 'visitors');
+  const { data: cohortsForStatistics = [] } = useCohorts(undefined, audience === 'visitors');
   const { data: projectsAll = [] } = useProjects();
 
   const statsRunKey = useMemo(
@@ -371,9 +359,10 @@ export default function Statistics() {
     statsUiFlowMarksRef.current = {};
     statsUiPendingRunKeyRef.current = statsRunKey;
     statsUiFetchSeenRef.current = {};
-  }, [statsRunKey]);
+  }, [statsRunKey, audience]);
 
   useEffect(() => {
+    if (audience !== 'visitors' || !ready) return;
     const queryStates = [
       {
         key: 'summary',
@@ -521,6 +510,8 @@ export default function Statistics() {
       });
     }
   }, [
+    audience,
+    ready,
     byCategory,
     byCohort,
     byType,
@@ -1751,12 +1742,12 @@ export default function Statistics() {
       </SurfaceCard>
 
       {audience === 'team' ? <TeamStatistics ref={teamStatisticsRef} params={statsParams} query={teamQuery} staffId={selectedTeamMember}
-        firstActivity={overviewQ.isSuccess && !overviewQ.isPlaceholderData && activityYears.length === 0} /> : <DataTransition variant="statistics" showStatus={false} pending={overviewQ.isPending || overviewQ.isPlaceholderData}
+        firstActivity={firstActivity} /> : <DataTransition variant="statistics" showStatus={false} pending={overviewQ.isPending || overviewQ.isPlaceholderData}
         refreshing={overviewQ.isFetching} error={overviewQ.isError}
         label={`Statistik für ${formatRangeDisplay(MONTH_NAMES)} wird geladen …`}
         onRetry={() => { void overviewQ.refetch(); }}>
         {overviewQ.isSuccess && !overviewQ.isPlaceholderData && summary?.totalActivities === 0 ? (
-          <StatisticsEmptyState firstActivity={activityYears.length === 0} />
+          <StatisticsEmptyState firstActivity={firstActivity} />
         ) : <>
         <StatisticsKpis
           showAverage={showAverage}

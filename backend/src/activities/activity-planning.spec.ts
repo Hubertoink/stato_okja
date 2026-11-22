@@ -62,6 +62,13 @@ describe('planning through activity writes', () => {
     const updated = await service.update('a1', { notes: 'Still to document' });
     expect(updated?.executionStatus).toBe(Status.PLANNED);
   });
+  it('preserves historical attendance without cohort detail until the counts are edited', async () => {
+    Object.assign(record, { executionStatus: Status.COMPLETED, countMale: 2, countFemale: 1, countTotal: 12 });
+    const updated = await service.update('a1', { notes: 'Ergänzung' });
+    expect(updated).toMatchObject({ countMale: 2, countFemale: 1, countTotal: 12 });
+    const cleared = await service.update('a1', { cohorts: [] });
+    expect(cleared).toMatchObject({ countMale: 0, countFemale: 0, countTotal: 0 });
+  });
   it('documents the same record with real cohorts and totals', async () => {
     const updated = await service.update('a1', { executionStatus: Status.COMPLETED, cohorts: [{ cohortId: 'young', m: 2, w: 5, d: 1 }] });
     expect(updated).toMatchObject({ id: 'a1', executionStatus: Status.COMPLETED, countTotal: 8, version: 2 });

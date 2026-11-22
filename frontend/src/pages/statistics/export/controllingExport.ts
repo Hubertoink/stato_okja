@@ -2,6 +2,7 @@ import type { Activity } from '@/lib/activities';
 import type { LogbookEntry } from '@/lib/logbook';
 import type { Cohort } from '@/lib/taxonomy';
 import { colorForActivityType } from '@/lib/colors';
+import { createProjectSheetNamer } from '@/lib/projectSheetNames';
 import { formatWeeklyProfileTime, type WeeklyProfile } from '@/lib/weeklyProfile';
 import { autoT } from '@/i18n/auto';
 import type { ControllingExportRow } from '../types';
@@ -186,21 +187,7 @@ export async function exportControllingDataAsExcel({
   }
   const workbook = utils.book_new();
   utils.book_append_sheet(workbook, activitySheet, autoT('ui_b6bf5f1a2033'));
-  const usedSheetNames = new Set<string>([autoT('ui_b6bf5f1a2033')]);
-  const uniqueSheetName = (value: string) => {
-    const base = (value.replace(/[\\/?*[\]:]/g, ' ').trim() || autoT('ui_20bda6d2e725')).slice(
-      0,
-      31,
-    );
-    let name = base;
-    let suffix = 2;
-    while (usedSheetNames.has(name)) {
-      name = `${base.slice(0, Math.max(1, 31 - String(suffix).length - 1))} ${suffix}`;
-      suffix += 1;
-    }
-    usedSheetNames.add(name);
-    return name;
-  };
+  const uniqueSheetName = createProjectSheetNamer(workbook);
   const projectsById = new Map(projects.map((project) => [project.id, project]));
   const activitiesByProject = new Map<string, ControllingExportRow[]>();
   rows.forEach((activity) => {

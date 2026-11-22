@@ -6,6 +6,7 @@ export interface UserDto {
   email: string;
   name: string;
   role: Role;
+  isGlobalSuperadmin?: boolean;
   accountStatus?: 'active' | 'invited';
   orgId?: string | null;
   org?: { id: string; name: string } | null;

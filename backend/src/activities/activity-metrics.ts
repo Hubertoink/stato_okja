@@ -34,6 +34,12 @@ export function calculateActivityDurationMinutes(
   return Math.max(0, Math.round(durationSeconds / 60));
 }
 
+export function normalizeActivityDuration(target: ActivityMetricTarget): void {
+  target.durationMinutes =
+    calculateActivityDurationMinutes(target.startTime, target.endTime) ??
+    toNonNegativeInteger(target.durationMinutes);
+}
+
 /**
  * Enforces the persisted activity metric invariants in one place. Times are
  * authoritative for duration; an explicit duration is only used when a time
@@ -48,8 +54,5 @@ export function normalizeActivityMetrics(target: ActivityMetricTarget): void {
   target.countFemale = countFemale;
   target.countDiverse = countDiverse;
   target.countTotal = countMale + countFemale + countDiverse;
-
-  target.durationMinutes =
-    calculateActivityDurationMinutes(target.startTime, target.endTime) ??
-    toNonNegativeInteger(target.durationMinutes);
+  normalizeActivityDuration(target);
 }

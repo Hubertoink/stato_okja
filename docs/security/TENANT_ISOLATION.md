@@ -27,6 +27,14 @@ automatischen Zugriff auf Daten von Eltern-, Kind- oder Geschwisterorganisatione
    ist der Mandantenkontext `null` und niemals eine organisationsübergreifende
    Zusammenfassung.
 
+## Initialisierung einer Sitzung
+
+`GET /auth/me` liefert mit dem Zugangstoken die aktiven Mitgliedschaften des
+angemeldeten Kontos. Dieser Aufruf funktioniert bereits vor der Auswahl eines
+Mandanten. Clients setzen für den ersten fachlichen Aufruf und alle weiteren
+Aufrufe den Header `X-Org-Scope` auf die ausgewählte `memberships[].orgId`.
+Eine lokal gespeicherte Auswahl muss im aktuellen Profil enthalten sein.
+
 ## Umsetzungshinweise
 
 - Neue organisationsgebundene Controller erhalten `JwtAuthGuard`,

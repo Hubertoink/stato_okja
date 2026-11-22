@@ -246,6 +246,7 @@ export class ProjectsService {
   async update(
     id: string,
     data: Partial<Project> & { categoryIds?: string[] },
+    scopedUser?: ProjectAuditUser,
   ): Promise<Project | null> {
     const { categoryIds, ...rest } = data as ProjectWriteData;
     const normalizedRest = this.normalizeProjectWriteData(rest);
@@ -275,6 +276,8 @@ export class ProjectsService {
         entityId: updated.id,
         entityTitle: updated.title || null,
         orgId: updated.orgId ?? null,
+        details: scopedUser ? { scoped: true } : undefined,
+        user: scopedUser,
       });
     return updated ? this.hydrateProject(updated) : null;
   }
@@ -314,7 +317,7 @@ export class ProjectsService {
     }
   }
 
-  async archive(id: string, archived: boolean = true): Promise<Project | null> {
+  async archive(id: string, archived: boolean = true, user?: ProjectAuditUser): Promise<Project | null> {
     await this.projectRepository.update(id, { archived });
     const p = await this.findOne(id);
     if (p)
@@ -325,6 +328,7 @@ export class ProjectsService {
         entityTitle: p.title || null,
         orgId: p.orgId ?? null,
         details: { archived },
+        user,
       });
     return p ? this.hydrateProject(p) : null;
   }
@@ -440,18 +444,7 @@ export class ProjectsService {
     if (!existing) return null;
     assertExactOrgScopedEntityAccess(existing, user);
     const sanitized = removeOrgIdForNonSuperadmin(data, user);
-    const updated = await this.update(id, sanitized);
-    if (updated)
-      await this.audit.log({
-        action: AuditAction.UPDATE,
-        entityType: 'project',
-        entityId: updated.id,
-        entityTitle: updated.title || null,
-        orgId: updated.orgId ?? null,
-        details: { scoped: true },
-        user,
-      });
-    return updated;
+    return this.update(id, sanitized, user);
   }
 
   async removeScoped(id: string, user: OrgScopedUser & { id?: string }) {
@@ -465,17 +458,6 @@ export class ProjectsService {
     const existing = await this.projectRepository.findOne({ where: { id } });
     if (!existing) return null;
     assertExactOrgScopedEntityAccess(existing, user);
-    const p = await this.archive(id, archived);
-    if (p)
-      await this.audit.log({
-        action: AuditAction.UPDATE,
-        entityType: 'project',
-        entityId: p.id,
-        entityTitle: p.title || null,
-        orgId: p.orgId ?? null,
-        details: { archived },
-        user,
-      });
-    return p;
+    return this.archive(id, archived, user);
   }
 }

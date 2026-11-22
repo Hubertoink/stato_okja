@@ -39,6 +39,21 @@ describe('pending invitations in the user list', () => {
     expect(screen.queryByRole('button', { name: 'Erneut einladen' })).not.toBeInTheDocument();
   });
 
+  it.each([
+    { isMobile: false, globalDirectory: false }, { isMobile: false, globalDirectory: true },
+    { isMobile: true, globalDirectory: false }, { isMobile: true, globalDirectory: true },
+  ])('displays a global superadmin with a user membership and protects its row ($isMobile, $globalDirectory)', ({ isMobile, globalDirectory }) => {
+    render(<UserRow
+      userData={{ ...pending, role: 'user', isGlobalSuperadmin: true, accountStatus: 'active' }}
+      currentUser={{ id: 'viewer', role: globalDirectory ? 'superadmin' : 'org_admin' }}
+      isMobile={isMobile} deleteAccount={globalDirectory}
+      onReload={onReload} onAssign={vi.fn()} onDelete={vi.fn()} resetConfig={DEFAULT_PUBLIC_CONFIG} showToast={showToast}
+    />);
+    expect(screen.getByText('Superadmin')).toBeInTheDocument();
+    expect(screen.queryByText('Benutzer')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^(Rolle|Rolle ändern|Benutzerkonto löschen|Organisationszugang entziehen)$/ })).not.toBeInTheDocument();
+  });
+
   it('keeps resend available and reports delivery errors', async () => {
     vi.mocked(resendUserInvitation).mockRejectedValueOnce({ response: { status: 503, data: { message: 'Versand fehlgeschlagen' } } });
     view();

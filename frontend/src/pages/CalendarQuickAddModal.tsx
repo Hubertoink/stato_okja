@@ -5,7 +5,6 @@ import ActivityPlanningNotice from '@/components/ActivityPlanningNotice';
 import { usePublicConfig } from '@/lib/publicConfig';
 import {
   selectActivityCategory,
-  mergeActivityCategoryDefaults,
   SINGLE_CATEGORY_MESSAGE,
 } from '@/lib/activityCategories';
 import { Project, useProjects } from '@/lib/projects';
@@ -46,7 +45,7 @@ import { createPortal } from 'react-dom';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useActivityModalCountMode } from '@/lib/useActivityModalCountMode';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
-import { DEFAULT_ACTIVITY_EXECUTION_STATUS, activityStatusForDate, isPlannedActivity, isFutureActivityDate } from '@/lib/activityExecutionStatus';
+import { activityStatusForDate } from '@/lib/activityExecutionStatus';
 import { useAuth } from '@/lib/auth';
 import { useActivityInlineCreation } from './useActivityInlineCreation';
 import { useKeyboardOpen } from '@/lib/useKeyboardOpen';
@@ -56,23 +55,24 @@ import { formatDate } from '@/i18n/formatters';
 import {
   type ActivityFormState,
   buildActivitySavePayload,
+  applyActivityProjectDefaults,
+  getActivityEditorValidation,
+  createActivityDraft,
+  useNewActivityDefaults,
   getActivityCohortCounts,
   getActivityFormStateFromActivity,
   getActivityFormSnapshot,
-  getCohortSums,
+  getFormAttendance,
+  setActivityCohortCount,
   type GenderKey,
-  getProjectCategoryIds,
-  getProjectTagIds,
   getStaffGroupMembers,
   getWeekdayLabel,
-  mergeProjectStaffIds,
 } from './activityEditorShared';
 import { autoT } from '@/i18n/auto';
 import { Button } from '@/components/ui/Button';
 import { EditorActions } from '@/components/ui/EditorFrame';
 import ActivityTitleField from '@/components/ActivityTitleField';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
-import { getTimeRangeValidationIssue } from '@/lib/timeRange';
 import { useModalHistory } from '@/components/Modal';
 
 export default function ActivityQuickAdd({
@@ -124,23 +124,9 @@ export default function ActivityQuickAdd({
   const { isMobile, tapModeEnabled, setTapModePreferred } = useActivityModalCountMode();
   const [form, setForm] = useState<ActivityFormState>(() => {
     if (activity) {
-      const activityForm = getActivityFormStateFromActivity(activity, {
-        date: dateISO,
-        projectId: initialProject?.id,
-        start: initialProject?.defaultStartTime || '',
-        end: initialProject?.defaultEndTime || '',
-      });
-      return {
-        ...activityForm,
-        executionStatus: activityStatusForDate(activity.executionStatus, activity.date),
-        cohortCounts: getActivityCohortCounts(activity),
-      };
+      return getActivityFormStateFromActivity(activity);
     }
-    return {
-      cohortCounts: {},
-      date: (dateISO || '').slice(0, 10),
-      executionStatus: activityStatusForDate(undefined, dateISO),
-    };
+    return createActivityDraft(dateISO, initialProject?.id);
   });
   const [deleteOpen, setDeleteOpen] = useState(false);
   // Editing already has a complete baseline, even while taxonomy is loading.
@@ -154,15 +140,11 @@ export default function ActivityQuickAdd({
   });
   useEffect(() => {
     if (!activity || isDirty) return;
-    const nextForm = {
-      ...getActivityFormStateFromActivity(activity),
-      executionStatus: activityStatusForDate(activity.executionStatus, activity.date),
-      cohortCounts: getActivityCohortCounts(activity),
-    };
+    const nextForm = getActivityFormStateFromActivity(activity);
     // Refresh the form and its version together. Never advance the version of
     // a dirty form, which must still conflict instead of overwriting remote edits.
     formVersionRef.current = activity.version;
-    initialCohortCountsRef.current = nextForm.cohortCounts;
+    initialCohortCountsRef.current = nextForm.cohortCounts || {};
     setForm(nextForm);
     reset(nextForm);
   }, [activity, isDirty, reset]);
@@ -171,12 +153,11 @@ export default function ActivityQuickAdd({
     [projects, form.projectId, initialProject],
   );
   const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date, true), [form.date]);
-  const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
-  const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
-  const countsLocked = isPlannedActivity(form.executionStatus) || isFutureActivityDate(form.date);
+  const cohortSums = getFormAttendance(form);
+  const cohortTotal = cohortSums.total;
+  const { countsLocked, mustClearCounts, tooManyCategories, timeRangeIssue } = getActivityEditorValidation(form, categoryMode, selectedProject);
   const isCohortValueChanged = (cohortId: string, gender: GenderKey, value: number) =>
     Boolean(activity) && (initialCohortCountsRef.current[cohortId]?.[gender] || 0) !== value;
-  const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end, true);
   const timeRangeError = timeRangeIssue
     ? t(
         timeRangeIssue === 'incomplete'
@@ -248,76 +229,8 @@ export default function ActivityQuickAdd({
     }
   };
 
-  useEffect(() => {
-    // Default times; if project provided, prefill from defaults
-    setForm((f: ActivityFormState) => ({
-      ...f,
-      start: f.start ?? initialProject?.defaultStartTime ?? undefined,
-      end: f.end ?? initialProject?.defaultEndTime ?? undefined,
-      projectId: f.projectId || initialProject?.id,
-      date: f.date || (dateISO || '').slice(0, 10),
-    }));
-  }, [initialProject]);
-  // Prefill tags from project defaults when creating (not editing) and when none selected yet
-  useEffect(() => {
-    if (activity) return; // don't override existing tags in edit mode
-    const proj = selectedProject || initialProject;
-    if (!proj) return;
-    const current = form.tagIds || [];
-    if (current.length > 0) return; // user already has a selection
-    const ids = getProjectTagIds(proj, tags);
-    if (ids.length > 0) setForm((f: ActivityFormState) => ({ ...f, tagIds: ids }));
-  }, [selectedProject, initialProject, tags, activity]);
-  // Prefill the single project category when creating
-  useEffect(() => {
-    if (activity) return; // editing: don't override
-    const proj = selectedProject || initialProject;
-    if (!proj) return;
-    if (proj.type === 'open_door') {
-      // Ensure no categories for open-door
-      setForm((f: ActivityFormState) => ({ ...f, categoryIds: [] }));
-      return;
-    }
-    const cur = form.categoryIds || [];
-    if (cur.length > 0) return; // already chosen
-    if (!categoryConfig.data) return;
-    const categoryIds = mergeActivityCategoryDefaults([], getProjectCategoryIds(proj), categoryMode);
-    if (categoryIds.length > 0) setForm((f: ActivityFormState) => ({ ...f, categoryIds }));
-  }, [selectedProject, initialProject, activity, categoryMode, categoryConfig.data]);
-  // If switching to an open-door project, clear categories
-  useEffect(() => {
-    const proj = selectedProject || initialProject;
-    if (!activity && proj && proj.type === 'open_door') {
-      setForm((f: ActivityFormState) => ({ ...f, categoryIds: [] }));
-    }
-  }, [activity, selectedProject?.type, initialProject?.type]);
-  useEffect(() => {
-    // If there is exactly one location, auto-select it to reduce friction
-    if (activity) return;
-    if ((locations || []).length === 1 && !form.locationId) {
-      setForm((f: ActivityFormState) => ({ ...f, locationId: locations![0]?.id }));
-    }
-  }, [activity, locations, form.locationId]);
-  useEffect(() => {
-    if (activity) return;
-    // Default times; if project provided, prefill from defaults
-    setForm((f: ActivityFormState) => ({
-      ...f,
-      start: f.start ?? initialProject?.defaultStartTime ?? undefined,
-      end: f.end ?? initialProject?.defaultEndTime ?? undefined,
-      projectId: f.projectId || initialProject?.id,
-      date: f.date || (dateISO || '').slice(0, 10),
-      executionStatus: f.executionStatus || DEFAULT_ACTIVITY_EXECUTION_STATUS,
-    }));
-  }, [initialProject, activity]);
-
-  // Prefill default staff/category from project if provided
-  useEffect(() => {
-    if (activity || !initialProject) return;
-    setForm((f: ActivityFormState) => {
-      return { ...f, staffIds: mergeProjectStaffIds(f.staffIds, initialProject, staff) };
-    });
-  }, [activity, initialProject, staff]);
+  useNewActivityDefaults(setForm, activity ? undefined : selectedProject, { tags, staff, categoryMode: categoryConfig.data?.activityCategoryMode },
+    !activity && locations?.length === 1 ? locations[0].id : undefined);
 
   // Project defaults and the edit payload are populated asynchronously. They
   // define the initial state of this editor and must not trigger a discard
@@ -355,11 +268,11 @@ export default function ActivityQuickAdd({
   const { dismiss } = useModalHistory(handleClose);
 
   const handleSave = () => {
-    if (countsLocked && cohortTotal > 0) {
+    if (mustClearCounts) {
       setErrorOpen(t('common:executionStatus.clearCountsHint'));
       return;
     }
-    if (categoryMode === 'single' && (form.categoryIds?.length ?? 0) > 1 && selectedProject?.type !== 'open_door') {
+    if (tooManyCategories) {
       showToast(SINGLE_CATEGORY_MESSAGE, { type: 'error' });
       return;
     }
@@ -378,13 +291,11 @@ export default function ActivityQuickAdd({
       return;
     }
     const payloadBase = buildActivitySavePayload({
-      form: {
-        ...form,
-        executionStatus: activityStatusForDate(form.executionStatus, form.date),
-      },
+      form,
       selectedProject,
       fallbackDate: activity?.date || dateISO,
       fallbackType: activity?.type,
+      fallbackDurationMinutes: activity?.durationMinutes,
     });
 
     submitLockedRef.current = true;
@@ -518,7 +429,7 @@ export default function ActivityQuickAdd({
                     id="location-select"
                     value={form.locationId || ''}
                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                      setForm({ ...form, locationId: e.target.value || undefined })
+                      setForm({ ...form, locationId: e.target.value })
                     }
                     className="editor-field w-full border px-3 py-2"
                   >
@@ -635,7 +546,7 @@ export default function ActivityQuickAdd({
                 </p>
               ) : null}
               <ActivityPlanningNotice status={form.executionStatus} date={form.date} hasCounts={cohortTotal > 0}
-                onClearCounts={() => setForm((current) => ({ ...current, cohortCounts: {} }))}
+                onClearCounts={() => setForm((current) => ({ ...current, recordedAttendance: undefined, cohortCounts: {} }))}
                 onDocument={() => setForm((current) => ({ ...current, executionStatus: 'completed' }))} />
             <fieldset disabled={countsLocked} className="min-w-0">
                 <div className="mb-1 flex items-center justify-between gap-3">
@@ -650,6 +561,9 @@ export default function ActivityQuickAdd({
                     />
                   )}
                 </div>
+                {form.recordedAttendance && cohortTotal > 0 && !Object.keys(form.cohortCounts || {}).length && (
+                  <p className="mb-2 text-sm text-gray-600">{t('quickAdd.aggregateAttendanceHint')}</p>
+                )}
                 {tapModeEnabled && (
                   <div className="mb-2 text-[11px] text-gray-500">{t('quickAdd.tapHelp')}</div>
                 )}
@@ -689,13 +603,7 @@ export default function ActivityQuickAdd({
                     const entry = form.cohortCounts?.[c.id] || { m: 0, w: 0, d: 0 };
                     const rowTotal = (entry.m || 0) + (entry.w || 0) + (entry.d || 0);
                     const update = (g: GenderKey, val: number) => {
-                      setForm({
-                        ...form,
-                        cohortCounts: {
-                          ...form.cohortCounts!,
-                          [c.id]: { ...entry, [g]: val },
-                        },
-                      });
+                      setForm(current => setActivityCohortCount(current, c.id, g, val));
                     };
                     const genders: GenderKey[] = ['m', 'w', 'd'];
                     const handleKeyDown = (
@@ -1076,28 +984,8 @@ export default function ActivityQuickAdd({
         />
         {picker && (
           <ProjectPickerModal
-            onPick={(p) => {
-              // When picking a project, also prefill tags if none selected yet
-              const names = (p.tag || '')
-                .split(',')
-                .map((s) => s.trim())
-                .filter(Boolean);
-              const byName = new Map((tags || []).map((t) => [t.name, t.id] as const));
-              const defaultTagIds = Array.from(
-                new Set(names.map((n) => byName.get(n)).filter(Boolean)),
-              ) as string[];
-              setForm((prev) => ({
-                ...prev,
-                projectId: p.id,
-                tagIds: prev.tagIds && prev.tagIds.length > 0 ? prev.tagIds : defaultTagIds,
-                start: prev.start || p.defaultStartTime || '',
-                end: prev.end || p.defaultEndTime || '',
-                // Prefill the single project category
-                categoryIds:
-                  p.type === 'open_door'
-                    ? []
-                    : mergeActivityCategoryDefaults(prev.categoryIds, getProjectCategoryIds(p), categoryMode),
-              }));
+            onPick={(project) => {
+              setForm(form => applyActivityProjectDefaults(form, project, { tags, staff, categoryMode }));
               setPicker(false);
             }}
             onClose={() => setPicker(false)}

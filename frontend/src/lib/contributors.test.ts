@@ -12,7 +12,7 @@ describe('contribution reporting and activity editing', () => {
     const form = getActivityFormStateFromActivity({ id: 'activity', date: '2026-11-01', type: 'open_door', contributions: [{ contributorId: 'lea', minutes: 45 }] });
     expect(buildActivitySavePayload({ form }).contributions).toEqual([{ contributorId: 'lea', minutes: 45 }]);
     expect(getActivityFormSnapshot(form)).not.toBe(getActivityFormSnapshot({ ...form, contributions: [] }));
-    expect(buildActivitySavePayload({ form }).countTotal).toBe(0);
+    expect(buildActivitySavePayload({ form })).not.toHaveProperty('countTotal');
     expect(buildActivitySavePayload({ form }).staffIds).toEqual([]);
   });
 });

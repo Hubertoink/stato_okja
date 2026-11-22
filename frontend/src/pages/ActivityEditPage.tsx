@@ -5,7 +5,6 @@ import ActivityPlanningNotice from '@/components/ActivityPlanningNotice';
 import { usePublicConfig } from '@/lib/publicConfig';
 import {
   selectActivityCategory,
-  mergeActivityCategoryDefaults,
   SINGLE_CATEGORY_MESSAGE,
 } from '@/lib/activityCategories';
 import { getActivityEditorReturn, type ActivityEditorNavigationState } from '@/lib/activityEditorReturn';
@@ -40,16 +39,17 @@ import { useActivityModalCountMode } from '@/lib/useActivityModalCountMode';
 import { useFocusedFieldVisibility } from '@/lib/useFocusedFieldVisibility';
 import ProtectedImage from '@/components/ProtectedImage';
 import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
-import { getTimeRangeValidationIssue } from '@/lib/timeRange';
-import { activityStatusForDate, isPlannedActivity, isFutureActivityDate } from '@/lib/activityExecutionStatus';
+import { activityStatusForDate } from '@/lib/activityExecutionStatus';
 import { useAuth } from '@/lib/auth';
 import { useActivityInlineCreation } from './useActivityInlineCreation';
 import {
   type ActivityFormState,
   buildActivitySavePayload,
-  getProjectCategoryIds,
+  applyActivityProjectDefaults,
+  getActivityEditorValidation,
   getActivityFormStateFromActivity,
-  getCohortSums,
+  getFormAttendance,
+  setActivityCohortCount,
   getActivityFormSnapshot,
   type GenderKey,
   getStaffGroupMembers,
@@ -114,10 +114,7 @@ export default function ActivityEditPage() {
     // A refreshed activity record is safe to apply only while the user has not
     // edited the form. This also makes the refreshed record the clean baseline.
     if (!activity || isDirty) return;
-    const nextForm = {
-      ...getActivityFormStateFromActivity(activity),
-      executionStatus: activityStatusForDate(activity.executionStatus, activity.date),
-    };
+    const nextForm = getActivityFormStateFromActivity(activity);
     initialCohortCountsRef.current = nextForm.cohortCounts || {};
     formVersionRef.current = activity.version;
     setForm(nextForm);
@@ -158,16 +155,11 @@ export default function ActivityEditPage() {
     openStaffCreate,
   } = activityInlineCreation;
 
-  // Existing activities must keep their recorded tags and categories. Project
-  // defaults are applied only when creating a new activity, never while editing.
-
-  // Derive cohort-based totals
-  const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
-  const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
-  const countsLocked = isPlannedActivity(form.executionStatus) || isFutureActivityDate(form.date);
+  const cohortSums = getFormAttendance(form);
+  const cohortTotal = cohortSums.total;
+  const { countsLocked, mustClearCounts, tooManyCategories, timeRangeIssue } = getActivityEditorValidation(form, categoryMode, selectedProject);
   const isCohortValueChanged = (cohortId: string, gender: GenderKey, value: number) =>
     (initialCohortCountsRef.current[cohortId]?.[gender] || 0) !== value;
-  const timeRangeIssue = getTimeRangeValidationIssue(form.start, form.end, true);
   const timeRangeError = timeRangeIssue
     ? t(
         timeRangeIssue === 'incomplete'
@@ -191,12 +183,12 @@ export default function ActivityEditPage() {
   };
 
   const handleSave = () => {
-    if (countsLocked && cohortTotal > 0) {
+    if (mustClearCounts) {
       showToast(t('common:executionStatus.clearCountsHint'), { type: 'error' });
       return;
     }
     if (!activity) return;
-    if (categoryMode === 'single' && (form.categoryIds?.length ?? 0) > 1 && selectedProject?.type !== 'open_door') {
+    if (tooManyCategories) {
       showToast(SINGLE_CATEGORY_MESSAGE, { type: 'error' });
       return;
     }
@@ -222,14 +214,11 @@ export default function ActivityEditPage() {
     }
     setValidationErrors({});
     const payload = buildActivitySavePayload({
-      form: {
-        ...form,
-        executionStatus: activityStatusForDate(form.executionStatus, form.date),
-      },
+      form,
       selectedProject,
       fallbackDate: activity.date,
       fallbackType: activity.type,
-      durationMinutesOverride: activity.durationMinutes,
+      fallbackDurationMinutes: activity.durationMinutes,
     });
     update.mutate(
       { id: activity.id, data: { ...payload, expectedVersion: formVersionRef.current } },
@@ -313,7 +302,7 @@ export default function ActivityEditPage() {
               <select
                 id="location-select-edit"
                 value={form.locationId || ''}
-                onChange={(e) => setForm({ ...form, locationId: e.target.value || undefined })}
+                onChange={(e) => setForm({ ...form, locationId: e.target.value })}
                 className="editor-field w-full border px-3 py-2"
               >
                 <option value="">{t('quickAdd.selectLocation')}</option>
@@ -448,7 +437,7 @@ export default function ActivityEditPage() {
 
             {/* Cohorts */}
             <ActivityPlanningNotice status={form.executionStatus} date={form.date} hasCounts={cohortTotal > 0}
-                onClearCounts={() => setForm((current) => ({ ...current, cohortCounts: {} }))}
+                onClearCounts={() => setForm((current) => ({ ...current, recordedAttendance: undefined, cohortCounts: {} }))}
                 onDocument={() => setForm((current) => ({ ...current, executionStatus: 'completed' }))} />
             <fieldset disabled={countsLocked} className="min-w-0">
               <div className="mb-1 flex items-center justify-between gap-3">
@@ -470,6 +459,9 @@ export default function ActivityEditPage() {
                   diverse: cohortSums.d ?? 0,
                 })}
               </div>
+              {form.recordedAttendance && cohortTotal > 0 && !Object.keys(form.cohortCounts || {}).length && (
+                <p className="mb-2 text-sm text-gray-600">{t('quickAdd.aggregateAttendanceHint')}</p>
+              )}
               {tapModeEnabled && (
                 <div className="mb-2 text-[11px] text-gray-500">{t('quickAdd.tapHelp')}</div>
               )}
@@ -509,10 +501,7 @@ export default function ActivityEditPage() {
                   const entry = form.cohortCounts?.[c.id] || { m: 0, w: 0, d: 0 };
                   const rowTotal = (entry.m || 0) + (entry.w || 0) + (entry.d || 0);
                   const updateC = (g: GenderKey, val: number) =>
-                    setForm({
-                      ...form,
-                      cohortCounts: { ...form.cohortCounts!, [c.id]: { ...entry, [g]: val } },
-                    });
+                    setForm(current => setActivityCohortCount(current, c.id, g, val));
                   const genders: GenderKey[] = ['m', 'w', 'd'];
                   const handleKeyDown = (
                     e: React.KeyboardEvent<HTMLInputElement>,
@@ -883,23 +872,8 @@ export default function ActivityEditPage() {
 
       {picker && (
         <ProjectPickerModal
-          onPick={(p) => {
-            const names = (p.tag || '')
-              .split(',')
-              .map((s) => s.trim())
-              .filter(Boolean);
-            const byName = new Map((tags || []).map((t) => [t.name, t.id] as const));
-            const defaultTagIds = Array.from(
-              new Set(names.map((n) => byName.get(n)).filter(Boolean)),
-            ) as string[];
-            setForm((prev) => ({
-              ...prev,
-              projectId: p.id,
-              tagIds: prev.tagIds && prev.tagIds.length > 0 ? prev.tagIds : defaultTagIds,
-              categoryIds: p.type === 'open_door'
-                ? []
-                : mergeActivityCategoryDefaults(prev.categoryIds, getProjectCategoryIds(p), categoryMode),
-            }));
+          onPick={(project) => {
+            setForm(form => applyActivityProjectDefaults(form, project, { tags, staff, categoryMode }));
             setValidationErrors((errors) => ({ ...errors, project: undefined }));
             setPicker(false);
           }}

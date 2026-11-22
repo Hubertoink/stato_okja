@@ -102,6 +102,13 @@ export class StatsController {
     return [from, to, orgId, orgIds, projectId, undefined, parseWeekdays(weekdaysCsv)];
   }
 
+  @Get('years')
+  @ApiOperation({ summary: 'Verfügbare Statistikjahre der gewählten Organisation' })
+  async getYears(@Req() req: ReqWithScope, @Query('orgId') orgIdQuery?: string) {
+    const { orgId, orgIds } = await this.resolveOrgFilter(req, orgIdQuery);
+    return this.statsService.getAvailableYears(orgId, orgIds);
+  }
+
   @Get('team')
   async getTeamStatistics(
     @Req() req: ReqWithScope,

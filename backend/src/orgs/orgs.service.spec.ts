@@ -128,6 +128,24 @@ describe('OrgsService taxonomy access', () => {
     ]);
   });
 
+  it('accepts inherited categories and returns the same rejection for every invisible category', async () => {
+    orgRepo.find!.mockResolvedValue([
+      { id: 'parent', parentId: null },
+      { id: 'child', parentId: 'parent', taxonomySettings: { categories: { inheritAll: true } } },
+      { id: 'other', parentId: null },
+    ]);
+    categoryRepo.find!.mockResolvedValue([
+      { id: 'inherited', name: 'Sport', orgId: 'parent' },
+      { id: 'private', name: 'Intern', orgId: 'other' },
+    ]);
+
+    await expect(service.assertTaxonomyIdsVisibleForOrg('child', 'categories', ['inherited'])).resolves.toBeUndefined();
+    for (const id of ['private', 'unknown']) {
+      await expect(service.assertTaxonomyIdsVisibleForOrg('child', 'categories', ['inherited', id]))
+        .rejects.toMatchObject({ message: 'Nicht erlaubte categories für diese Organisation.' });
+    }
+  });
+
   it('returns read-only permissions for locked child org admins', async () => {
     (orgRepo.find as jest.Mock).mockResolvedValue([
       {

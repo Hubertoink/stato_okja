@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { SystemDataUploadStore } from './system-data-upload-store';
@@ -32,6 +32,57 @@ describe('SystemDataUploadStore', () => {
 
     await writeFile(join(uploadsRoot, 'images', 'after-purge.jpg'), Buffer.from('ok'));
     expect(await readFile(join(uploadsRoot, 'images', 'after-purge.jpg'), 'utf8')).toBe('ok');
+  });
+
+  async function restoreFixture() {
+    const sessionRoot = join(testRoot, 'restore');
+    const staged = { sessionRoot, uploadsRoot: join(sessionRoot, 'uploads'), fileCount: 1, totalBytes: 3 };
+    await mkdir(staged.uploadsRoot, { recursive: true });
+    await writeFile(join(staged.uploadsRoot, 'new'), 'new');
+    await writeFile(join(uploadsRoot, 'old-1'), 'one');
+    await writeFile(join(uploadsRoot, 'old-2'), 'two');
+    return staged;
+  }
+
+  it.each(['copyFile', 'readdir'] as const)('leaves the entire live tree intact if backup %s fails', async (operation) => {
+    const staged = await restoreFixture();
+    const fs = jest.requireActual<typeof import('fs/promises')>('fs/promises');
+    const failure = new Error('backup failed');
+    const spy = operation === 'copyFile'
+      ? jest.spyOn(fs, 'copyFile').mockImplementationOnce(fs.copyFile).mockRejectedValueOnce(failure)
+      : jest.spyOn(fs, 'readdir').mockRejectedValueOnce(failure);
+    try {
+      await expect(store.applyImportedUploads(staged)).rejects.toThrow(failure);
+    } finally { spy.mockRestore(); }
+    expect(await readFile(join(uploadsRoot, 'old-1'), 'utf8')).toBe('one');
+    expect(await readFile(join(uploadsRoot, 'old-2'), 'utf8')).toBe('two');
+    expect(await readdir(testRoot)).not.toContainEqual(expect.stringContaining('uploads-backup'));
+  });
+
+  it('restores both originals if copying the new data fails after replacement starts', async () => {
+    const staged = await restoreFixture();
+    const fs = jest.requireActual<typeof import('fs/promises')>('fs/promises');
+    const copy = fs.copyFile;
+    const spy = jest.spyOn(fs, 'copyFile').mockImplementation((src, dest, ...args) =>
+      String(src) === join(staged.uploadsRoot, 'new') ? Promise.reject(new Error('disk full')) : copy(src, dest, ...args));
+    try { await expect(store.applyImportedUploads(staged)).rejects.toThrow('disk full'); }
+    finally { spy.mockRestore(); }
+    expect(await readFile(join(uploadsRoot, 'old-1'), 'utf8')).toBe('one');
+    expect(await readFile(join(uploadsRoot, 'old-2'), 'utf8')).toBe('two');
+    expect(await readdir(testRoot)).not.toContainEqual(expect.stringContaining('uploads-backup'));
+  });
+
+  it('keeps the complete backup available if automatic rollback itself fails', async () => {
+    const staged = await restoreFixture();
+    const applied = await store.applyImportedUploads(staged);
+    const fs = jest.requireActual<typeof import('fs/promises')>('fs/promises');
+    const spy = jest.spyOn(fs, 'copyFile').mockRejectedValueOnce(new Error('destination unavailable'));
+    try { await expect(store.restorePreviousUploads(applied)).rejects.toThrow('Sicherungspfad'); }
+    finally { spy.mockRestore(); }
+    expect(await readFile(join(applied.backupRoot, 'old-1'), 'utf8')).toBe('one');
+    expect(await readFile(join(applied.backupRoot, 'old-2'), 'utf8')).toBe('two');
+    await store.restorePreviousUploads(applied);
+    expect(await readFile(join(uploadsRoot, 'old-2'), 'utf8')).toBe('two');
   });
 
   it('replaces stale uploads completely when applying an imported backup', async () => {

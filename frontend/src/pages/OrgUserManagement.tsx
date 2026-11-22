@@ -653,7 +653,7 @@ export function UserRow({
 }) {
   const { t } = useTranslation('common');
   const isCurrentUser = userData.id === currentUser.id;
-  const isSuperadmin = userData.role === 'superadmin';
+  const isSuperadmin = userData.isGlobalSuperadmin ?? userData.role === 'superadmin';
   const [roleModalOpen, setRoleModalOpen] = useState(false);
   const [roleHelpOpen, setRoleHelpOpen] = useState(false);
   const [resending, setResending] = useState(false);

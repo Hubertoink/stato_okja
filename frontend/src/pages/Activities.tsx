@@ -1,5 +1,6 @@
-import { contributionExportRows } from '@/lib/contributionExport';
-import type { Contributor, Contribution } from '@/lib/contributors';
+import { buildContributionExport } from '@/lib/contributionExport';
+import { createProjectSheetNamer } from '@/lib/projectSheetNames';
+import type { Contribution } from '@/lib/contributors';
 import { useContributors } from '@/lib/contributors';
 import { DataTransition, LoadingTableRows } from '@/components/ui/DataTransition';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -421,8 +422,7 @@ export default function Activities() {
     const rows = await fetchAllActivities(filters);
     return rows as Array<ExportRow>;
   };
-  const buildExportSheet = (list: ExportRow[], people: Contributor[]) => {
-    const contributions = contributionExportRows(list, people, filters.contributorIds);
+  const buildExportSheet = (list: ExportRow[], contributions: ReturnType<typeof buildContributionExport>) => {
     const cohortOrder = (cohorts as Cohort[])
       .slice()
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
@@ -506,8 +506,8 @@ export default function Activities() {
           : (activity.categories || []).map((category) => category.name).join(', '),
         (activity.tags || []).map((tag) => tag.name).join(', '),
         activity.notes || '',
-        contributions.filter(entry => entry.activityId === activity.id).map(entry => entry.name).join(', '),
-        contributions.filter(entry => entry.activityId === activity.id).reduce((sum, entry) => sum + entry.minutes, 0),
+        contributions.byActivity.get(activity.id)?.names ?? '',
+        contributions.byActivity.get(activity.id)?.minutes ?? 0,
       ]);
     }
 
@@ -531,11 +531,11 @@ export default function Activities() {
       const list = await loadExportRows();
       const peopleResult = await contributors.refetch();
       if (peopleResult.isError) throw peopleResult.error;
-      const exportPeople = peopleResult.data || [];
+      const contributions = buildContributionExport(list, peopleResult.data || [], filters.contributorIds);
       setExportProgress(t('export.preparingFile'));
       await new Promise(requestAnimationFrame);
       const { rows, statusCol, typeCol, firstNumberCol, durationCol, categoriesCol, tagsCol, notesCol } =
-        buildExportSheet(list, exportPeople);
+        buildExportSheet(list, contributions);
 
       const xlsx = await import('xlsx-js-style');
       const { utils, writeFile } = xlsx as unknown as typeof import('xlsx-js-style');
@@ -656,7 +656,7 @@ export default function Activities() {
 
       const wb = utils.book_new();
       utils.book_append_sheet(wb, ws, autoT('ui_b6bf5f1a2033'));
-      const contributionRows = contributionExportRows(list, exportPeople, filters.contributorIds);
+      const contributionRows = contributions.rows;
       if (contributionRows.length) {
         const sheet = utils.aoa_to_sheet([['Datum', 'Projekt', 'Aktivität', 'Mitwirkende', 'Minuten', 'Aktivitäts-ID'],
           ...contributionRows.map(entry => [entry.date, entry.project, entry.title, entry.name, entry.minutes, entry.activityId])]);
@@ -684,18 +684,7 @@ export default function Activities() {
             if (cell) cell.s = { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: 'FF5B6CFF' } }, alignment: { vertical: 'center', wrapText: true } };
           }
         };
-        const usedSheetNames = new Set<string>([autoT('ui_b6bf5f1a2033')]);
-        const uniqueSheetName = (value: string) => {
-          const base = (value.replace(/[\\/?*[\]:]/g, ' ').trim() || autoT('ui_20bda6d2e725')).slice(0, 31);
-          let name = base;
-          let suffix = 2;
-          while (usedSheetNames.has(name)) {
-            name = `${base.slice(0, Math.max(1, 31 - String(suffix).length - 1))} ${suffix}`;
-            suffix += 1;
-          }
-          usedSheetNames.add(name);
-          return name;
-        };
+        const uniqueSheetName = createProjectSheetNamer(wb);
         const projectsById = new Map(projects.map((project) => [project.id, project]));
         const activitiesByProject = new Map<string, ExportRow[]>();
         for (const activity of list) {

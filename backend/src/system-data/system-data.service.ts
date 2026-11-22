@@ -1,3 +1,4 @@
+import { createSystemDataArchive, restoreSystemDataArchive, SYSTEM_DATA_EXPORT_FORMAT, SYSTEM_DATA_EXPORT_SCHEMA_VERSION } from './system-data-archive';
 import {
   BadRequestException,
   ForbiddenException,
@@ -7,10 +8,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { createReadStream } from 'fs';
 import { stat, unlink } from 'fs/promises';
 import { join, relative, resolve as resolvePath, sep } from 'path';
-import { PassThrough, Readable } from 'stream';
 import { setTimeout as delay } from 'timers/promises';
 import { DataSource, QueryRunner } from 'typeorm';
 import { AuthService } from '../auth/auth.service';
@@ -22,32 +21,12 @@ import { normalizeUploadPath } from '../common/upload-paths';
 import { normalizeActivityMetrics } from '../activities/activity-metrics';
 import {
   SystemDataUploadStore,
-  type AppliedImportUploads,
-  type StagedImportUploads,
-  type UploadFileEntry,
 } from './system-data-upload-store';
 import {
   SystemDataImportArchiveReader,
   type ParsedImportArchive,
   type SystemDataManagedTable,
 } from './system-data-import-archive-reader';
-
-type ExportArchive = import('archiver').Archiver;
-type ExportArchiveEntry = import('archiver').EntryData;
-type ArchiverModule = {
-  ZipArchive: new (options: { zlib: { level: number } }) => ExportArchive;
-};
-
-let archiverModulePromise: Promise<ArchiverModule> | undefined;
-
-function loadArchiverModule() {
-  // Archiver v8 is ESM-only while StatO's Nest build remains CommonJS. Keep
-  // the native dynamic import intact instead of transpiling it to require().
-  archiverModulePromise ??= new Function('specifier', 'return import(specifier)')(
-    'archiver',
-  ) as Promise<ArchiverModule>;
-  return archiverModulePromise;
-}
 
 export type SystemDataActor = {
   id: string;
@@ -110,8 +89,6 @@ type UploadReferenceSummary = {
 
 const PURGE_CONFIRMATION_TEXT = 'ALLE DATEN LOESCHEN';
 const IMPORT_CONFIRMATION_TEXT = 'BACKUP IMPORTIEREN';
-const SYSTEM_DATA_EXPORT_FORMAT = 'stato-system-data-export';
-const SYSTEM_DATA_EXPORT_SCHEMA_VERSION = 3;
 const TRANSIENT_SYSTEM_TABLE_KEYS = new Set(['auth_refresh_sessions']);
 const EMPTY_UPLOAD_REFERENCE_BREAKDOWN: UploadReferenceBreakdown = {
   projects: 0,
@@ -327,55 +304,19 @@ export class SystemDataService {
   async exportAllData(actor: SystemDataActor) {
     this.assertSuperadmin(actor);
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-
-    try {
-      const managedTables = this.getManagedTables();
-      const tableManifest: Array<{ tableName: string; rowCount: number; files: string[] }> = [];
-      let totalDatabaseRows = 0;
-      const generatedAt = new Date().toISOString();
-
-      for (const table of managedTables) {
-        const rowCount = await this.countRows(queryRunner, table.path);
-        totalDatabaseRows += rowCount;
-        const jsonPath = `database/${table.filename}.json`;
-        const csvPath = `database/${table.filename}.csv`;
-        tableManifest.push({
-          tableName: table.filename,
-          rowCount,
-          files: [jsonPath, csvPath],
+    return createSystemDataArchive({
+      dataSource: this.dataSource,
+      tables: this.getManagedTables(),
+      uploads: await this.uploadStore.scanUploads(),
+      actor,
+      normalize: (table, row) => this.normalizeDateOnlyColumns(table, row),
+      onComplete: async (filename, details) => {
+        await this.auditService.log({
+          action: AuditAction.EXPORT, entityType: 'system-data', entityId: 'global', entityTitle: filename,
+          user: { id: actor.id, name: actor.name ?? null, orgId: null }, orgId: null, details,
         });
-      }
-
-      const uploads = await this.uploadStore.scanUploads();
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = `stato-system-data-export-${timestamp}.zip`;
-      const output = new PassThrough();
-      const { ZipArchive } = await loadArchiverModule();
-      const archive = new ZipArchive({ zlib: { level: 6 } });
-      archive.on('warning', (error) => this.logger.warn(`System export ZIP warning: ${error.message}`));
-      archive.on('error', (error) => output.destroy(error));
-      archive.pipe(output);
-
-      void this.writeExportArchive({
-        archive,
-        output,
-        queryRunner,
-        managedTables,
-        tableManifest,
-        totalDatabaseRows,
-        uploads,
-        generatedAt,
-        actor,
-        filename,
-      });
-
-      return { stream: output, filename };
-    } catch (error) {
-      await queryRunner.release();
-      throw error;
-    }
+      },
+    });
   }
 
   async inspectImportArchive(actor: SystemDataActor, filePath: string, originalFilename: string) {
@@ -401,18 +342,11 @@ export class SystemDataService {
     filePath: string,
     payload: { originalFilename: string; password: string; confirmationText: string },
   ) {
-    this.assertSuperadmin(actor);
-    await this.assertPassword(actor.id, payload.password);
-    this.assertImportConfirmationText(payload.confirmationText);
-
-    let stagedUploads: StagedImportUploads | null = null;
-    let appliedUploads: AppliedImportUploads | null = null;
-    let archive: ParsedImportArchive | null = null;
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-
     try {
-      archive = await this.importArchiveReader.read({
+      this.assertSuperadmin(actor);
+      await this.assertPassword(actor.id, payload.password);
+      this.assertImportConfirmationText(payload.confirmationText);
+      const archive = await this.importArchiveReader.read({
         filePath,
         originalFilename: payload.originalFilename,
         managedTables: this.getManagedTables(),
@@ -420,81 +354,11 @@ export class SystemDataService {
         schemaVersion: SYSTEM_DATA_EXPORT_SCHEMA_VERSION,
         normalizeRowsForImport: (table, rows) => this.normalizeRowsForImport(table, rows),
       });
-      stagedUploads = await this.uploadStore.stageImportedUploads(archive.uploads);
-
-      await queryRunner.startTransaction();
-
-      const actorRows = await queryRunner.query(
-        `SELECT id, email FROM ${this.escapeTablePath('users')} WHERE id = ${this.getParameterPlaceholder(1)}`,
-        [actor.id],
-      ) as Array<{ id: string; email: string }>;
-      const currentActor = actorRows[0];
-      if (!currentActor) {
-        throw new InternalServerErrorException('Der ausführende Superadmin konnte vor dem Restore nicht gesichert werden.');
-      }
-
-      // Preserve the executing superadmin and therefore their active refresh
-      // session. All other users are replaced from the backup below.
-      const deleteOrder = await this.getDeleteOrder(queryRunner, new Set(['users']));
-      const deletedTables: Array<{ tableName: string; deletedRows: number }> = [];
-      for (const table of deleteOrder) {
-        const deletedRows = await this.countRows(queryRunner, table.path);
-        if (deletedRows > 0) {
-          await queryRunner.query(`DELETE FROM ${this.escapeTablePath(table.path)}`);
-        }
-        deletedTables.push({ tableName: table.filename, deletedRows });
-      }
-
-      const actorPlaceholder = this.getParameterPlaceholder(1);
-      const deletedUsers = await this.countRowsWhere(queryRunner, 'users', `id <> ${actorPlaceholder}`, [actor.id]);
-      if (deletedUsers > 0) {
-        await queryRunner.query(
-          `DELETE FROM ${this.escapeTablePath('users')} WHERE id <> ${actorPlaceholder}`,
-          [actor.id],
-        );
-      }
-      deletedTables.push({ tableName: 'users', deletedRows: deletedUsers });
-
-      const importOrder = await this.getInsertOrder(queryRunner, new Set());
-      const importedTableMap = new Map(archive.tables.map((table) => [table.key, table]));
-      const importedTables: Array<{ tableName: string; importedRows: number }> = [];
-      for (const table of importOrder) {
-        const importedTable = importedTableMap.get(table.key);
-        if (!importedTable) continue;
-        const rows = table.key === 'users'
-          ? importedTable.rows.filter((row) => (
-            String(row.id || '') !== actor.id
-            && String(row.email || '').trim().toLowerCase() !== currentActor.email.trim().toLowerCase()
-          ))
-          : importedTable.rows;
-        await this.insertRows(queryRunner, table.path, rows);
-        importedTables.push({ tableName: table.filename, importedRows: rows.length });
-      }
-
-      await new StoredUploadScopes20260909120000().rebuild(queryRunner);
-
-      appliedUploads = await this.uploadStore.applyImportedUploads(stagedUploads);
-      // Use actual restored bytes, never size values from an imported manifest.
-      // Keep accounting in this transaction so no zero-sized backfill is visible.
-      const restoredFiles = await this.uploadStore.scanUploads();
-      if (restoredFiles.warnings.length) {
-        throw new InternalServerErrorException('Wiederhergestellte Upload-Größen konnten nicht ermittelt werden.');
-      }
-      const uploadRepository = queryRunner.manager.getRepository(StoredUpload);
-      await uploadRepository.createQueryBuilder().update().set({ size: 0 }).execute();
-      for (const file of restoredFiles.files) {
-        const match = /^(images|process-files)\/([a-z0-9][a-z0-9_.-]*)$/i.exec(file.relativePath);
-        if (!match) continue;
-        await uploadRepository.update({
-          filename: match[2], kind: match[1] === 'images' ? 'image' : 'process-file',
-        }, { size: file.size });
-      }
-      await queryRunner.commitTransaction();
-
-      if (appliedUploads.backupRoot) {
-        await this.uploadStore.removePath(appliedUploads.backupRoot);
-      }
-      await this.uploadStore.removePath(stagedUploads.sessionRoot);
+      const { result: { deletedTables, importedTables }, fileCount, totalBytes } = await restoreSystemDataArchive({
+        dataSource: this.dataSource, uploads: archive.uploads, store: this.uploadStore,
+        replaceRows: runner => this.restoreDatabaseRows(runner, archive, actor),
+        reconcileSizes: runner => this.reconcileRestoredUploadSizes(runner),
+      });
 
       try {
         await this.auditService.log({
@@ -507,8 +371,8 @@ export class SystemDataService {
           details: {
             filename: payload.originalFilename,
             importedTables,
-            importedUploadFiles: stagedUploads.fileCount,
-            importedUploadBytes: stagedUploads.totalBytes,
+            importedUploadFiles: fileCount,
+            importedUploadBytes: totalBytes,
             warnings: archive.warnings,
           },
         });
@@ -521,31 +385,82 @@ export class SystemDataService {
         filename: payload.originalFilename,
         deletedTables,
         importedTables,
-        importedUploadFiles: stagedUploads.fileCount,
-        importedUploadBytes: stagedUploads.totalBytes,
+        importedUploadFiles: fileCount,
+        importedUploadBytes: totalBytes,
         warnings: archive.warnings,
       };
-    } catch (error) {
-      if (queryRunner.isTransactionActive) {
-        try {
-          await queryRunner.rollbackTransaction();
-        } catch {
-          /* ignore rollback errors */
-        }
-      }
-
-      if (appliedUploads) {
-        await this.uploadStore.restorePreviousUploads(appliedUploads);
-      }
-
-      if (stagedUploads) {
-        await this.uploadStore.removePath(stagedUploads.sessionRoot);
-      }
-
-      throw error;
     } finally {
-      await queryRunner.release();
       await this.uploadStore.removePath(filePath);
+    }
+  }
+
+  private async restoreDatabaseRows(queryRunner: QueryRunner, archive: ParsedImportArchive, actor: SystemDataActor) {
+    const actorRows = await queryRunner.query(
+      `SELECT id, email FROM ${this.escapeTablePath('users')} WHERE id = ${this.getParameterPlaceholder(1)}`,
+      [actor.id],
+    ) as Array<{ id: string; email: string }>;
+    const currentActor = actorRows[0];
+    if (!currentActor) {
+      throw new InternalServerErrorException('Der ausführende Superadmin konnte vor dem Restore nicht gesichert werden.');
+    }
+
+    // Preserve the executing superadmin and therefore their active refresh
+    // session. All other users are replaced from the backup below.
+    const deleteOrder = await this.getDeleteOrder(queryRunner, new Set(['users']));
+    const deletedTables: Array<{ tableName: string; deletedRows: number }> = [];
+    for (const table of deleteOrder) {
+      const deletedRows = await this.countRows(queryRunner, table.path);
+      if (deletedRows > 0) {
+        await queryRunner.query(`DELETE FROM ${this.escapeTablePath(table.path)}`);
+      }
+      deletedTables.push({ tableName: table.filename, deletedRows });
+    }
+
+    const actorPlaceholder = this.getParameterPlaceholder(1);
+    const deletedUsers = await this.countRowsWhere(queryRunner, 'users', `id <> ${actorPlaceholder}`, [actor.id]);
+    if (deletedUsers > 0) {
+      await queryRunner.query(
+        `DELETE FROM ${this.escapeTablePath('users')} WHERE id <> ${actorPlaceholder}`,
+        [actor.id],
+      );
+    }
+    deletedTables.push({ tableName: 'users', deletedRows: deletedUsers });
+
+    const importOrder = await this.getInsertOrder(queryRunner, new Set());
+    const importedTableMap = new Map(archive.tables.map((table) => [table.key, table]));
+    const importedTables: Array<{ tableName: string; importedRows: number }> = [];
+    for (const table of importOrder) {
+      const importedTable = importedTableMap.get(table.key);
+      if (!importedTable) continue;
+      const rows = table.key === 'users'
+        ? importedTable.rows.filter((row) => (
+          String(row.id || '') !== actor.id
+          && String(row.email || '').trim().toLowerCase() !== currentActor.email.trim().toLowerCase()
+        ))
+        : importedTable.rows;
+      await this.insertRows(queryRunner, table.path, rows);
+      importedTables.push({ tableName: table.filename, importedRows: rows.length });
+    }
+
+    await new StoredUploadScopes20260909120000().rebuild(queryRunner);
+    return { deletedTables, importedTables };
+  }
+
+  private async reconcileRestoredUploadSizes(queryRunner: QueryRunner) {
+    // Use actual restored bytes, never size values from an imported manifest.
+    // Keep accounting in this transaction so no zero-sized backfill is visible.
+    const restoredFiles = await this.uploadStore.scanUploads();
+    if (restoredFiles.rootMissing || restoredFiles.warnings.length) {
+      throw new InternalServerErrorException('Wiederhergestellte Upload-Größen konnten nicht ermittelt werden.');
+    }
+    const uploadRepository = queryRunner.manager.getRepository(StoredUpload);
+    await uploadRepository.createQueryBuilder().update().set({ size: 0 }).execute();
+    for (const file of restoredFiles.files) {
+      const match = /^(images|process-files)\/([a-z0-9][a-z0-9_.-]*)$/i.exec(file.relativePath);
+      if (!match) continue;
+      await uploadRepository.update({
+        filename: match[2], kind: match[1] === 'images' ? 'image' : 'process-file',
+      }, { size: file.size });
     }
   }
 
@@ -1524,190 +1439,6 @@ export class SystemDataService {
     return code === 'EPERM' || code === 'EBUSY' || code === 'EMFILE' || code === 'ENFILE';
   }
 
-  private async writeExportArchive(input: {
-    archive: ExportArchive;
-    output: PassThrough;
-    queryRunner: QueryRunner;
-    managedTables: ManagedTable[];
-    tableManifest: Array<{ tableName: string; rowCount: number; files: string[] }>;
-    totalDatabaseRows: number;
-    uploads: { files: UploadFileEntry[]; fileCount: number; totalBytes: number; warnings: string[] };
-    generatedAt: string;
-    actor: SystemDataActor;
-    filename: string;
-  }) {
-    const {
-      archive,
-      output,
-      queryRunner,
-      managedTables,
-      tableManifest,
-      totalDatabaseRows,
-      uploads,
-      generatedAt,
-      actor,
-      filename,
-    } = input;
-
-    try {
-      for (const table of managedTables) {
-        await this.appendExportStream(archive, this.createJsonExportStream(queryRunner, table), `database/${table.filename}.json`);
-        await this.appendExportStream(archive, this.createCsvExportStream(queryRunner, table), `database/${table.filename}.csv`);
-      }
-
-      for (const file of uploads.files) {
-        await this.appendExportStream(archive, this.createUploadExportStream(file, uploads.warnings), `uploads/${file.relativePath}`);
-      }
-
-      await this.appendExportStream(archive, this.createManifestExportStream(() => JSON.stringify({
-        format: SYSTEM_DATA_EXPORT_FORMAT,
-        schemaVersion: SYSTEM_DATA_EXPORT_SCHEMA_VERSION,
-        generatedAt,
-        generatedBy: { id: actor.id, name: actor.name ?? null, role: actor.role },
-        totals: {
-          managedTables: managedTables.length,
-          databaseRows: totalDatabaseRows,
-          uploadFiles: uploads.fileCount,
-          uploadBytes: uploads.totalBytes,
-        },
-        tables: tableManifest,
-        uploads: {
-          files: uploads.files.map((file) => ({ path: file.relativePath, size: file.size })),
-          warnings: uploads.warnings,
-        },
-      }, null, 2)), 'manifest.json');
-
-      await archive.finalize();
-
-      try {
-        await this.auditService.log({
-          action: AuditAction.EXPORT,
-          entityType: 'system-data',
-          entityId: 'global',
-          entityTitle: filename,
-          user: { id: actor.id, name: actor.name ?? null, orgId: null },
-          orgId: null,
-          details: {
-            managedTables: managedTables.length,
-            databaseRows: totalDatabaseRows,
-            uploadFiles: uploads.fileCount,
-            uploadBytes: uploads.totalBytes,
-          },
-        });
-      } catch {
-        /* ignore audit errors */
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'unknown export error';
-      this.logger.error(`System export failed: ${message}`);
-      archive.destroy(error instanceof Error ? error : new Error(message));
-      output.destroy(error instanceof Error ? error : new Error(message));
-    } finally {
-      await queryRunner.release();
-    }
-  }
-
-  private createJsonExportStream(queryRunner: QueryRunner, table: ManagedTable) {
-    return Readable.from(this.iterateJsonExportRows(queryRunner, table));
-  }
-
-  private appendExportStream(archive: ExportArchive, stream: Readable, name: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      let settled = false;
-      const finish = (callback: () => void) => {
-        if (settled) return;
-        settled = true;
-        archive.off('entry', onEntry);
-        archive.off('error', onArchiveError);
-        stream.off('error', onStreamError);
-        callback();
-      };
-      const onEntry = (entry: ExportArchiveEntry) => {
-        if (entry.name === name) finish(resolve);
-      };
-      const onStreamError = (error: Error) => {
-        archive.destroy(error);
-        finish(() => reject(error));
-      };
-      const onArchiveError = (error: Error) => finish(() => reject(error));
-
-      archive.once('entry', onEntry);
-      archive.once('error', onArchiveError);
-      stream.once('error', onStreamError);
-      archive.append(stream, { name });
-    });
-  }
-
-  private async *iterateJsonExportRows(queryRunner: QueryRunner, table: ManagedTable): AsyncGenerator<string> {
-    yield '[\n';
-    let first = true;
-    for await (const row of this.iterateExportRows(queryRunner, table)) {
-      yield `${first ? '' : ',\n'}${JSON.stringify(row)}`;
-      first = false;
-    }
-    yield '\n]\n';
-  }
-
-  private createCsvExportStream(queryRunner: QueryRunner, table: ManagedTable) {
-    return Readable.from(this.iterateCsvExportRows(queryRunner, table));
-  }
-
-  private async *iterateCsvExportRows(queryRunner: QueryRunner, table: ManagedTable): AsyncGenerator<string> {
-    let columns: string[] | null = null;
-    for await (const row of this.iterateExportRows(queryRunner, table)) {
-      if (!columns) {
-        columns = Object.keys(row);
-        yield `${columns.map((column) => this.escapeCsvValue(column)).join(',')}\n`;
-      }
-      yield `${columns.map((column) => this.escapeCsvValue(this.serializeCsvValue(row[column]))).join(',')}\n`;
-    }
-  }
-
-  private async *iterateExportRows(queryRunner: QueryRunner, table: ManagedTable): AsyncGenerator<Record<string, unknown>> {
-    const sql = `SELECT * FROM ${this.escapeTablePath(table.path)}`;
-    if (this.dataSource.options.type === 'postgres') {
-      const rowStream = await queryRunner.stream(sql);
-      for await (const row of rowStream as AsyncIterable<Record<string, unknown>>) {
-        yield this.normalizeDateOnlyColumns(table, row);
-      }
-      return;
-    }
-
-    const chunkSize = 1_000;
-    for (let offset = 0; ; offset += chunkSize) {
-      const rows = await queryRunner.query(`${sql} LIMIT ${chunkSize} OFFSET ${offset}`) as Array<Record<string, unknown>>;
-      if (!rows.length) return;
-      for (const row of rows) yield this.normalizeDateOnlyColumns(table, row);
-      if (rows.length < chunkSize) return;
-    }
-  }
-
-  private createUploadExportStream(file: UploadFileEntry, warnings: string[]) {
-    const logger = this.logger;
-    return Readable.from((async function* () {
-      try {
-        for await (const chunk of createReadStream(file.absolutePath)) yield chunk;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'unknown upload read error';
-        warnings.push(`${file.relativePath}: ${message}`);
-        logger.warn(`Could not add upload file ${file.absolutePath} to system export: ${message}`);
-      }
-    })());
-  }
-
-  private createManifestExportStream(createManifest: () => string) {
-    return Readable.from((async function* () {
-      yield createManifest();
-    })());
-  }
-
-  private serializeCsvValue(value: unknown) {
-    if (value === null || typeof value === 'undefined') return '';
-    if (value instanceof Date) return value.toISOString();
-    if (typeof value === 'object') return JSON.stringify(value);
-    return String(value);
-  }
-
   private normalizeRowsForImport(table: ManagedTable, rows: Array<Record<string, unknown>>) {
     return rows.map((row) => this.normalizeActivityImportRow(table, this.normalizeDateOnlyColumns(table, row)));
   }
@@ -1720,6 +1451,10 @@ export class SystemDataService {
       normalizedRow.executionStatus = normalizedRow.executionStatus === 'planned' ? 'planned' : normalizedRow.executionStatus === 'cancelled' ? 'cancelled' : 'completed';
     }
     normalizeActivityMetrics(normalizedRow);
+    // Older records may contain a valid total without a full gender breakdown.
+    if (typeof row.countTotal === 'number' && Number.isSafeInteger(row.countTotal) && row.countTotal >= 0) {
+      normalizedRow.countTotal = row.countTotal;
+    }
     return normalizedRow;
   }
 
@@ -1760,13 +1495,6 @@ export class SystemDataService {
     const month = String(value.getMonth() + 1).padStart(2, '0');
     const day = String(value.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
-  }
-
-  private escapeCsvValue(value: string) {
-    if (/[",\n\r]/.test(value)) {
-      return `"${value.replace(/"/g, '""')}"`;
-    }
-    return value;
   }
 
 }

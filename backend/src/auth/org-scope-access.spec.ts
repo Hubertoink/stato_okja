@@ -1,7 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import {
   assertExactOrgScopedEntityAccess,
-  assertOrgScopedEntityAccess,
   preserveOrgIdForNonSuperadmin,
   removeOrgIdForNonSuperadmin,
   resolveOrgScope,
@@ -21,19 +20,15 @@ describe('org-scope-access', () => {
     expect(resolveOrgScope({ role: 'superadmin', orgId: null, effectiveOrgId: 'org-2' })).toBe('org-2');
   });
 
-  it('throws when a non-superadmin crosses an entity org seam', () => {
+  it('requires the selected organization for a member with multiple memberships', () => {
+    const member = { role: 'editor', orgId: 'org-1', effectiveOrgId: 'org-2' };
+    expect(() => assertExactOrgScopedEntityAccess({ orgId: 'org-2' }, member)).not.toThrow();
     expect(() =>
-      assertOrgScopedEntityAccess({ orgId: 'org-2' }, { role: 'admin', orgId: 'org-1' }),
+      assertExactOrgScopedEntityAccess({ orgId: 'org-1' }, member),
     ).toThrow(ForbiddenException);
   });
 
-  it('allows superadmin across entity org seams', () => {
-    expect(() =>
-      assertOrgScopedEntityAccess({ orgId: 'org-2' }, { role: 'superadmin', orgId: null }),
-    ).not.toThrow();
-  });
-
-  it('requires exact effective org scope when requested', () => {
+  it('requires exact effective org scope for a superadmin', () => {
     expect(() =>
       assertExactOrgScopedEntityAccess({ orgId: 'org-1' }, { role: 'superadmin', orgId: null, effectiveOrgId: 'org-1' }),
     ).not.toThrow();

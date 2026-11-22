@@ -92,6 +92,7 @@ try {
 export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
   const { user, loading, updateSessionUser } = useAuth();
   const [scope, setScopeState] = useState<OrgScopeValue>(initialStoredScope);
+  const [initializedUserId, setInitializedUserId] = useState<string | null>(null);
   const [switching, setSwitching] = useState(false);
   const qc = useQueryClient();
   const scopeChangeSourceRef = useRef<'init' | 'user'>('init');
@@ -105,6 +106,8 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
     if (!user) {
       if (loading) return;
       scopeChangeSourceRef.current = 'init';
+      applyOrgScopeHeader(undefined);
+      setInitializedUserId(null);
       setScopeState(undefined);
       try { localStorage.removeItem(LEGACY_KEY); } catch { /* ignore */ }
       previousUserRef.current = null;
@@ -141,7 +144,9 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
       // Superadmin: do NOT allow implicit "global" scope.
       // If nothing is stored, default to null (superadmin area without tenant data).
       const next = (typeof parsed === 'undefined') ? null : parsed;
+      applyOrgScopeHeader(next);
       setScopeState(next);
+      setInitializedUserId(user.id);
       try { localStorage.setItem(key, next === null ? 'null' : String(next)); } catch { /* ignore */ }
       previousUserRef.current = { id: user.id, orgId: user.orgId ?? null, role: user.role };
       return;
@@ -162,8 +167,14 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
     const selectedScope = requestedScope && memberships.some((membership) => membership.orgId === requestedScope)
       ? requestedScope
       : ownScope;
+    const selectedMembership = memberships.find(membership => membership.orgId === selectedScope);
+    applyOrgScopeHeader(selectedScope);
     setScopeState(selectedScope);
-    previousUserRef.current = { id: user.id, orgId: user.orgId ?? null, role: user.role };
+    setInitializedUserId(user.id);
+    previousUserRef.current = { id: user.id, orgId: selectedScope, role: selectedMembership?.role ?? user.role };
+    if (selectedMembership && (user.orgId !== selectedScope || user.role !== selectedMembership.role)) {
+      updateSessionUser({ ...user, orgId: selectedScope, orgName: selectedMembership.orgName, role: selectedMembership.role });
+    }
 
     if (requestedScope && selectedScope !== requestedScope) removeCachedOrgName(requestedScope);
     try { localStorage.setItem(key, selectedScope === null ? 'null' : selectedScope); } catch { /* ignore */ }
@@ -228,7 +239,7 @@ export function OrgScopeProvider({ children }: { children: React.ReactNode }) {
     clear: () => setScope(undefined),
   }), [scope, switching, setScope]);
 
-  return <OrgScopeCtx.Provider value={value}>{children}</OrgScopeCtx.Provider>;
+  return <OrgScopeCtx.Provider value={value}>{(!user || initializedUserId === user.id) && children}</OrgScopeCtx.Provider>;
 }
 
 export function useOrgScope() {

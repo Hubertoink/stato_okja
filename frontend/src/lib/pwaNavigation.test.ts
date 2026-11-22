@@ -3,7 +3,7 @@ import { networkOnlyNavigationPatterns } from './pwaNavigation';
 
 describe('public token links bypass the offline app shell', () => {
   it.each([
-    '/accept-invite', '/accept-invite?token=test', '/accept-invite/?token=test',
+    '/email-change', '/accept-invite', '/accept-invite?token=test', '/accept-invite/?token=test',
     '/reset-password?token=test', '/reset-password-request', '/survey/public-token',
     '/login-fluid/index.html',
   ])('loads %s from the network', (path) => {

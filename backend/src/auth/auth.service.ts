@@ -16,10 +16,11 @@ import type { UserRole } from '../users/entities/user.entity';
 import { AuditService } from '../common/audit.service';
 import { AuditAction } from '../common/enums';
 import { normalizeUploadPath } from '../common/upload-paths';
-import { isStrictSecurityMode } from '../config/security.config';
+import { getJwtSecret, isStrictSecurityMode } from '../config/security.config';
 import { isStrongPassword, PASSWORD_POLICY_MESSAGE } from './password-policy';
 import { LegalContentService } from '../legal/legal-content.service';
 import { getTwoFactorCodeTtlSeconds, isTwoFactorAuthenticationEnabled } from './two-factor.config';
+import { forcedSuperadminEmail, seedSuperadminEmail } from './superadmin-email.config';
 import { assertInitialSetupToken } from './initial-setup-token';
 
 export type PasswordResetMode = 'email' | 'admin_temp_password' | 'hybrid';
@@ -78,7 +79,6 @@ export type RefreshSessionMetadata = {
   ipAddress?: string | null;
 };
 
-const getJwtSecret = () => process.env.JWT_SECRET || 'dev_secret_change_me';
 const DEFAULT_REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_INVITE_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const PLACEHOLDER_SUPERADMIN_EMAILS = new Set([
@@ -215,7 +215,13 @@ export class AuthService {
       userAgent: metadata?.userAgent ? String(metadata.userAgent).slice(0, 255) : null,
       ipAddress: metadata?.ipAddress ? String(metadata.ipAddress).slice(0, 80) : null,
     });
-    await this.refreshSessions.save(session);
+    await writeMemberships(this.users.manager, async write => {
+      const current = await write.account(user.id);
+      if (current.email !== user.email || current.passwordHash !== user.passwordHash) {
+        throw new UnauthorizedException('Bitte melde dich erneut an.');
+      }
+      await write.manager.getRepository(RefreshSession).save(session);
+    });
 
     return { refreshToken, refreshCsrfToken, refreshTokenMaxAgeMs, sessionId: session.id };
   }
@@ -340,7 +346,8 @@ export class AuthService {
     const csrfMatches = await bcrypt.compare(csrfToken, session.csrfHash);
     if (!csrfMatches) throw new UnauthorizedException('Nicht autorisiert');
 
-    await this.refreshSessions.delete({ id: session.id });
+    const consumed = await this.refreshSessions.delete({ id: session.id });
+    if (consumed.affected !== 1) throw new UnauthorizedException('Sitzung ist nicht mehr gültig');
     return this.createAuthenticatedSession(session.user, { auditLogin: false, sessionMetadata: metadata });
   }
 
@@ -395,12 +402,12 @@ export class AuthService {
   }
 
   private async clearTwoFactorChallenge(user: User, options?: { bumpVersion?: boolean }) {
-    user.twoFactorCodeHash = null;
-    user.twoFactorCodeExpiresAt = null;
-    if (options?.bumpVersion === true) {
-      user.twoFactorTokenVersion = (user.twoFactorTokenVersion || 0) + 1;
-    }
-    await this.users.save(user);
+    const previousVersion = user.twoFactorTokenVersion;
+    const version = previousVersion + (options?.bumpVersion ? 1 : 0);
+    const result = await this.users.update({ id: user.id, email: user.email, twoFactorTokenVersion: previousVersion }, {
+      twoFactorCodeHash: null, twoFactorCodeExpiresAt: null, twoFactorTokenVersion: version,
+    });
+    if (result.affected !== 1) throw new UnauthorizedException('Die Zwei-Faktor-Anfrage ist nicht mehr gültig');
   }
 
   private async issueTwoFactorChallenge(user: User): Promise<TwoFactorChallengeResponse> {
@@ -409,10 +416,11 @@ export class AuthService {
     const code = this.generateTwoFactorCode();
     const nextVersion = (user.twoFactorTokenVersion || 0) + 1;
 
+    const issued = await this.users.update({ id: user.id, email: user.email, twoFactorTokenVersion: user.twoFactorTokenVersion }, {
+      twoFactorTokenVersion: nextVersion, twoFactorCodeHash: await bcrypt.hash(code, 10), twoFactorCodeExpiresAt: expiresAt,
+    });
+    if (issued.affected !== 1) throw new UnauthorizedException('Bitte melde dich erneut an.');
     user.twoFactorTokenVersion = nextVersion;
-    user.twoFactorCodeHash = await bcrypt.hash(code, 10);
-    user.twoFactorCodeExpiresAt = expiresAt;
-    await this.users.save(user);
 
     try {
       await this.email.sendTwoFactorCodeEmail(
@@ -460,26 +468,36 @@ export class AuthService {
     if (!isStrongPassword(password)) {
       throw new BadRequestException(PASSWORD_POLICY_MESSAGE);
     }
-    user.passwordHash = await bcrypt.hash(password, 10);
-    if (options?.bumpResetVersion !== false) {
-      user.passwordResetTokenVersion = (user.passwordResetTokenVersion || 0) + 1;
-    }
-    user.mustChangePassword = options?.mustChangePassword === true;
-    await this.users.save(user);
-    await this.revokeAllRefreshSessionsForUser(user.id);
+    const update = {
+      passwordHash: await bcrypt.hash(password, 10),
+      passwordResetTokenVersion: (user.passwordResetTokenVersion || 0) + (options?.bumpResetVersion === false ? 0 : 1),
+      mustChangePassword: options?.mustChangePassword === true,
+    };
+    await writeMemberships(this.users.manager, async write => {
+      const result = await write.users.update({
+        id: user.id, email: user.email, passwordResetTokenVersion: user.passwordResetTokenVersion || 0,
+      }, update);
+      if (result.affected !== 1) throw new UnauthorizedException('Die Anfrage ist nicht mehr gültig.');
+      await write.manager.getRepository(RefreshSession).delete({ userId: user.id });
+    });
+    Object.assign(user, update);
   }
 
   private async issueResetToken(user: User) {
-    user.passwordResetTokenVersion = (user.passwordResetTokenVersion || 0) + 1;
-    await this.users.save(user);
+    const version = user.passwordResetTokenVersion + 1;
+    const issued = await this.users.update({ id: user.id, email: user.email, passwordResetTokenVersion: user.passwordResetTokenVersion }, {
+      passwordResetTokenVersion: version,
+    });
+    if (issued.affected !== 1) return null;
     return this.jwt.signAsync(
-      { sub: user.id, purpose: 'reset', version: user.passwordResetTokenVersion },
+      { sub: user.id, purpose: 'reset', version },
       { expiresIn: Math.floor(parseDurationToMs(process.env.RESET_TOKEN_EXPIRATION, 60 * 60 * 1000) / 1000) },
     );
   }
 
   private async sendResetLink(user: User) {
     const token = await this.issueResetToken(user);
+    if (!token) return { ok: true as const, mode: 'email' as const };
     const origin = process.env.APP_ORIGIN || 'http://localhost:5173';
     const link = `${origin}/reset-password?token=${token}`;
     try {
@@ -542,9 +560,9 @@ export class AuthService {
   async ensureSeed() {
     const strictMode = isStrictSecurityMode();
     const configuredSeedEmail = String(process.env.SUPERADMIN_EMAIL || '').trim().toLowerCase();
-    const seedEmail = (configuredSeedEmail || 'Hubertoink@outlook.com').toLowerCase();
+    const seedEmail = seedSuperadminEmail();
     const forcedPassword = process.env.SUPERADMIN_PASSWORD;
-    const forceEmail = (process.env.SUPERADMIN_EMAIL_FORCE || '').toLowerCase() === 'true';
+    const forceEmail = forcedSuperadminEmail() !== null;
     const forcePassword = (process.env.SUPERADMIN_PASSWORD_FORCE || '').toLowerCase() === 'true';
     const existing = await this.users.findOne({ where: { role: 'superadmin' } });
 
@@ -615,6 +633,11 @@ export class AuthService {
     return ok ? user : null;
   }
 
+  private saveLoginAttempts(user: User) {
+    const { failedLoginAttempts, lastFailedLoginAt, lockoutUntil } = user;
+    return this.users.update({ id: user.id, email: user.email }, { failedLoginAttempts, lastFailedLoginAt, lockoutUntil });
+  }
+
   async loginWithPassword(email: string, password: string, metadata?: RefreshSessionMetadata) {
     const normalizedEmail = String(email || '').toLowerCase();
     const now = new Date();
@@ -630,7 +653,7 @@ export class AuthService {
       user.lockoutUntil = null;
       user.failedLoginAttempts = 0;
       user.lastFailedLoginAt = null;
-      await this.users.save(user);
+      await this.saveLoginAttempts(user);
     }
 
     if (user.lockoutUntil && user.lockoutUntil.getTime() > now.getTime()) {
@@ -648,7 +671,7 @@ export class AuthService {
     ) {
       user.failedLoginAttempts = 0;
       user.lastFailedLoginAt = null;
-      await this.users.save(user);
+      await this.saveLoginAttempts(user);
     }
 
     const ok = await bcrypt.compare(password, user.passwordHash || '');
@@ -658,7 +681,7 @@ export class AuthService {
       if (user.failedLoginAttempts >= this.loginLockout.maxAttempts) {
         user.lockoutUntil = new Date(now.getTime() + this.loginLockout.lockoutMs);
       }
-      await this.users.save(user);
+      await this.saveLoginAttempts(user);
       throw new UnauthorizedException('Ungültige Zugangsdaten');
     }
 
@@ -666,7 +689,7 @@ export class AuthService {
       user.failedLoginAttempts = 0;
       user.lockoutUntil = null;
       user.lastFailedLoginAt = null;
-      await this.users.save(user);
+      await this.saveLoginAttempts(user);
     }
 
     if (this.isTwoFactorAuthenticationEnabled()) {
@@ -931,9 +954,7 @@ export class AuthService {
   async acceptTerms(userId: string) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
-    user.termsAcceptedVersion = await this.legalContent.getTermsOfUseVersion();
-    user.termsAcceptedAt = new Date();
-    await this.users.save(user);
+    await this.users.update(user.id, { termsAcceptedVersion: await this.legalContent.getTermsOfUseVersion(), termsAcceptedAt: new Date() });
     return this.getProfile(user.id);
   }
 
@@ -948,30 +969,29 @@ export class AuthService {
     patch: { name?: string; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; viewDensity?: ViewDensity; navigationLayout?: NavigationLayout; sidebarColoredIcons?: boolean; locale?: SupportedLocale },
     selectedOrg?: string,
   ) {
-    const user = await this.users.findOne({ where: { id: userId } });
-    if (!user) throw new Error('User not found');
-    if (typeof patch.name === 'string') user.name = patch.name;
+    const update: Partial<User> = {};
+    if (typeof patch.name === 'string') update.name = patch.name;
     if (typeof patch.avatarUrl !== 'undefined') {
-      user.avatarUrl = normalizeUploadPath(patch.avatarUrl);
+      update.avatarUrl = normalizeUploadPath(patch.avatarUrl);
     }
     if (typeof patch.theme === 'string') {
-      user.theme = patch.theme;
+      update.theme = patch.theme;
     }
     if (typeof patch.themeMode === 'string' && SUPPORTED_THEME_MODES.includes(patch.themeMode)) {
-      user.themeMode = patch.themeMode;
+      update.themeMode = patch.themeMode;
     }
-    if (typeof patch.locale === 'string') user.locale = resolveLocale(patch.locale);
+    if (typeof patch.locale === 'string') update.locale = resolveLocale(patch.locale);
     if (typeof patch.sidebarColoredIcons === 'boolean') {
-      user.sidebarColoredIcons = patch.sidebarColoredIcons;
+      update.sidebarColoredIcons = patch.sidebarColoredIcons;
     }
     if (patch.navigationLayout && SUPPORTED_NAVIGATION_LAYOUTS.includes(patch.navigationLayout)) {
-      user.navigationLayout = patch.navigationLayout;
+      update.navigationLayout = patch.navigationLayout;
     }
     if (patch.viewDensity && SUPPORTED_VIEW_DENSITIES.includes(patch.viewDensity)) {
-      user.viewDensity = patch.viewDensity;
+      update.viewDensity = patch.viewDensity;
     }
-    await this.users.save(user);
-    return this.getProfile(user.id, selectedOrg);
+    if (Object.keys(update).length) await this.users.update(userId, update);
+    return this.getProfile(userId, selectedOrg);
   }
 
   async changePassword(

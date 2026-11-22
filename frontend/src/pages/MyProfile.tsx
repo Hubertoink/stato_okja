@@ -1,3 +1,4 @@
+import EmailChangeField from '@/components/profile/EmailChangeField';
 import RoleInfo from '@/components/profile/RoleInfo';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, type AuthSessionPayload, type Role } from '@/lib/auth';
@@ -276,10 +277,7 @@ function ProfileCard({ userName, avatarUrl, onUpdated, email, role, locale }: { 
               )}
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium">{autoT('ui_9eeffe4b7b6e')}</label>
-            <input className="border rounded px-3 py-2 w-full bg-gray-50 text-gray-600" value={email} disabled />
-          </div>
+          <EmailChangeField email={email} />
           <div>
             <label className="block text-sm font-medium" htmlFor="profile-locale">{t('language.label')}</label>
             <select

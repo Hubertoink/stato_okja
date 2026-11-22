@@ -74,6 +74,7 @@ const LegalAdministration = lazyWithReload(() => import('./pages/LegalAdministra
 const SettingsTestData = lazyWithReload(() => import('./pages/SettingsTestData'));
 const AcceptInvite = lazyWithReload(() => import('./pages/AcceptInvite'));
 const ResetRequest = lazyWithReload(() => import('./pages/ResetRequest'));
+const EmailChangeConfirmation = lazyWithReload(() => import('./pages/EmailChangeConfirmation'));
 const ResetPassword = lazyWithReload(() => import('./pages/ResetPassword'));
 const ProjectPickerPage = lazyWithReload(() => import('@/pages/ProjectPickerPage'));
 const Logbook = lazyWithReload(() => import('@/pages/Logbook'));
@@ -147,6 +148,9 @@ function App() {
               </RouteBoundary>
             }
           />
+          <Route path="/email-change" element={
+            <RouteBoundary label={t('emailChange.title')}><EmailChangeConfirmation /></RouteBoundary>
+          } />
           {/* Public routes for password reset */}
           <Route
             path="/reset-password-request"

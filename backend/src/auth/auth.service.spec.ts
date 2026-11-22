@@ -16,7 +16,10 @@ describe('AuthService invitations', () => {
       create: jest.fn((data) => ({ id: 'user-1', ...data })),
       save: jest.fn(async (user) => user),
       delete: jest.fn().mockResolvedValue(undefined),
-      update: jest.fn().mockResolvedValue({ affected: 1 }),
+      update: jest.fn(async (_criteria, patch) => {
+        if (options.existingUser) Object.assign(options.existingUser, patch);
+        return { affected: 1 };
+      }),
     };
     const jwt = {
       signAsync: jest.fn().mockResolvedValue('invite-token'),
@@ -129,7 +132,7 @@ describe('AuthService invitations', () => {
     expect(await service.updateProfile('user-1', { viewDensity: 'normal' })).toEqual(
       expect.objectContaining({ id: 'user-1', name: 'Existing name', viewDensity: 'normal' }),
     );
-    expect(users.save).toHaveBeenCalledWith(expect.objectContaining({ viewDensity: 'normal' }));
+    expect(users.update).toHaveBeenCalledWith('user-1', expect.objectContaining({ viewDensity: 'normal' }));
     expect(await service.getProfile('user-1')).toEqual(expect.objectContaining({ viewDensity: 'normal' }));
     expect(await service.updateProfile('user-1', { viewDensity: 'compact' })).toEqual(
       expect.objectContaining({ viewDensity: 'compact' }),
@@ -150,7 +153,7 @@ describe('AuthService invitations', () => {
     expect(await service.updateProfile('user-1', { navigationLayout: 'top' })).toEqual(
       expect.objectContaining({ id: 'user-1', name: 'Existing name', navigationLayout: 'top' }),
     );
-    expect(users.save).toHaveBeenCalledWith(expect.objectContaining({ navigationLayout: 'top' }));
+    expect(users.update).toHaveBeenCalledWith('user-1', expect.objectContaining({ navigationLayout: 'top' }));
     expect(await service.getProfile('user-1')).toEqual(expect.objectContaining({ navigationLayout: 'top' }));
     expect(await service.updateProfile('user-1', { navigationLayout: 'sidebar' })).toEqual(
       expect.objectContaining({ navigationLayout: 'sidebar' }),

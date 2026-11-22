@@ -9,6 +9,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.26.0] - 2026-11-22
+
+### Added
+- Unter „Meine Daten“ können Nutzer ihre Anmeldeadresse für alle Organisationen ändern. Nach Eingabe des aktuellen Passworts müssen sie den Wechsel innerhalb von 30 Minuten im bisherigen und im neuen Postfach bestätigen. Offene Anfragen lassen sich im Profil oder über die Mail an die bisherige Adresse abbrechen.
+
+### Security
+- Nach beiden Bestätigungen beendet StatO alle aktiven Sitzungen und entwertet bestehende Passwort-Reset-Links und Anmeldecodes. Die nächste Anmeldung erfolgt mit der neuen Adresse und dem bisherigen Passwort. Benutzer-ID, Rollen und Organisationszugehörigkeiten bleiben erhalten.
+
+### Upgrade-Hinweise
+- Die neue Datenbankmigration legt die Tabelle für ausstehende E-Mail-Änderungen an. Für den Versand benötigt der Server funktionierendes SMTP und eine für Nutzer erreichbare `APP_ORIGIN` für die Bestätigungslinks.
+- StatO Desktop 1.26.0 für Windows nutzt den Adresswechsel mit einem verbundenen Server ab Version 1.26.0.
+
 ## [1.25.3] - 2026-11-22
 
 ### Korrekturen

@@ -3,5 +3,5 @@ export const networkOnlyNavigationPatterns = [
   // The animation has its own HTML document; never replace it with the SPA shell.
   /^\/login-fluid\//,
   /^\/survey\//,
-  /^\/(?:accept-invite|reset-password|reset-password-request)(?:[/?]|$)/,
+  /^\/(?:email-change|accept-invite|reset-password|reset-password-request)(?:[/?]|$)/,
 ];

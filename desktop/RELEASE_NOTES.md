@@ -2,8 +2,8 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Die Windows-App findet verfügbare Updates auch bei einer langen GitHub-Release-Liste. Sind die ersten fünf Seiten mit insgesamt 500 Einträgen gefüllt, wertet die App die dort gefundenen Desktop-Releases aus.
-- Mit einem StatO-Server ab Version 1.25.3 zeigt die Benutzerverwaltung die globale Superadmin-Rolle auch bei zusätzlicher Organisationsmitgliedschaft korrekt an.
+- Mit einem StatO-Server ab Version 1.26.0 kannst du unter „Meine Daten“ deine Anmeldeadresse ändern. Bestätige den Wechsel in beiden Postfächern innerhalb von 30 Minuten.
+- Melde dich anschließend auch in der Windows-App mit deiner neuen Adresse und deinem bisherigen Passwort an. Deine Daten und Organisationsrollen bleiben erhalten.
 
 ### Installation und einmaliger Umstieg
 

@@ -89,7 +89,7 @@ type UploadReferenceSummary = {
 
 const PURGE_CONFIRMATION_TEXT = 'ALLE DATEN LOESCHEN';
 const IMPORT_CONFIRMATION_TEXT = 'BACKUP IMPORTIEREN';
-const TRANSIENT_SYSTEM_TABLE_KEYS = new Set(['auth_refresh_sessions']);
+const TRANSIENT_SYSTEM_TABLE_KEYS = new Set(['auth_refresh_sessions', 'auth_email_changes']);
 const EMPTY_UPLOAD_REFERENCE_BREAKDOWN: UploadReferenceBreakdown = {
   projects: 0,
   projectDocuments: 0,

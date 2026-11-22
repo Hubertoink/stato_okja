@@ -208,6 +208,12 @@ export class EmailService {
     return url.toString();
   }
 
+  async sendEmailChangeMessage(to: string, subject: string, text: string) {
+    const transport = this.getTransporter();
+    if (!transport) throw new ServiceUnavailableException('E-Mail-Versand nicht eingerichtet.');
+    await transport.sendMail({ from: process.env.SMTP_FROM || 'no-reply@stato.local', to: { name: '', address: to }, subject, text });
+  }
+
   async sendInviteEmail(to: string, name: string, link: string) {
     const from = process.env.SMTP_FROM || 'no-reply@stato.local';
     const displayName = name || 'dort';

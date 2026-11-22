@@ -6,6 +6,9 @@ import { User } from '../users/entities/user.entity';
 import { OrganizationMembership } from '../users/entities/organization-membership.entity';
 import { Organization } from '../orgs/entities/organization.entity';
 import { Location } from '../locations/entities/location.entity';
+import { EmailChangeAccountThrottle, EmailChangeController } from './email-change.controller';
+import { EmailChangeService } from './email-change.service';
+import { EmailChange } from './entities/email-change.entity';
 import { RefreshSession } from './entities/refresh-session.entity';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
@@ -35,7 +38,7 @@ function parseJwtExpirationSeconds(raw: string | undefined, fallbackSeconds: num
 
 @Module({
 	imports: [
-	TypeOrmModule.forFeature([User, Organization, OrganizationMembership, Location, RefreshSession, LegalContentOverride]),
+	TypeOrmModule.forFeature([User, Organization, OrganizationMembership, Location, EmailChange, RefreshSession, LegalContentOverride]),
 		PassportModule,
 		AuditModule,
 		OrgsModule,
@@ -44,8 +47,8 @@ function parseJwtExpirationSeconds(raw: string | undefined, fallbackSeconds: num
 			signOptions: { expiresIn: parseJwtExpirationSeconds(process.env.JWT_ACCESS_EXPIRATION, 15 * 60) },
 		}),
 	],
-	controllers: [AuthController],
-	providers: [AuthService, JwtStrategy, EmailService, LegalContentService, OrgScopeGuard, RolesGuard],
+	controllers: [AuthController, EmailChangeController],
+	providers: [EmailChangeAccountThrottle, EmailChangeService, AuthService, JwtStrategy, EmailService, LegalContentService, OrgScopeGuard, RolesGuard],
 	exports: [JwtModule, AuthService, EmailService],
 })
 export class AuthModule implements OnModuleInit {

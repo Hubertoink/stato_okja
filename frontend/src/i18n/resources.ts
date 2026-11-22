@@ -4,6 +4,17 @@ export const resources = {
   de: {
     auto: autoResources.de,
     common: {
+      emailChange: {
+        title: 'E-Mail ändern', email: 'E-Mail', new: 'Neue E-Mail-Adresse', currentPassword: 'Aktuelles Passwort',
+        help: 'Der Wechsel gilt für alle deine Organisationen. Bestätige ihn innerhalb von 30 Minuten in beiden Postfächern. Fehlt dir der Zugriff auf die bisherige Adresse, wende dich an deine Administration.',
+        send: 'Bestätigungsmails senden', pending: 'Änderung auf {{email}} ausstehend.', cancel: 'Änderung abbrechen',
+        managed: 'Diese Adresse ist durch die Serverkonfiguration vorgegeben.', smtp: 'Für E-Mail-Änderungen muss die Administration den Mailversand einrichten.',
+        password: 'Bitte ändere zuerst dein Passwort.', failed: 'Die Anfrage ist fehlgeschlagen. Bitte versuche es erneut.', retry: 'Status erneut laden',
+        confirmHelp: 'Klicke zur Bestätigung auf die Schaltfläche.', approve: 'Änderung freigeben', verify: 'Neue Adresse bestätigen',
+        waiting: 'Bestätigung gespeichert. Bitte bestätige den Wechsel auch im anderen Postfach.',
+        completed: 'Die Adresse wurde geändert. Bitte melde dich mit deiner neuen E-Mail-Adresse und deinem bisherigen Passwort an.',
+        cancelled: 'Die Änderung wurde abgebrochen.', invalid: 'Die Änderung ist mit diesem Link nicht möglich. Prüfe den Status in „Meine Daten“.', toLogin: 'Zu StatO',
+      },
       shell: { activeOrganization: 'Aktive Organisation', organizationContext: 'Organisationskontext', switchOrganization: 'Zu einer anderen Organisation wechseln', globalOrganization: 'Superadmin-Bereich', retryOrganizations: 'Organisationen erneut laden', navigation: 'Navigation', administration: 'Verwaltung', legal: 'Rechtstexte', expand: 'Seitenleiste ausklappen', collapse: 'Seitenleiste einklappen' },
       chartExport: {
         name: 'Bezeichnung', share: 'Anteil', noData: 'Keine Daten', bar: 'Balken',
@@ -1203,6 +1214,17 @@ export const resources = {
   en: {
     auto: autoResources.en,
     common: {
+      emailChange: {
+        title: 'Change email', email: 'Email', new: 'New email address', currentPassword: 'Current password',
+        help: 'This change applies to all your organizations. Confirm it in both inboxes within 30 minutes. If you cannot access your current inbox, contact your administrator.',
+        send: 'Send confirmation emails', pending: 'Change to {{email}} pending.', cancel: 'Cancel change',
+        managed: 'The server configuration controls this address.', smtp: 'Your administrator must configure email delivery to enable address changes.',
+        password: 'Please change your password first.', failed: 'The request failed. Please try again.', retry: 'Reload status',
+        confirmHelp: 'Use the button below to confirm your choice.', approve: 'Approve change', verify: 'Verify new address',
+        waiting: 'Confirmation saved. Please confirm the change in the other inbox as well.',
+        completed: 'Your email address has changed. Sign in using your new email address and your existing password.',
+        cancelled: 'The change has been cancelled.', invalid: 'This link cannot be used. Check the status on your profile.', toLogin: 'Go to StatO',
+      },
       shell: { activeOrganization: 'Active organization', organizationContext: 'Organization context', switchOrganization: 'Switch to another organization', globalOrganization: 'Superadmin area', retryOrganizations: 'Reload organizations', navigation: 'Navigation', administration: 'Administration', legal: 'Legal texts', expand: 'Expand sidebar', collapse: 'Collapse sidebar' },
       chartExport: {
         name: 'Label', share: 'Share', noData: 'No data', bar: 'Bar',

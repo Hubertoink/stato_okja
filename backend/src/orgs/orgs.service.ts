@@ -1,3 +1,4 @@
+import { writeMemberships } from '../users/membership-write';
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Repository } from 'typeorm';
@@ -17,7 +18,7 @@ import { Tag } from '../taxonomy/entities/tag.entity';
 import { Cohort } from '../taxonomy/entities/cohort.entity';
 import { Activity } from '../activities/entities/activity.entity';
 import { Project } from '../projects/entities/project.entity';
-import { type SupportedLocale, type UserRole, User } from '../users/entities/user.entity';
+import { type SupportedLocale, User } from '../users/entities/user.entity';
 import { OrganizationMembership } from '../users/entities/organization-membership.entity';
 
 const SUBTREE_CACHE_TTL_MS = 10_000;
@@ -191,24 +192,6 @@ export class OrgsService {
       relations: { organization: true },
       order: { createdAt: 'ASC' },
     });
-  }
-
-  /**
-   * Creating a child organization does not create a hierarchy-wide data grant.
-   * The creator receives one explicit membership so they can intentionally
-   * switch into and administer the new organization.
-   */
-  async grantActiveMembership(
-    userId: string,
-    orgId: string,
-    role: Exclude<UserRole, 'superadmin'>,
-  ) {
-    if (!this.memberships) return null;
-    const existing = await this.memberships.findOne({ where: { userId, orgId } });
-    const membership = existing
-      ? Object.assign(existing, { role, status: 'active' as const })
-      : this.memberships.create({ userId, orgId, role, status: 'active' });
-    return this.memberships.save(membership);
   }
 
   findUsersByOrg(orgId: string | null) {
@@ -725,18 +708,26 @@ export class OrgsService {
 
   findAll() { return this.repo.find(); }
 
-  async create(name: string, parentId?: string | null) {
-    const parent = parentId ? await this.repo.findOne({ where: { id: parentId } }) : null;
-    const o = this.repo.create({ name, parentId: parent?.id ?? null, taxonomySettings: null, childTaxonomyDefaults: null });
-    const saved = await this.repo.save(o);
-    // compute materialized path: parent.path + '/' + id or id for root
-    const path = parent?.path ? `${parent.path}/${saved.id}` : saved.id;
-    await this.repo.update({ id: saved.id }, { path });
-    // Create default Location with same name, scoped to org
-    const loc = this.locations.create({ name, active: true, orgId: saved.id });
-    await this.locations.save(loc);
+  async create(name: string, parentId?: string | null, initialAdminId?: string) {
+    const created = await writeMemberships(this.repo.manager, async write => {
+      const organizations = write.manager.getRepository(Organization);
+      const locations = write.manager.getRepository(this.locations.target);
+      const parent = parentId ? await organizations.findOneBy({ id: parentId }) : null;
+      if (parentId && !parent) throw new BadRequestException('Übergeordnete Organisation nicht gefunden');
+      const organization = await organizations.save(organizations.create({
+        name, parentId: parent?.id ?? null, taxonomySettings: null, childTaxonomyDefaults: null,
+      }));
+      const path = parent?.path ? `${parent.path}/${organization.id}` : organization.id;
+      await organizations.update({ id: organization.id }, { path });
+      await locations.save(locations.create({ name, active: true, orgId: organization.id }));
+      if (initialAdminId) {
+        const user = await write.account(initialAdminId);
+        await write.grant(user, organization.id, 'org_admin');
+      }
+      return { ...organization, path } as Organization;
+    });
     this.clearSubtreeCache();
-    return { ...saved, path } as Organization;
+    return created;
   }
 
   /** Organization hierarchy for administrative views. Data access uses exact membership scopes. */

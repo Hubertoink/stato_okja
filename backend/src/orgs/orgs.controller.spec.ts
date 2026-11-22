@@ -38,16 +38,16 @@ describe('OrgsController create permissions', () => {
   });
 
   it('forces org-admin creations under the admin org', async () => {
-    await controller.create({ name: 'Kindorg' }, { user: { role: 'org_admin', orgId: 'own-org' } });
+    await controller.create({ name: 'Kindorg' }, { user: { id: 'admin', role: 'org_admin', orgId: 'own-org' } });
 
-    expect(service.create).toHaveBeenCalledWith('Kindorg', 'own-org');
+    expect(service.create).toHaveBeenCalledWith('Kindorg', 'own-org', 'admin');
   });
 
   it('rejects org-admin attempts to override the parent org', async () => {
     await expect(
       controller.create(
         { name: 'Kindorg', parentId: 'other-org' },
-        { user: { role: 'org_admin', orgId: 'own-org' } },
+        { user: { id: 'admin', role: 'org_admin', orgId: 'own-org' } },
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(service.create).not.toHaveBeenCalled();

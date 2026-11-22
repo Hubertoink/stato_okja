@@ -2,6 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { OrgsService } from '../orgs/orgs.service';
+import type { Repository } from 'typeorm';
+import type { User } from './entities/user.entity';
+import type { OrganizationMembership } from './entities/organization-membership.entity';
 
 describe('UsersController global directory', () => {
   let controller: UsersController;
@@ -32,7 +35,6 @@ describe('UsersController global directory', () => {
     findById: jest.fn(),
     findByMembershipOrg: jest.fn(),
     findMembership: jest.fn(),
-    countActiveMembershipAdmins: jest.fn(),
     addMembership: jest.fn(),
     removeAccount: jest.fn(),
   };
@@ -67,6 +69,30 @@ describe('UsersController global directory', () => {
     ]);
     expect(result[0]).not.toHaveProperty('passwordHash');
     expect(result[0]).toHaveProperty('accountStatus', 'active');
+  });
+
+  it('distinguishes the global account role from the organization role in both managed directories', async () => {
+    const organization = { id: 'org-1', name: 'Beispielorganisation' };
+    const accounts = [
+      { id: 'global-admin', name: 'Systemverwaltung', role: 'superadmin', email: 'system@example.test' },
+      { id: 'member', name: 'Mitglied', role: 'org_admin', email: 'member@example.test' },
+    ];
+    const rows = accounts.map(user => ({
+      id: 'membership-' + user.id, orgId: organization.id, organization, user, role: 'user',
+    }));
+    const service = new UsersService(
+      { find: async () => accounts } as unknown as Repository<User>,
+      { find: async () => rows } as unknown as Repository<OrganizationMembership>,
+    );
+    const lists = new UsersController(service, {} as OrgsService);
+    for (const result of [
+      await lists.directory({ user: { role: 'superadmin' }, effectiveOrgId: null }),
+      await lists.list({ user: { role: 'org_admin' }, effectiveOrgId: organization.id }),
+    ]) {
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({ id: 'global-admin', isGlobalSuperadmin: true, role: 'user', org: organization });
+      expect(result[1]).toMatchObject({ id: 'member', isGlobalSuperadmin: false, role: 'user', org: organization });
+    }
   });
 
   it('distinguishes pending invitations from activated accounts without exposing credentials', async () => {
@@ -121,24 +147,8 @@ describe('UsersController global directory', () => {
     expect(service.removeAccount).not.toHaveBeenCalled();
   });
 
-  it('does not allow the last active organisation admin to be demoted', async () => {
-    service.findById.mockResolvedValue({ id: 'admin-1', role: 'org_admin' });
-    service.findMembership.mockResolvedValue({
-      userId: 'admin-1',
-      orgId: 'org-1',
-      role: 'org_admin',
-      status: 'active',
-    });
-    service.countActiveMembershipAdmins.mockResolvedValue(1);
-
-    await expect(
-      controller.update(
-        'admin-1',
-        { role: 'editor' },
-        { user: { role: 'org_admin', orgId: 'org-1' }, effectiveOrgId: 'org-1' },
-      ),
-    ).rejects.toThrow('letzte Organisationsadmin');
-
-    expect(service.addMembership).not.toHaveBeenCalled();
+  it('delegates an authorized role change to the membership writer', async () => {
+    await controller.update('admin-1', { role: 'editor' }, { user: { role: 'org_admin' }, effectiveOrgId: 'org-1' });
+    expect(service.addMembership).toHaveBeenCalledWith('admin-1', 'org-1', 'editor');
   });
 });

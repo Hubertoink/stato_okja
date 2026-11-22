@@ -12,7 +12,7 @@ import { OrgsService } from '../orgs/orgs.service';
  *   - Header '<uuid>' -> effectiveOrgId = that uuid (no subtree validation here)
  * - Tenant users:
  *   - The selected organization must be an active membership of the user.
- *   - Header absent -> first/default active membership is selected.
+ *   - An absent scope header is rejected.
  *   - Header empty, null or a foreign organization -> 403.
  *   - The role on request.user is replaced by the role of that membership.
  */
@@ -48,16 +48,9 @@ export class OrgScopeGuard implements CanActivate {
       return true;
     }
 
-    if (!user.id) throw new ForbiddenException('Nicht erlaubt (Org-Scope)');
-
+    if (!user.id || !requested) throw new ForbiddenException('Eine aktive Organisation muss ausdrücklich ausgewählt werden.');
     const memberships = await this.orgs.listActiveMemberships(user.id);
-    const selectedOrgId =
-      typeof requested === 'undefined'
-        ? memberships.find((membership) => membership.orgId === user.orgId)?.orgId ?? memberships[0]?.orgId
-        : requested;
-    if (!selectedOrgId) throw new ForbiddenException('Keine aktive Organisationsmitgliedschaft vorhanden');
-
-    const membership = memberships.find((entry) => entry.orgId === selectedOrgId);
+    const membership = memberships.find((entry) => entry.orgId === requested);
     if (!membership) throw new ForbiddenException('Nicht erlaubt (Org-Scope)');
 
     request.effectiveOrgId = membership.orgId;

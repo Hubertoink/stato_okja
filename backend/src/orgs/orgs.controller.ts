@@ -21,7 +21,7 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { OrgScopeGuard } from '../auth/org-scope.guard';
 import { toPublicUser } from '../common/public-response';
-import { SUPPORTED_LOCALES, type UserRole } from '../users/entities/user.entity';
+import { SUPPORTED_LOCALES } from '../users/entities/user.entity';
 import {
   CreateOrganizationDto,
   MasterDataContentDto,
@@ -80,7 +80,7 @@ export class OrgsController {
       return this.service.create(body?.name, body?.parentId ?? null);
     }
     const myOrgId = req.user.orgId || null;
-    if (!myOrgId) throw new ForbiddenException('Nicht erlaubt');
+    if (!myOrgId || !req.user.id) throw new ForbiddenException('Nicht erlaubt');
     if (
       typeof body?.parentId !== 'undefined' &&
       body.parentId !== null &&
@@ -90,15 +90,7 @@ export class OrgsController {
         'Org-Admins können nur direkte Unterorganisationen ihrer eigenen Organisation anlegen',
       );
     }
-    const created = await this.service.create(body?.name, myOrgId);
-    if (req.user.id) {
-      await this.service.grantActiveMembership(
-        req.user.id,
-        created.id,
-        req.user.role as Exclude<UserRole, 'superadmin'>,
-      );
-    }
-    return created;
+    return this.service.create(body?.name, myOrgId, req.user.id);
   }
 
   @Roles('superadmin')

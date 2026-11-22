@@ -196,6 +196,13 @@ describe('Organization scope and activity relation regression (HTTP)', () => {
     });
   }
 
+  it('requires a selected membership before an authenticated tenant data request', async () => {
+    const path = `/activities/${CHILD_ACTIVITY_ID}`;
+    const unscoped = await fetch(baseUrl + path, { headers: { 'x-test-user': scopedEditorHeader() } });
+    expect(unscoped.status).toBe(403);
+    expect((await request(path)).status).toBe(200);
+  });
+
   it('uses the selected explicitly assigned organization consistently for details and mutations', async () => {
     for (const path of [
       `/activities/${CHILD_ACTIVITY_ID}`,

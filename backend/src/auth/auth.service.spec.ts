@@ -1,6 +1,8 @@
 import { ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
+import { User } from '../users/entities/user.entity';
+import { OrganizationMembership } from '../users/entities/organization-membership.entity';
 import { ValidationPipe } from '@nestjs/common';
 import { AcceptInviteDto, UpdateMeDto } from './dto/auth.dto';
 
@@ -28,7 +30,12 @@ describe('AuthService invitations', () => {
       save: jest.fn(async (session) => session),
       delete: jest.fn().mockResolvedValue(undefined),
     };
-    const memberships = { find: jest.fn().mockResolvedValue([]), findOne: jest.fn(), save: jest.fn(), create: jest.fn() };
+    const memberships = { find: jest.fn().mockResolvedValue([]), findOne: jest.fn(), save: jest.fn(async row => row), create: jest.fn(row => ({ ...row })) };
+    const transaction = jest.fn(async operation => operation({
+      connection: { options: { type: 'sqljs' } },
+      getRepository: (entity: unknown) => entity === User ? users : entity === OrganizationMembership ? memberships : refreshSessions,
+    }));
+    Object.assign(users, { manager: { connection: { options: { type: 'sqljs' } }, transaction } });
     const service = new AuthService(
       users as never,
       orgs as never,
@@ -60,7 +67,7 @@ describe('AuthService invitations', () => {
   it.each([
     ['user', 'org-1'], ['org_admin', undefined], ['org_admin', null], ['org_admin', 'other-org'], ['superadmin', 'other-org'],
   ])('rejects invitation resends without access (%s, %s)', async (role, orgId) => {
-    const { service, email } = createService();
+    const { service, email } = createService({ existingUser: { id: 'pending' } });
     await expect(service.resendInvite('pending', role as string, orgId)).rejects.toThrow(ForbiddenException);
     expect(email.sendInviteEmail).not.toHaveBeenCalled();
   });
@@ -78,7 +85,7 @@ describe('AuthService invitations', () => {
     }, emailResult: { queued: false } });
     if (throws) email.sendInviteEmail.mockRejectedValueOnce(new Error('SMTP rejected'));
     await expect(service.resendInvite('pending', 'superadmin', null)).rejects.toMatchObject({ status: 503 });
-    expect(users.update).toHaveBeenLastCalledWith({ id: 'pending', inviteTokenVersion: 3 }, { inviteTokenVersion: 2 });
+    expect(users.update).not.toHaveBeenCalled();
   });
 
   it('explains missing consent from an old client without allowing implicit consent', async () => {
@@ -97,6 +104,22 @@ describe('AuthService invitations', () => {
     await expect(service.acceptInvite('expired', 'StrongPassword1!', true)).rejects.toMatchObject({ status: 400 });
     jwt.verifyAsync.mockResolvedValueOnce({ sub: 'pending', purpose: 'invite', version: 1 });
     await expect(service.acceptInvite('replaced', 'StrongPassword1!', true)).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('bootstraps with active memberships and uses only an authorized selection for the profile', async () => {
+    const { service, memberships } = createService({ existingUser: {
+      id: 'account', email: 'person@example.org', role: 'org_admin', orgId: 'revoked',
+    } });
+    memberships.find.mockResolvedValue([
+      { orgId: 'home', role: 'user', organization: { name: 'Home' } },
+      { orgId: 'second', role: 'editor', organization: { name: 'Second' } },
+    ]);
+    expect(await service.getProfile('account')).toMatchObject({ orgId: 'home', role: 'user' });
+    expect(await service.getProfile('account', 'unassigned')).toMatchObject({ orgId: 'home', role: 'user' });
+    expect(await service.getProfile('account', 'second')).toMatchObject({ orgId: 'second', role: 'editor' });
+    expect(memberships.find).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'account', status: 'active' } }));
+    memberships.find.mockResolvedValue([]);
+    expect(await service.getProfile('account')).toMatchObject({ orgId: null, orgName: null, role: 'user', memberships: [] });
   });
 
   it('saves and returns the account view density without changing other profile fields', async () => {
@@ -177,7 +200,7 @@ describe('AuthService invitations', () => {
     });
     expect(result).not.toHaveProperty('token');
     expect(jwt.signAsync).toHaveBeenCalledWith(
-      { sub: 'user-1', purpose: 'invite', version: 1 },
+      { sub: result.user.id, purpose: 'invite', version: 1 },
       { expiresIn: 86400 },
     );
     expect(email.sendInviteEmail).toHaveBeenCalledWith(
@@ -229,7 +252,7 @@ describe('AuthService invitations', () => {
     await expect(
       service.inviteUser({ email: 'new@example.org', name: 'New User', role: 'user', orgId: 'org-1' }),
     ).rejects.toThrow('SMTP');
-    expect(users.delete).toHaveBeenCalledWith({ id: 'user-1' });
+    expect(users.save).not.toHaveBeenCalled();
   });
 
   it('reports an already active membership without sending mail or changing its role', async () => {
@@ -265,8 +288,7 @@ describe('AuthService invitations', () => {
       expect(memberships.save).toHaveBeenCalledWith(expect.objectContaining({ status: 'active' }));
     } else {
       await expect(result).rejects.toThrow('SMTP');
-      expect(memberships.save).not.toHaveBeenCalled();
-      expect(users.save).toHaveBeenLastCalledWith(expect.objectContaining({ inviteTokenVersion: 2 }));
+      expect(users.save).not.toHaveBeenCalled();
     }
   });
 
@@ -275,7 +297,7 @@ describe('AuthService invitations', () => {
     email.sendInviteEmail.mockRejectedValue(new Error('Recipient rejected'));
     await expect(service.inviteUser({ email: 'new@example.org', name: 'New', role: 'user', orgId: 'org-1' }))
       .rejects.toMatchObject({ response: { code: 'INVITE_DELIVERY_FAILED' }, status: 503 });
-    expect(users.delete).toHaveBeenCalledWith({ id: 'user-1' });
+    expect(users.save).not.toHaveBeenCalled();
   });
 
   it('creates a local account only when local provisioning is enabled', async () => {
@@ -296,10 +318,7 @@ describe('AuthService invitations', () => {
         orgId: 'org-1',
         mustChangePassword: true,
       }));
-      expect(users.create).toHaveBeenCalledWith(expect.objectContaining({
-        passwordHash: null,
-        mustChangePassword: false,
-      }));
+      expect(users.create).toHaveBeenCalledWith(expect.objectContaining({ email: 'local.admin@example.org' }));
       expect(users.save).toHaveBeenCalledWith(expect.objectContaining({
         passwordHash: expect.any(String),
         mustChangePassword: true,

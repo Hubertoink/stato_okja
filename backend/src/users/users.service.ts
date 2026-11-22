@@ -1,3 +1,4 @@
+import { writeMemberships } from './membership-write';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Equal, In, IsNull, Repository } from 'typeorm';
@@ -6,10 +7,10 @@ import { OrganizationMembership } from './entities/organization-membership.entit
 
 export type CreateManagedUserInput = Pick<User, 'email' | 'name'> &
   Partial<Pick<User, 'role' | 'orgId'>>;
-export type UpdateManagedUserInput = Partial<Pick<User, 'role' | 'orgId'>>;
 export type MembershipRole = Exclude<UserRole, 'superadmin'>;
 export type ScopedUserRecord = Omit<User, 'role' | 'orgId' | 'org'> & {
   role: MembershipRole;
+  isGlobalSuperadmin: boolean;
   orgId: string;
   org: { id: string; name: string };
   membershipId: string;
@@ -33,19 +34,8 @@ export class UsersService {
     return this.repo.find({ where: { orgId: In(orgIds) }, relations: { org: true } });
   }
 
-  async findByMembershipOrg(orgId: string): Promise<ScopedUserRecord[]> {
-    const memberships = await this.memberships.find({
-      where: { orgId, status: 'active' },
-      relations: { user: true, organization: true },
-      order: { createdAt: 'ASC' },
-    });
-    return memberships.map((membership) => ({
-      ...membership.user,
-      role: membership.role,
-      orgId: membership.orgId,
-      org: { id: membership.organization.id, name: membership.organization.name },
-      membershipId: membership.id,
-    }));
+  findByMembershipOrg(orgId: string): Promise<ScopedUserRecord[]> {
+    return this.findActiveMembershipUsersByOrgIds([orgId]);
   }
 
   /** One record per active membership. This intentionally preserves users with multiple accesses. */
@@ -59,6 +49,7 @@ export class UsersService {
     return memberships.map((membership) => ({
       ...membership.user,
       role: membership.role,
+      isGlobalSuperadmin: membership.user.role === 'superadmin',
       orgId: membership.orgId,
       org: { id: membership.organization.id, name: membership.organization.name },
       membershipId: membership.id,
@@ -82,113 +73,34 @@ export class UsersService {
     });
   }
 
-  async addMembership(userId: string, orgId: string, role: MembershipRole) {
-    const existing = await this.findMembership(userId, orgId);
-    if (existing) {
-      existing.role = role;
-      existing.status = 'active';
-      return this.memberships.save(existing);
-    }
-    return this.memberships.save(
-      this.memberships.create({ userId, orgId, role, status: 'active' }),
-    );
-  }
-
-  async disableMembership(userId: string, orgId: string) {
-    return this.repo.manager.transaction(async (manager) => {
-      const memberships = manager.getRepository(OrganizationMembership);
-      const membership = await memberships.findOne({ where: { userId, orgId } });
-      if (!membership) return false;
-      membership.status = 'disabled';
-      await memberships.save(membership);
-      // An invitation activates the account. Revoking access must also revoke
-      // outstanding activation links, even if access is granted again later.
-      await manager.getRepository(User).increment(
-        { id: userId, passwordHash: IsNull() }, 'inviteTokenVersion', 1,
-      );
-      return true;
+  async addMembership(userId: string, orgId: string, role?: MembershipRole) {
+    return writeMemberships(this.repo.manager, async write => {
+      const user = await write.account(userId);
+      return (await write.grant(user, orgId, role, true)).membership;
     });
   }
 
-  async countActiveMembershipAdmins(orgId: string) {
-    return this.memberships.count({ where: { orgId, role: 'org_admin', status: 'active' } });
+  disableMembership(userId: string, orgId: string) {
+    return writeMemberships(this.repo.manager, write => write.revoke(userId, orgId));
   }
 
   async createOrAddMembership(data: CreateManagedUserInput) {
-    const email = (data.email || '').trim().toLowerCase();
+    const email = data.email?.trim().toLowerCase();
     if (!email) throw new BadRequestException('E-Mail ist erforderlich');
-    const orgId = data.orgId ?? null;
+    const orgId = data.orgId;
     if (!orgId) throw new BadRequestException('Organisation ist erforderlich');
-    const role = (data.role === 'org_admin' || data.role === 'editor' || data.role === 'user'
-      ? data.role
-      : 'user') as MembershipRole;
-    const existing = await this.repo
-      .createQueryBuilder('u')
-      .where('LOWER(u.email) = LOWER(:email)', { email })
-      .getOne();
-    if (existing) {
-      const membership = await this.addMembership(existing.id, orgId, role);
-      return { user: existing, membership, created: false };
-    }
-    const user = this.repo.create({
-      email,
-      name: data.name,
-      role,
-      orgId,
-      passwordHash: null,
+    const role = data.role && data.role !== 'superadmin' ? data.role : 'user';
+    return writeMemberships(this.repo.manager, async write => {
+      const existing = await write.accountByEmail(email);
+      const user = existing ?? await write.users.save(write.users.create({
+        email, name: data.name, role, orgId, passwordHash: null,
+      }));
+      const { membership } = await write.grant(user, orgId, role);
+      return { user, membership, created: !existing };
     });
-    const saved = await this.repo.save(user);
-    const membership = await this.addMembership(saved.id, orgId, role);
-    return { user: saved, membership, created: true };
   }
-  async create(data: CreateManagedUserInput) {
-    // Normalize email to lowercase and ensure uniqueness among active users
-    const email = (data.email || '').toLowerCase();
-    if (!email) throw new BadRequestException('E-Mail ist erforderlich');
-    const existing = await this.repo.createQueryBuilder('u').where('LOWER(u.email) = LOWER(:email)', { email }).getOne();
-    if (existing) throw new BadRequestException('Diese E-Mail wird bereits verwendet');
-    // Never accept passwordHash from the outside; account/password is managed via AuthService flows
-    const u = this.repo.create({
-      email,
-      name: data.name,
-      role: data.role ?? 'user',
-      orgId: typeof data.orgId === 'undefined' ? null : data.orgId,
-      passwordHash: null,
-    });
-    return this.repo.save(u);
-  }
-  update(id: string, patch: UpdateManagedUserInput) {
-    const safePatch: UpdateManagedUserInput = {};
-    if (typeof patch.role !== 'undefined') safePatch.role = patch.role;
-    if (typeof patch.orgId !== 'undefined') safePatch.orgId = patch.orgId;
-    return this.repo.update({ id }, safePatch);
-  }
-  async remove(id: string) { await this.repo.delete({ id }); return true; }
-  async removeAccount(id: string) {
-    return this.repo.manager.transaction(async (manager) => {
-      const users = manager.getRepository(User);
-      const memberships = manager.getRepository(OrganizationMembership);
-      const user = await users.findOne({ where: { id } });
-      if (!user) throw new BadRequestException('Benutzerkonto nicht gefunden');
-      if (user.role === 'superadmin') {
-        throw new BadRequestException('Superadmin-Konten können hier nicht gelöscht werden');
-      }
-      const adminMemberships = await memberships.find({
-        where: { userId: id, status: 'active', role: 'org_admin' },
-      });
-      for (const membership of adminMemberships) {
-        const admins = await memberships.count({
-          where: { orgId: membership.orgId, status: 'active', role: 'org_admin' },
-        });
-        if (admins <= 1) {
-          throw new BadRequestException('Der letzte Organisationsadmin kann nicht gelöscht werden. Bitte zuerst einen weiteren Admin zuweisen.');
-        }
-      }
-      // Foreign keys cascade memberships, refresh sessions and personal KPIs.
-      // Organisational content stays; nullable author relations become NULL.
-      await users.delete({ id });
-      return true;
-    });
+  removeAccount(id: string) {
+    return writeMemberships(this.repo.manager, write => write.deleteAccount(id));
   }
   findById(id: string) { return this.repo.findOne({ where: { id } }); }
   countAdmins(orgId: string | null) {

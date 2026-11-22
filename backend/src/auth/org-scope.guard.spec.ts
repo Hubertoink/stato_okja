@@ -32,6 +32,16 @@ describe('OrgScopeGuard', () => {
     await expect(guard.canActivate(createExecutionContext(request))).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it.each([undefined, '', 'null'])('requires an explicit scope for a member (%s)', async (header) => {
+    const orgs = { listActiveMemberships: jest.fn() };
+    const guard = new OrgScopeGuard(orgs as unknown as OrgsService);
+    await expect(guard.canActivate(createExecutionContext({
+      headers: header === undefined ? {} : { 'x-org-scope': header },
+      user: { id: 'member', orgId: 'home', role: 'editor' },
+    }))).rejects.toBeInstanceOf(ForbiddenException);
+    expect(orgs.listActiveMemberships).not.toHaveBeenCalled();
+  });
+
   it('still rejects null scope for users that must stay inside their org', async () => {
     const orgs = {
       listActiveMemberships: jest.fn().mockResolvedValue([{ orgId: 'own-org', role: 'org_admin' }]),

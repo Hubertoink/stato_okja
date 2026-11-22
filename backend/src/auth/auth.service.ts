@@ -1,7 +1,8 @@
+import { writeMemberships } from '../users/membership-write';
 import { Injectable, BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
-import { randomBytes, randomInt } from 'crypto';
+import { IsNull, Raw, Repository } from 'typeorm';
+import { randomBytes, randomInt, randomUUID } from 'crypto';
 import { SUPPORTED_LOCALES, type SupportedLocale, SUPPORTED_THEME_MODES, type ThemeMode, SUPPORTED_NAVIGATION_LAYOUTS, type NavigationLayout, SUPPORTED_VIEW_DENSITIES, type ViewDensity, User } from '../users/entities/user.entity';
 import { OrganizationMembership } from '../users/entities/organization-membership.entity';
 import { Organization } from '../orgs/entities/organization.entity';
@@ -233,7 +234,7 @@ export class AuthService {
         : undefined) ??
       memberships.find((membership) => membership.orgId === user.orgId) ??
       memberships[0];
-    const org = selectedMembership?.organization ?? (user.orgId
+    const org = selectedMembership?.organization ?? (user.role === 'superadmin' && user.orgId
       ? await this.orgs.findOne({ where: { id: user.orgId } })
       : null);
     const orgName = org?.name ?? null;
@@ -735,142 +736,73 @@ export class AuthService {
     orgName?: string;
   }): Promise<InviteUserResponse> {
     const email = payload.email.trim().toLowerCase();
-    let user = await this.users.findOne({ where: { email } });
-    let resolvedOrgId: string | null | undefined = payload.orgId;
-
-    if (!resolvedOrgId && payload.orgName) {
-      const existingOrg = await this.orgs.findOne({ where: { name: payload.orgName } });
-      if (existingOrg) {
-        resolvedOrgId = existingOrg.id;
-      } else {
-        const newOrg = this.orgs.create({ name: payload.orgName });
-        const savedOrg = await this.orgs.save(newOrg);
-        const location = this.locations.create({
-          name: payload.orgName,
-          active: true,
-          orgId: savedOrg.id,
-        });
-        await this.locations.save(location);
-        resolvedOrgId = savedOrg.id;
-      }
+    const role = payload.role ?? 'user';
+    const orgId = payload.orgId ?? (payload.orgName
+      ? (await this.orgs.findOne({ where: { name: payload.orgName } }))?.id ?? null
+      : null);
+    const previous = await this.users.findOne({ where: { email: Raw(column => `LOWER(${column}) = :email`, { email }) } });
+    const id = previous?.id ?? randomUUID();
+    const previousVersion = previous?.inviteTokenVersion ?? 0;
+    if (previous && !previous.passwordHash && (previous.orgId !== orgId || previous.role !== role)) {
+      throw new ConflictException('Die ausstehende Einladung gehört zu einer anderen Organisation oder Rolle.');
     }
-
-    const targetOrgId = (typeof resolvedOrgId !== 'undefined' ? resolvedOrgId : payload.orgId) ?? null;
-    const targetRole: UserRole = (payload.role ?? 'user') as UserRole;
-
-    if (user?.passwordHash) {
-      if (!targetOrgId || targetRole === 'superadmin') {
-        throw new ConflictException('Bestehende Konten können nur einer Organisation zugeordnet werden.');
+    if (!previous?.passwordHash) {
+      // Prepare and send before publishing the new version. Failed delivery leaves the old link usable.
+      await this.sendInvitation({ id, email, name: previous?.name ?? payload.name, inviteTokenVersion: previousVersion + 1 });
+    }
+    return writeMemberships(this.users.manager, async write => {
+      const existing = await write.accountByEmail(email);
+      if (existing?.id !== previous?.id || !!existing?.passwordHash !== !!previous?.passwordHash ||
+          (!existing?.passwordHash && ((existing?.inviteTokenVersion ?? 0) !== previousVersion ||
+            existing?.orgId !== previous?.orgId || existing?.role !== previous?.role))) {
+        throw new ConflictException('Das Benutzerkonto hat sich während der Einladung geändert. Bitte erneut versuchen.');
       }
-      const existingMembership = await this.memberships.findOne({
-        where: { userId: user.id, orgId: targetOrgId },
-      });
-      if (existingMembership?.status === 'active') {
+      let targetOrgId = orgId;
+      if (!targetOrgId && payload.orgName) {
+        const orgs = write.manager.getRepository(Organization);
+        const found = await orgs.findOneBy({ name: payload.orgName });
+        if (found) {
+          targetOrgId = found.id;
+        } else {
+          const saved = await orgs.save(orgs.create({ name: payload.orgName }));
+          targetOrgId = saved.id;
+          const locations = write.manager.getRepository(this.locations.target);
+          await locations.save(locations.create({ name: payload.orgName, active: true, orgId: targetOrgId }));
+        }
+      }
+      if (existing?.passwordHash) {
+        if (!targetOrgId || role === 'superadmin') {
+          throw new ConflictException('Bestehende Konten können nur einer Organisation zugeordnet werden.');
+        }
+        const { membership, alreadyActive } = await write.grant(existing, targetOrgId, role);
         return {
-          invitationSent: true, emailQueued: false, outcome: 'already_member',
-          user: { id: user.id, email: user.email, name: user.name, role: existingMembership.role, orgId: targetOrgId },
+          invitationSent: true, emailQueued: false, outcome: alreadyActive ? 'already_member' : 'access_added',
+          user: { id, email, name: existing.name, role: membership.role, orgId: targetOrgId },
         };
       }
-      if (existingMembership) {
-        existingMembership.role = targetRole as Exclude<UserRole, 'superadmin'>;
-        existingMembership.status = 'active';
-        await this.memberships.save(existingMembership);
-      } else {
-        await this.memberships.save(this.memberships.create({
-          userId: user.id,
-          orgId: targetOrgId,
-          role: targetRole as Exclude<UserRole, 'superadmin'>,
-          status: 'active',
-        }));
-      }
+      const user = existing ?? write.users.create({
+        id, email, name: payload.name || email, role, orgId: targetOrgId, passwordHash: null, mustChangePassword: false,
+      });
+      user.inviteTokenVersion = previousVersion + 1;
+      await write.users.save(user);
+      if (targetOrgId && role !== 'superadmin') await write.grant(user, targetOrgId, role);
       return {
-        invitationSent: true,
-        emailQueued: false,
-        outcome: 'access_added',
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: targetRole,
-          orgId: targetOrgId,
-        },
+        invitationSent: true, emailQueued: true, outcome: existing ? 'resent' : 'invited',
+        user: { id, email, name: user.name, role, orgId: targetOrgId },
       };
-    }
+    });
+  }
 
-    const isPendingInvite = !!user;
-    const previousInviteTokenVersion = user?.inviteTokenVersion ?? 0;
-
-    if (!user) {
-      user = this.users.create({
-        email,
-        name: payload.name || email,
-        role: targetRole,
-        orgId: targetOrgId,
-        passwordHash: null,
-        mustChangePassword: false,
-      });
-    } else {
-      // Resending is only valid for the same still-pending account. Role and org
-      // changes belong to the dedicated user-management flow.
-      if (user.orgId !== targetOrgId || user.role !== targetRole) {
-        throw new ConflictException('Die ausstehende Einladung gehört zu einer anderen Organisation oder Rolle.');
-      }
-    }
-
-    user.inviteTokenVersion = previousInviteTokenVersion + 1;
-    await this.users.save(user);
-    let membershipToReactivate: OrganizationMembership | null = null;
-    if (targetOrgId && targetRole !== 'superadmin') {
-      const existingMembership = await this.memberships.findOne({
-        where: { userId: user.id, orgId: targetOrgId },
-      });
-      if (existingMembership) {
-        if (existingMembership.status === 'disabled') membershipToReactivate = existingMembership;
-      } else {
-        await this.memberships.save(this.memberships.create({
-          userId: user.id,
-          orgId: targetOrgId,
-          role: targetRole,
-          status: 'active',
-        }));
-      }
-    }
+  private async sendInvitation(user: Pick<User, 'id' | 'email' | 'name' | 'inviteTokenVersion'>) {
     const token = await this.jwt.signAsync(
       { sub: user.id, purpose: 'invite', version: user.inviteTokenVersion },
       { expiresIn: this.getInviteTokenExpirationSeconds() },
     );
     const origin = process.env.APP_ORIGIN || 'http://localhost:5173';
-    const link = `${origin}/accept-invite?token=${token}`;
     try {
-      const emailResult = await this.email.sendInviteEmail(user.email, user.name || user.email, link);
-      if (!emailResult.queued) {
-        throw new HttpException({ code: 'SMTP_NOT_CONFIGURED', message: 'Die Einladungs-E-Mail konnte nicht gesendet werden: Der E-Mail-Versand (SMTP) ist nicht konfiguriert. Bitte die Administration kontaktieren.' }, HttpStatus.SERVICE_UNAVAILABLE);
-      }
-      if (membershipToReactivate) {
-        membershipToReactivate.status = 'active';
-        await this.memberships.save(membershipToReactivate);
-      }
-      return {
-        invitationSent: true,
-        emailQueued: true,
-        outcome: isPendingInvite ? 'resent' : 'invited',
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          orgId: user.orgId,
-        },
-      };
+      const result = await this.email.sendInviteEmail(user.email, user.name || user.email, `${origin}/accept-invite?token=${token}`);
+      if (!result.queued) throw new HttpException({ code: 'SMTP_NOT_CONFIGURED', message: 'Die Einladungs-E-Mail konnte nicht gesendet werden: Der E-Mail-Versand (SMTP) ist nicht konfiguriert. Bitte die Administration kontaktieren.' }, HttpStatus.SERVICE_UNAVAILABLE);
     } catch (error) {
-      // Do not leave a newly created, unusable account behind. For a resend, keep
-      // the previously valid link active when the new delivery failed.
-      if (isPendingInvite) {
-        user.inviteTokenVersion = previousInviteTokenVersion;
-        await this.users.save(user);
-      } else {
-        await this.users.delete({ id: user.id });
-      }
       if (error instanceof HttpException) throw error;
       throw new HttpException({ code: 'INVITE_DELIVERY_FAILED', message: 'Die Einladungs-E-Mail konnte nicht zugestellt werden. Bitte Empfängeradresse und E-Mail-Versand prüfen und erneut versuchen.' }, HttpStatus.SERVICE_UNAVAILABLE);
     }
@@ -878,34 +810,29 @@ export class AuthService {
 
   async resendInvite(userId: string, actorRole: string, orgId?: string | null) {
     if (actorRole !== 'superadmin' && actorRole !== 'org_admin') throw new ForbiddenException('Nicht erlaubt');
-    // Only the explicit global superadmin view may resend without an org scope.
-    if (!(actorRole === 'superadmin' && orgId === null)) {
-      if (!orgId) throw new ForbiddenException('Organisation ist erforderlich');
-      const membership = await this.memberships.findOne({ where: { userId, orgId, status: 'active' } });
-      if (!membership) throw new ForbiddenException('Kein Zugriff auf dieses Benutzerkonto');
+    const globalAdmin = actorRole === 'superadmin' && orgId === null;
+    if (!globalAdmin && !orgId) throw new ForbiddenException('Organisation ist erforderlich');
+    const membership = { userId, orgId: orgId ?? '', status: 'active' as const };
+    if (orgId && !(await this.memberships.findOne({ where: membership }))) {
+      throw new ForbiddenException('Kein Zugriff auf dieses Benutzerkonto');
     }
-    const user = await this.users.findOne({ where: { id: userId } });
-    if (!user) throw new BadRequestException('Benutzerkonto nicht gefunden');
-    if (user.passwordHash) throw new ConflictException('Die Einladung wurde bereits angenommen. Bitte die Benutzerliste aktualisieren.');
-
-    const previousVersion = user.inviteTokenVersion ?? 0;
+    const previous = await this.users.findOne({ where: { id: userId } });
+    if (!previous) throw new BadRequestException('Benutzerkonto nicht gefunden');
+    if (previous.passwordHash) throw new ConflictException('Die Einladung wurde bereits angenommen. Bitte die Benutzerliste aktualisieren.');
+    const previousVersion = previous.inviteTokenVersion ?? 0;
     const nextVersion = previousVersion + 1;
-    // Update only the token version; never overwrite a changed role or password.
-    await this.users.update({ id: userId }, { inviteTokenVersion: nextVersion });
-    try {
-      const token = await this.jwt.signAsync(
-        { sub: userId, purpose: 'invite', version: nextVersion },
-        { expiresIn: this.getInviteTokenExpirationSeconds() },
-      );
-      const origin = process.env.APP_ORIGIN || 'http://localhost:5173';
-      const result = await this.email.sendInviteEmail(user.email, user.name || user.email, `${origin}/accept-invite?token=${token}`);
-      if (!result.queued) throw new HttpException({ code: 'SMTP_NOT_CONFIGURED', message: 'Die Einladungs-E-Mail konnte nicht gesendet werden: Der E-Mail-Versand (SMTP) ist nicht konfiguriert.' }, HttpStatus.SERVICE_UNAVAILABLE);
+    await this.sendInvitation({ ...previous, inviteTokenVersion: nextVersion });
+    return writeMemberships(this.users.manager, async write => {
+      const user = await write.findAccount(userId);
+      if (!user || user.passwordHash || user.email !== previous.email || (user.inviteTokenVersion ?? 0) !== previousVersion) {
+        throw new ConflictException('Die Einladung hat sich während des Versands geändert. Bitte erneut versuchen.');
+      }
+      if (orgId && !(await write.memberships.findOne({ where: membership }))) {
+        throw new ForbiddenException('Kein Zugriff auf dieses Benutzerkonto');
+      }
+      await write.users.update({ id: userId }, { inviteTokenVersion: nextVersion });
       return { invitationSent: true, emailQueued: true, outcome: 'resent' };
-    } catch (error) {
-      await this.users.update({ id: userId, inviteTokenVersion: nextVersion }, { inviteTokenVersion: previousVersion });
-      if (error instanceof HttpException) throw error;
-      throw new HttpException({ code: 'INVITE_DELIVERY_FAILED', message: 'Die Einladungs-E-Mail konnte nicht zugestellt werden. Bitte erneut versuchen.' }, HttpStatus.SERVICE_UNAVAILABLE);
-    }
+    });
   }
 
   async createLocalUser(payload: {
@@ -920,79 +847,48 @@ export class AuthService {
       throw new ForbiddenException('Lokale Benutzeranlage ist deaktiviert. USER_PROVISIONING_MODE=local setzen.');
     }
 
-    const email = payload.email.toLowerCase();
-    const existing = await this.users.findOne({ where: { email } });
-    if (existing?.passwordHash) {
-      const role = (payload.role ?? 'user') as Exclude<UserRole, 'superadmin'>;
-      const membership = await this.memberships.findOne({
-        where: { userId: existing.id, orgId: payload.orgId },
-      });
-      if (membership) {
-        membership.role = role;
-        membership.status = 'active';
-        await this.memberships.save(membership);
-      } else {
-        await this.memberships.save(this.memberships.create({
-          userId: existing.id,
-          orgId: payload.orgId,
-          role,
-          status: 'active',
-        }));
+    const email = payload.email.trim().toLowerCase();
+    const role = payload.role ?? 'user';
+    const passwordHash = isStrongPassword(payload.temporaryPassword)
+      ? await bcrypt.hash(payload.temporaryPassword, 10)
+      : null;
+    const result = await writeMemberships(this.users.manager, async write => {
+      const existing = await write.accountByEmail(email);
+      if (existing?.passwordHash) {
+        if (role === 'superadmin') throw new ConflictException('Eine Organisationsmitgliedschaft benötigt eine Organisationsrolle.');
+        const { membership } = await write.grant(existing, payload.orgId, role);
+        return { account: existing, role: membership.role, activated: false };
       }
-      return {
-        id: existing.id,
-        email: existing.email,
-        name: existing.name,
-        role,
-        orgId: payload.orgId,
-        mustChangePassword: false,
-      };
-    }
-
-    const user = this.users.create({
-      email,
-      name: payload.name || email,
-      role: (payload.role ?? 'user') as UserRole,
-      orgId: payload.orgId,
-      passwordHash: null,
-      mustChangePassword: false,
+      if (existing) {
+        // A tenant-admin may complete only their own pending invitation. A temporary
+        // password grants account-wide access, including memberships in other tenants.
+        if (existing.orgId !== payload.orgId || existing.role !== role ||
+            (await write.memberships.find({ where: { userId: existing.id, status: 'active' } })).some(m => m.orgId !== payload.orgId)) {
+          throw new ConflictException('Dieses ausstehende Konto kann nicht lokal für diese Organisation aktiviert werden.');
+        }
+      }
+      if (!passwordHash) throw new BadRequestException(PASSWORD_POLICY_MESSAGE);
+      const account = existing ?? write.users.create({ email, name: payload.name || email, role, orgId: payload.orgId });
+      account.passwordHash = passwordHash;
+      account.mustChangePassword = true;
+      account.passwordResetTokenVersion = (account.passwordResetTokenVersion ?? 0) + 1;
+      account.inviteTokenVersion = (account.inviteTokenVersion ?? 0) + 1;
+      await write.users.save(account);
+      const grantedRole = role === 'superadmin' ? role : (await write.grant(account, payload.orgId, role)).membership.role;
+      if (existing) await write.manager.getRepository(this.refreshSessions.target).delete({ userId: account.id });
+      return { account, role: grantedRole, activated: true };
     });
-    await this.users.save(user);
-    if (payload.role !== 'superadmin') {
-      await this.memberships.save(this.memberships.create({
-        userId: user.id,
-        orgId: payload.orgId,
-        role: (payload.role ?? 'user') as Exclude<UserRole, 'superadmin'>,
-        status: 'active',
-      }));
+    const { account } = result;
+    if (result.activated) {
+      try {
+        await this.audit.log({
+          action: AuditAction.CREATE, entityType: 'user', entityId: account.id, entityTitle: account.email,
+          user: payload.actor, orgId: payload.orgId, details: { provisioningMode: 'local', mustChangePassword: true },
+        });
+      } catch { /* An audit error must not leave the new account unusable. */ }
     }
-    await this.savePassword(user, payload.temporaryPassword, {
-      mustChangePassword: true,
-      bumpResetVersion: true,
-    });
-
-    try {
-      await this.audit.log({
-        action: AuditAction.CREATE,
-        entityType: 'user',
-        entityId: user.id,
-        entityTitle: user.email,
-        user: payload.actor,
-        orgId: user.orgId ?? null,
-        details: { provisioningMode: 'local', mustChangePassword: true },
-      });
-    } catch {
-      /* An audit error must not leave the new account unusable. */
-    }
-
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      orgId: user.orgId,
-      mustChangePassword: true,
-    };
+    return { id: account.id, email: account.email, name: account.name, role: result.role,
+      orgId: payload.orgId, mustChangePassword: account.mustChangePassword };
   }
 
   async acceptInvite(token: string, password: string, termsAccepted: boolean, metadata?: RefreshSessionMetadata) {
@@ -1050,6 +946,7 @@ export class AuthService {
   async updateProfile(
     userId: string,
     patch: { name?: string; avatarUrl?: string | null; theme?: string; themeMode?: ThemeMode; viewDensity?: ViewDensity; navigationLayout?: NavigationLayout; sidebarColoredIcons?: boolean; locale?: SupportedLocale },
+    selectedOrg?: string,
   ) {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
@@ -1074,7 +971,7 @@ export class AuthService {
       user.viewDensity = patch.viewDensity;
     }
     await this.users.save(user);
-    return this.getProfile(user.id);
+    return this.getProfile(user.id, selectedOrg);
   }
 
   async changePassword(

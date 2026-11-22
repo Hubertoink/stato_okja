@@ -24,8 +24,12 @@ import { toPublicUser } from '../common/public-response';
 
 type ManageableUserRole = 'superadmin' | 'org_admin' | 'editor' | 'user';
 
-function toManagedUser(user: Parameters<typeof toPublicUser>[0] & { passwordHash?: string | null }) {
-  return { ...toPublicUser(user), accountStatus: user.passwordHash ? 'active' : 'invited' };
+function toManagedUser(user: Parameters<typeof toPublicUser>[0] & { passwordHash?: string | null; isGlobalSuperadmin?: boolean }) {
+  return {
+    ...toPublicUser(user),
+    isGlobalSuperadmin: user.isGlobalSuperadmin ?? user.role === 'superadmin',
+    accountStatus: user.passwordHash ? 'active' : 'invited',
+  };
 }
 
 @UseGuards(JwtAuthGuard, OrgScopeGuard, RolesGuard)
@@ -176,15 +180,12 @@ export class UsersController {
     @Body() patch: UpdateUserDto,
     @Req() req: { user: { role: string; orgId?: string | null }; effectiveOrgId?: string | null },
   ) {
-    const target = await this.service.findById(id);
-    if (!target) throw new BadRequestException('User not found');
     const scopeOrgId = req.effectiveOrgId ?? null;
     const requestedOrgId = typeof patch.orgId === 'undefined' ? scopeOrgId : patch.orgId;
     if (!requestedOrgId) throw new ForbiddenException('Organisation ist erforderlich');
     if (req.user.role !== 'superadmin' && requestedOrgId !== scopeOrgId) {
       throw new ForbiddenException('Nicht erlaubt');
     }
-    const existingMembership = await this.service.findMembership(id, requestedOrgId);
     const requestedRole =
       typeof patch.role === 'undefined'
         ? undefined
@@ -194,21 +195,7 @@ export class UsersController {
       if (requestedRole === 'superadmin') throw new ForbiddenException('Nicht erlaubt');
     }
     if (requestedRole === 'superadmin') throw new ForbiddenException('Organisationsrollen dürfen nicht superadmin sein');
-    // Do not allow a role change to remove the final active admin. The same
-    // invariant is already enforced when an organisation access is removed.
-    if (
-      existingMembership?.status === 'active' &&
-      existingMembership.role === 'org_admin' &&
-      requestedRole !== undefined &&
-      requestedRole !== 'org_admin' &&
-      (await this.service.countActiveMembershipAdmins(requestedOrgId)) <= 1
-    ) {
-      throw new BadRequestException('Der letzte Organisationsadmin kann nicht herabgestuft werden');
-    }
-    const fallbackRole = target.role === 'org_admin' || target.role === 'editor' || target.role === 'user'
-      ? target.role
-      : 'user';
-    await this.service.addMembership(id, requestedOrgId, requestedRole ?? existingMembership?.role ?? fallbackRole);
+    await this.service.addMembership(id, requestedOrgId, requestedRole);
     return { ok: true };
   }
 
@@ -226,11 +213,6 @@ export class UsersController {
     if (req.user.id === id) throw new BadRequestException('Cannot remove yourself');
     if (req.user.role !== 'superadmin' && orgId !== (req.effectiveOrgId ?? null)) {
       throw new ForbiddenException('Nicht erlaubt');
-    }
-    const membership = await this.service.findMembership(id, orgId);
-    if (!membership) throw new BadRequestException('Mitgliedschaft nicht gefunden');
-    if (membership.role === 'org_admin' && (await this.service.countActiveMembershipAdmins(orgId)) <= 1) {
-      throw new BadRequestException('Der letzte Organisationsadmin kann nicht entfernt werden');
     }
     await this.service.disableMembership(id, orgId);
     return { ok: true };
@@ -260,11 +242,6 @@ export class UsersController {
     if (req.user.id === id) throw new BadRequestException('Cannot remove yourself');
     const orgId = req.effectiveOrgId ?? null;
     if (!orgId) throw new ForbiddenException('Organisation ist erforderlich');
-    const membership = await this.service.findMembership(id, orgId);
-    if (!membership) throw new BadRequestException('Mitgliedschaft nicht gefunden');
-    if (membership.role === 'org_admin' && (await this.service.countActiveMembershipAdmins(orgId)) <= 1) {
-      throw new BadRequestException('Der letzte Organisationsadmin kann nicht entfernt werden');
-    }
     await this.service.disableMembership(id, orgId);
     return { ok: true };
   }

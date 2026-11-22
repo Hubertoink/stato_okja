@@ -40,6 +40,7 @@ export type StatsOverviewResponse = {
 };
 
 export type StatisticsRealtimeOptions = {
+  enabled?: boolean;
   refetchOnWindowFocus?: boolean | 'always';
   refetchIntervalMs?: number;
 };

@@ -1,7 +1,7 @@
 import { customStaffTimes } from '../lib/staffTimes';
 import { activityStatusForDate, isFutureActivityDate, isPlannedActivity } from '@/lib/activityExecutionStatus';
 import { DEMO_ORG_ID, DEMO_USER_ID, demoUser } from './config';
-import type { Activity, PagedActivitiesResult } from '../lib/activities';
+import type { Activity, ActivitiesFilterAvailability, PagedActivitiesResult } from '../lib/activities';
 import type { AuditLog, AuditLogAction } from '../lib/audit';
 import type { AuthUser } from '../lib/auth';
 import type { Contributor, ContributionEntry } from '../lib/contributors';
@@ -1218,6 +1218,7 @@ function filterActivityRecords(params: DemoQueryParams = {}): DemoActivityRecord
   const tagIds = new Set(readStringList(params.tagIds));
   const staffIds = new Set(readStringList(params.staffIds));
   const contributorIds = new Set(readStringList(params.contributorIds));
+  const hasContributions = ['true', '1'].includes(String(params.hasContributions));
   const cohortIds = new Set(readStringList(params.cohortIds));
   const executionStatuses = new Set(readStringList(params.executionStatuses));
   const weekdays = new Set(readStringList(params.weekdays).map((value) => Number(value)).filter(Number.isFinite));
@@ -1238,6 +1239,7 @@ function filterActivityRecords(params: DemoQueryParams = {}): DemoActivityRecord
     if (tagIds.size > 0 && !activity.tagIds.some((id) => tagIds.has(id))) return false;
     if (staffIds.size > 0 && !activity.staffIds.some((id) => staffIds.has(id))) return false;
     if (contributorIds.size > 0 && !activity.contributions?.some((entry) => contributorIds.has(entry.contributorId))) return false;
+    if (hasContributions && !activity.contributions?.length) return false;
     if (cohortIds.size > 0 && !(activity.cohorts || []).some((cohort) => cohortIds.has(cohort.cohortId))) return false;
     if (executionStatuses.size > 0 && !executionStatuses.has(activity.executionStatus || 'completed')) return false;
     if (weekdays.size > 0 && !weekdays.has(parseDate(activity.date).getDay())) return false;
@@ -1676,19 +1678,29 @@ function normalizeDemoContributions(value: unknown, duration: number | null, exe
   });
 }
 
+export function getDemoActivityFilterAvailability(): ActivitiesFilterAvailability {
+  const activities = store.activities;
+  return {
+    categoryIds: [...new Set(activities.flatMap(activity => activity.categoryIds))],
+    tagIds: [...new Set(activities.flatMap(activity => activity.tagIds))],
+    executionStatuses: [...new Set(activities.map(activity => activity.executionStatus || 'completed' as const))],
+    hasUncategorized: activities.some(activity => !activity.categoryIds.length),
+    availableYears: [...new Set(activities.map(activity => activity.date.slice(0, 4)))].sort().reverse(),
+  };
+}
+
 export function listDemoActivities(params: DemoQueryParams = {}): Activity[] | PagedActivitiesResult {
   const order = params.order === 'asc' ? 'asc' : 'desc';
   const records = filterActivityRecords(params).sort(order === 'asc' ? compareActivityRecordsAsc : compareActivityRecordsDesc);
-  const activities = records.map(hydrateActivity);
   const page = readNumber(params.page);
   const limit = readNumber(params.limit);
   if (page || limit) {
     const pageNumber = Math.max(1, Math.trunc(page || 1));
     const pageSize = Math.min(50, Math.max(1, Math.trunc(limit || 50)));
     const startIndex = (pageNumber - 1) * pageSize;
-    return clone({ data: activities.slice(startIndex, startIndex + pageSize), total: activities.length, page: pageNumber, pageSize });
+    return clone({ data: records.slice(startIndex, startIndex + pageSize).map(hydrateActivity), total: records.length, page: pageNumber, pageSize });
   }
-  return clone(activities);
+  return clone(records.map(hydrateActivity));
 }
 
 export function getDemoActivity(id: string): Activity | null {
@@ -1698,11 +1710,11 @@ export function getDemoActivity(id: string): Activity | null {
 
 function normalizeActivityPayload(data: Partial<Activity> & Record<string, unknown>, fallback?: DemoActivityRecord): DemoActivityRecord {
   const project = store.projects.find((entry) => entry.id === (data.projectId || fallback?.projectId)) || store.projects[0];
-  const categoryIds = readStringList(data.categoryIds).length > 0
+  const categoryIds = data.categoryIds !== undefined
     ? readStringList(data.categoryIds)
     : fallback?.categoryIds ?? (project.categoryId ? [project.categoryId] : []);
-  const tagIds = readStringList(data.tagIds).length > 0 ? readStringList(data.tagIds) : fallback?.tagIds ?? tagIdsFromProject(project, store.tags);
-  const staffIds = readStringList(data.staffIds).length > 0
+  const tagIds = data.tagIds !== undefined ? readStringList(data.tagIds) : fallback?.tagIds ?? tagIdsFromProject(project, store.tags);
+  const staffIds = data.staffIds !== undefined
     ? readStringList(data.staffIds)
     : fallback?.staffIds ?? staffIdsFromNames(`${project.defaultStaff || ''},${project.defaultVolunteers || ''}`, store.staff);
   const startTime = typeof data.startTime === 'string' ? data.startTime : fallback?.startTime ?? project.defaultStartTime ?? null;
@@ -1738,7 +1750,7 @@ function normalizeActivityPayload(data: Partial<Activity> & Record<string, unkno
     durationMinutes: duration,
     executionStatus,
     type: activityType(data.type || project.type || fallback?.type),
-    locationId: typeof data.locationId === 'string' ? data.locationId : fallback?.locationId ?? null,
+    locationId: data.locationId === undefined ? fallback?.locationId ?? null : data.locationId,
     projectId: project.id,
     title: typeof data.title === 'string' ? data.title : fallback?.title ?? project.title,
     notes: typeof data.notes === 'string' ? data.notes : fallback?.notes ?? null,
@@ -1955,6 +1967,10 @@ function getDemoWeeklyProfile(activities: Activity[]): WeeklyProfile {
   return { slotMinutes, rangeStart, rangeEnd, excludedWithoutTime, days, slots };
 }
 
+export function getDemoStatisticsYears() {
+  return Array.from(new Set(store.activities.map((activity) => activity.date.slice(0, 4)))).sort();
+}
+
 export function getDemoStatsOverview(params: DemoQueryParams = {}): StatsOverviewResponse {
   const activities = filterActivityRecords(params).filter((activity) => activity.executionStatus !== 'planned').map(hydrateActivity);
   const summaryBase = getDemoStatsSummary(params);
@@ -1997,7 +2013,6 @@ export function getDemoStatsOverview(params: DemoQueryParams = {}): StatsOvervie
     if (activity.project?.id) incrementMap(byProject, activity.project.id);
   }
 
-  const availableYears = Array.from(new Set(store.activities.map((activity) => activity.date.slice(0, 4)))).sort();
   return {
     summary: {
       ...summaryBase,
@@ -2024,7 +2039,7 @@ export function getDemoStatsOverview(params: DemoQueryParams = {}): StatsOvervie
     byCategory: Array.from(byCategory.entries()).map(([id, count]) => ({ id, name: store.categories.find((category) => category.id === id)?.name || id, count })),
     topTags: Array.from(byTag.entries()).map(([id, count]) => ({ id, name: store.tags.find((tag) => tag.id === id)?.name || id, count })).sort((left, right) => right.count - left.count),
     topProjects: Array.from(byProject.entries()).map(([id, count]) => ({ id, name: store.projects.find((project) => project.id === id)?.title || id, count })).sort((left, right) => right.count - left.count),
-    availableYears,
+    availableYears: getDemoStatisticsYears(),
     weeklyProfile: getDemoWeeklyProfile(activities),
     contributions: getDemoContributionReport(params),
   };

@@ -1,13 +1,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Activity } from '@/lib/activities';
+import type { Project } from '@/lib/projects';
 import type { StaffMember } from '@/lib/staff';
 import ActivityQuickAdd from './CalendarQuickAddModal';
 import ActivityEditPage from './ActivityEditPage';
 import ActivityCreatePage from './ActivityCreatePage';
 import { MemoryRouter } from 'react-router-dom';
 
-const state = vi.hoisted(() => ({ activity: undefined as Activity | undefined, mutate: vi.fn(), empty: [], categoryMode: 'multiple', categories: [{ id: 'c1', name: 'Sport' }, { id: 'c2', name: 'Musik' }], staff: [] as StaffMember[] }));
+const state = vi.hoisted(() => ({ activity: undefined as Activity | undefined, mutate: vi.fn(), empty: [], projects: [] as Project[], tags: [{ id: 'tag-1', name: 'Projekt-Tag' }], categoryMode: 'multiple', categories: [{ id: 'c1', name: 'Sport' }, { id: 'c2', name: 'Musik' }], staff: [] as StaffMember[] }));
 vi.mock('@/lib/activities', () => ({
   useActivity: () => ({ data: state.activity }),
   useCreateActivity: () => ({ mutate: state.mutate }),
@@ -15,7 +16,7 @@ vi.mock('@/lib/activities', () => ({
   useRemoveActivity: () => ({ mutate: vi.fn() }),
 }));
 vi.mock('@/lib/publicConfig', () => ({ usePublicConfig: () => ({ data: { activityCategoryMode: state.categoryMode } }) }));
-vi.mock('@/lib/projects', () => ({ useProjects: () => ({ data: state.empty }) }));
+vi.mock('@/lib/projects', () => ({ useProjects: () => ({ data: state.projects }) }));
 vi.mock('@/lib/staff', async () => {
   const { useMemo } = await import('react');
   return {
@@ -25,9 +26,9 @@ vi.mock('@/lib/staff', async () => {
     useCreateStaff: () => ({}),
   };
 });
-vi.mock('@/lib/locations', () => ({ useLocations: () => ({ data: state.empty }) }));
+vi.mock('@/lib/locations', () => ({ useLocations: () => ({ data: [{ id: 'loc-a', name: 'Raum A' }] }) }));
 vi.mock('@/lib/taxonomy', () => ({
-  useTags: () => ({ data: state.empty }), useCategories: () => ({ data: state.categories }),
+  useTags: () => ({ data: state.tags }), useCategories: () => ({ data: state.categories }),
   useCohorts: () => ({ data: [{ id: 'young', name: '6-9 Jahre' }, { id: 'older', name: '10-12 Jahre' }] }),
   useTaxonomyAccess: () => ({ data: {} }), useCreateCategory: () => ({}),
   useUpdateCategory: () => ({}), useCreateTag: () => ({}), useUpdateTag: () => ({}),
@@ -49,9 +50,55 @@ function activity(version: number, youngWomen: number): Activity {
   } as Activity;
 }
 
-beforeEach(() => { state.categoryMode = 'multiple'; state.activity = undefined; state.staff = []; state.mutate.mockReset(); });
+beforeEach(() => { state.categoryMode = 'multiple'; state.activity = undefined; state.staff = []; state.projects = []; state.mutate.mockReset(); });
 
 describe('activity editor refresh', () => {
+  it.each(['page', 'calendar'])('keeps deliberately cleared project defaults after reloading choices in the %s create editor', (editor) => {
+    const project: Project = { id: 'project-1', title: 'Testprojekt', type: 'event', categoryId: 'c1', tag: 'Projekt-Tag',
+      defaultStaff: 'Alex', defaultStartTime: '10:00', defaultEndTime: '11:00' };
+    state.projects = [project];
+    state.staff = [{ id: 'alex', name: 'Alex', role: 'employee', active: true }];
+    const editorView = () => editor === 'page'
+      ? <MemoryRouter initialEntries={['/activities/new?projectId=project-1&date=2026-09-05']}><ActivityCreatePage /></MemoryRouter>
+      : <ActivityQuickAdd dateISO="2026-09-05" project={project} onClose={vi.fn()} />;
+    const { rerender } = render(editorView());
+    for (const name of ['Sport', 'Projekt-Tag', 'Alex']) fireEvent.click(screen.getByRole('button', { name }));
+    state.projects = [{ ...project }];
+    state.tags = [...state.tags];
+    rerender(editorView());
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(state.mutate.mock.calls[0][0]).toMatchObject({ categoryIds: [], tagIds: [], staffIds: [], durationMinutes: 60 });
+  });
+
+  it.each(['page', 'calendar'])('uses the edited duration for staff overrides and automatic contributions in the %s editor', (editor) => {
+    state.staff = [{ id: 'alex', name: 'Alex', role: 'employee', active: true }];
+    const initial = { ...activity(1, 0), durationMinutes: 60, startTime: '10:00', endTime: '11:00',
+      staff: state.staff, contributions: [{ contributorId: 'lea', minutes: 60 }] };
+    state.activity = initial;
+    render(editor === 'page' ? <MemoryRouter><ActivityEditPage /></MemoryRouter> :
+      <ActivityQuickAdd dateISO={initial.date} activity={initial} onClose={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Ende'), { target: { value: '12:00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Einsatzzeiten anpassen' }));
+    fireEvent.change(screen.getByRole('slider', { name: 'Alex: Einsatzzeit' }), { target: { value: '60' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Übernehmen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(state.mutate.mock.calls[0][0].data).toMatchObject({
+      durationMinutes: 120, staffTimes: [{ staffId: 'alex', minutes: 60 }], contributions: [{ contributorId: 'lea', minutes: 120 }],
+    });
+  });
+
+  it.each(['page', 'calendar'])('persists a cleared activity location through the %s editor', (editor) => {
+    const initial = { ...activity(1, 0), locationId: 'loc-a' };
+    state.activity = initial;
+    render(editor === 'page' ? <MemoryRouter><ActivityEditPage /></MemoryRouter> :
+      <ActivityQuickAdd dateISO={initial.date} activity={initial} onClose={vi.fn()} />);
+    const select = screen.getByDisplayValue('Raum A');
+    expect(select).toHaveValue('loc-a');
+    fireEvent.change(select, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(state.mutate.mock.calls[0][0].data).toMatchObject({ locationId: null });
+  });
+
   it.each(['page', 'calendar'])('keeps aggregate-only attendance when only notes change in the %s editor', (editor) => {
     const initial = { ...activity(1, 0), cohorts: [], countMale: 4, countFemale: 6, countTotal: 12 };
     state.activity = initial;

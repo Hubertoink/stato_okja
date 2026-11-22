@@ -274,14 +274,36 @@ describe('SystemDataService', () => {
     expect(auditService.log).toHaveBeenCalled();
   });
 
+  it('closes the database cursor and rolls back the snapshot if the download is cancelled', async () => {
+    const { service, dataSource, uploadStore, queryRunner } = createService();
+    dataSource.options.type = 'postgres';
+    jest.spyOn(uploadStore, 'scanUploads').mockResolvedValue({ files: [], fileCount: 0, totalBytes: 0, warnings: [] });
+    const cursor = new Readable({ objectMode: true, read() {} });
+    let opened!: () => void;
+    let released!: () => void;
+    const ready = new Promise<void>(resolve => { opened = resolve; });
+    const done = new Promise<void>(resolve => { released = resolve; });
+    queryRunner.stream.mockImplementation(async () => { opened(); return cursor; });
+    queryRunner.release.mockImplementation(async () => { released(); });
+    Object.assign(queryRunner, { isTransactionActive: true });
+    const { stream } = await service.exportAllData(actor);
+    await ready;
+    stream.destroy();
+    await done;
+    expect(cursor.destroyed).toBe(true);
+    expect(queryRunner.startTransaction).toHaveBeenCalledWith('REPEATABLE READ');
+    expect(queryRunner.rollbackTransaction).toHaveBeenCalledTimes(1);
+    expect(queryRunner.release).toHaveBeenCalledTimes(1);
+  });
+
   it('includes every scanned upload file in the export zip', async () => {
     const { service, uploadStore } = createService();
     const tempFile = join(tmpdir(), `stato-export-upload-${Date.now()}.txt`);
     await writeFile(tempFile, 'backup-content');
     jest.spyOn(uploadStore, 'scanUploads').mockResolvedValue({
-      files: [{ absolutePath: tempFile, relativePath: 'project-documents/backup.txt', size: 14 }],
+      files: [{ absolutePath: tempFile, relativePath: 'project-documents/backup.txt', size: 2 }],
       fileCount: 1,
-      totalBytes: 14,
+      totalBytes: 2,
       warnings: [],
     });
 
@@ -296,6 +318,7 @@ describe('SystemDataService', () => {
         totals?: { uploadFiles?: number; uploadBytes?: number };
       };
       expect(manifest.totals).toMatchObject({ uploadFiles: 1, uploadBytes: 14 });
+      expect(manifest).toMatchObject({ uploads: { files: [{ path: 'project-documents/backup.txt', size: 14 }] } });
     } finally {
       await rm(tempFile, { force: true });
     }
@@ -330,7 +353,7 @@ describe('SystemDataService', () => {
     const tempZipPath = join(tmpdir(), `stato-system-data-${Date.now()}.zip`);
 
     zip.file('manifest.json', JSON.stringify({ format: 'stato-system-data-export', schemaVersion: 1, tables: [{ tableName: 'activities', rowCount: 1, files: ['database/activities.json'] }, { tableName: 'organizations', rowCount: 0, files: ['database/organizations.json'] }, { tableName: 'users', rowCount: 0, files: ['database/users.json'] }] }));
-    zip.file('database/activities.json', JSON.stringify([{ id: 'activity-1', date: legacyExportDate, type: 'open_door', executionStatus }]));
+    zip.file('database/activities.json', JSON.stringify([{ id: 'activity-1', date: legacyExportDate, type: 'open_door', executionStatus, countTotal: 12, countMale: 1 }]));
     zip.file('database/organizations.json', JSON.stringify([]));
     zip.file('database/users.json', JSON.stringify([]));
 
@@ -348,7 +371,7 @@ describe('SystemDataService', () => {
       const activities = archive.tables.find((table: { key: string }) => table.key === 'activities');
 
       if (!activities) throw new Error('activities table missing from archive');
-      expect(activities.rows[0]?.date).toBe('2026-04-17');
+      expect(activities.rows[0]).toMatchObject({ date: '2026-04-17', countTotal: 12, countMale: 1 });
       expect(activities.rows[0]?.executionStatus).toBe(executionStatus ?? 'completed');
     } finally {
       await rm(tempZipPath, { force: true });
@@ -394,7 +417,7 @@ describe('SystemDataService', () => {
       totalBytes: 0,
     });
     jest.spyOn(uploadStore, 'applyImportedUploads').mockResolvedValue({
-      backupRoot: null,
+      backupRoot: '/tmp/restore-uploads-backup',
       uploadsRoot: 'C:/uploads',
     });
     jest.spyOn(uploadStore, 'removePath').mockResolvedValue(undefined);

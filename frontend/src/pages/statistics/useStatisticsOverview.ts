@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type {
   StatisticsOverviewParams,
@@ -23,7 +23,8 @@ export function useStatisticsOverview(
       params.closureState ?? '',
       params.weekdays?.join(',') ?? '',
     ],
-    queryFn: async () => {
+    enabled: options?.enabled,
+    queryFn: async ({ signal }) => {
       const queryParams: Record<string, string> = {};
       if (params.from) queryParams.from = params.from;
       if (params.to) queryParams.to = params.to;
@@ -37,7 +38,7 @@ export function useStatisticsOverview(
         queryParams.weekdays = params.weekdays.join(',');
       }
 
-      const res = await api.get('/stats/overview', { params: queryParams });
+      const res = await api.get('/stats/overview', { signal, params: queryParams });
       return res.data as StatsOverviewResponse;
     },
     staleTime: 1000 * 60 * 10,
@@ -48,7 +49,17 @@ export function useStatisticsOverview(
       typeof options?.refetchIntervalMs === 'number' && options.refetchIntervalMs > 0
         ? options.refetchIntervalMs
         : false,
-    placeholderData: keepPreviousData,
+    placeholderData: (previous, query) => query?.queryKey[1] === scopeKey ? previous : undefined,
+  });
+}
+
+export function useStatisticsYears(scopeKey: string, enabled: boolean, refreshInterval?: number) {
+  return useQuery({
+    queryKey: ['stats:years', scopeKey],
+    enabled,
+    queryFn: async ({ signal }) => (await api.get<string[]>('/stats/years', { signal })).data,
+    staleTime: 60_000,
+    refetchInterval: refreshInterval || false,
   });
 }
 

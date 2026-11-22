@@ -1,3 +1,4 @@
+import { activityYearExpression } from '../common/activity-year-expression';
 import { Contributor } from '../contributors/contributor.entity';
 import { aggregateTeamStatistics } from './team-statistics';
 import { Injectable } from '@nestjs/common';
@@ -509,20 +510,10 @@ export class StatsService {
   }
 
   async getAvailableYears(orgId?: string | null, orgIds?: string[]) {
-    const rows = await (await this.createFilteredActivityQuery(undefined, undefined, orgId, orgIds, undefined))
-      .select('activity.date', 'date')
-      .distinct(true)
-      .orderBy('activity.date', 'DESC')
-      .getRawMany<{ date: string | Date }>();
-
-    const years = new Set<string>();
-    for (const row of rows) {
-      const value = this.toCalendarDateString(row?.date);
-      const year = value.slice(0, 4);
-      if (year) years.add(year);
-    }
-
-    return Array.from(years).sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+    const year = activityYearExpression(this.dataSource.options.type, 'activity');
+    const query = await this.createFilteredActivityQuery(undefined, undefined, orgId, orgIds);
+    const rows = await query.select(year, 'year').distinct(true).orderBy('year', 'DESC').getRawMany<{ year: string }>();
+    return rows.map(row => row.year);
   }
 
   async getContributions(scope: StatsScope) {

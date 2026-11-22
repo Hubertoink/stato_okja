@@ -76,7 +76,8 @@ describe('SurveysService', () => {
   });
 
   const mockPurgeQuery = () => {
-    const query = { where: jest.fn(), andWhere: jest.fn(), getMany: jest.fn() };
+    const query = { select: jest.fn(), where: jest.fn(), andWhere: jest.fn(), getMany: jest.fn() };
+    query.select.mockReturnValue(query);
     query.where.mockReturnValue(query);
     query.andWhere.mockReturnValue(query);
     query.getMany.mockResolvedValue([]);

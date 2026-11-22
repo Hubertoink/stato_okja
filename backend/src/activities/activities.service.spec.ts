@@ -85,6 +85,8 @@ describe('ActivitiesService audit diff', () => {
 
     const updatedActivity = {
       ...existingActivity,
+      locationId: null,
+      location: null,
       title: 'Neu',
       endTime: '11:30',
       durationMinutes: 90,
@@ -160,6 +162,7 @@ describe('ActivitiesService audit diff', () => {
       'activity-1',
       {
         title: 'Neu',
+        locationId: null,
         endTime: '11:30',
         durationMinutes: 5,
         projectId: 'project-2',
@@ -172,6 +175,7 @@ describe('ActivitiesService audit diff', () => {
       { id: 'user-1', name: 'Niko', orgId: 'org-1' },
     );
 
+    expect(activityRepository.save).toHaveBeenCalledWith(expect.objectContaining({ locationId: null, location: null }));
     expect(activityRepository.update).toHaveBeenCalledWith(
       { id: 'activity-1', version: 0 }, { version: 1 },
     );

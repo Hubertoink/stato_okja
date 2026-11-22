@@ -23,7 +23,7 @@ export type StagedImportUploads = {
 };
 
 export type AppliedImportUploads = {
-  backupRoot: string | null;
+  backupRoot: string;
   uploadsRoot: string;
 };
 
@@ -134,68 +134,64 @@ export class SystemDataUploadStore {
     await mkdir(tempRoot, { recursive: true });
     const sessionRoot = await mkdtemp(join(tempRoot, 'system-data-restore-'));
     const uploadsRoot = join(sessionRoot, 'uploads');
-    await mkdir(join(uploadsRoot, 'images'), { recursive: true });
+    try {
+      await mkdir(join(uploadsRoot, 'images'), { recursive: true });
 
-    let totalBytes = 0;
-    for (const upload of uploads) {
-      const targetPath = join(uploadsRoot, upload.relativePath);
-      await mkdir(dirname(targetPath), { recursive: true });
-      const buffer = await upload.entry.async('nodebuffer');
-      totalBytes += buffer.length;
-      await writeFile(targetPath, buffer);
+      let totalBytes = 0;
+      for (const upload of uploads) {
+        const targetPath = join(uploadsRoot, upload.relativePath);
+        await mkdir(dirname(targetPath), { recursive: true });
+        const buffer = await upload.entry.async('nodebuffer');
+        totalBytes += buffer.length;
+        await writeFile(targetPath, buffer);
+      }
+
+      return {
+        sessionRoot,
+        uploadsRoot,
+        fileCount: uploads.length,
+        totalBytes,
+      };
+    } catch (error) {
+      await this.removePath(sessionRoot);
+      throw error;
     }
-
-    return {
-      sessionRoot,
-      uploadsRoot,
-      fileCount: uploads.length,
-      totalBytes,
-    };
   }
 
   async applyImportedUploads(stagedUploads: StagedImportUploads): Promise<AppliedImportUploads> {
     const uploadsRoot = this.uploadsRoot;
-    const backupRoot = `${stagedUploads.sessionRoot}-uploads-backup`;
-
+    // The mount point itself must survive a restore (Docker volumes).
+    await mkdir(uploadsRoot, { recursive: true });
+    const backupRoot = await mkdtemp(stagedUploads.sessionRoot + '-uploads-backup-');
+    const backup = { uploadsRoot, backupRoot };
     try {
-      await mkdir(uploadsRoot, { recursive: true });
-      await rm(backupRoot, { recursive: true, force: true });
-
-      if (await this.pathExists(uploadsRoot)) {
-        await mkdir(backupRoot, { recursive: true });
-        await this.copyDirectoryContents(uploadsRoot, backupRoot);
-      }
-
+      await this.copyDirectoryContents(uploadsRoot, backupRoot);
+    } catch (error) {
+      await this.removePath(backupRoot);
+      throw error;
+    }
+    // Only a complete backup can reach the first destructive operation.
+    try {
       await this.clearDirectoryContents(uploadsRoot);
       await this.copyDirectoryContents(stagedUploads.uploadsRoot, uploadsRoot);
-
-      return {
-        backupRoot: (await this.pathExists(backupRoot)) ? backupRoot : null,
-        uploadsRoot,
-      };
+      return backup;
     } catch (error) {
-      if (await this.pathExists(backupRoot)) {
-        await this.restorePreviousUploads({ backupRoot, uploadsRoot });
-      }
-
-      const message = error instanceof Error ? error.message : 'unbekannter Upload-Fehler';
-      throw new InternalServerErrorException(`Upload-Dateien konnten nicht wiederhergestellt werden: ${message}`);
+      await this.restorePreviousUploads(backup);
+      throw error;
     }
   }
 
-  async restorePreviousUploads(appliedUploads: AppliedImportUploads) {
-    const { uploadsRoot, backupRoot } = appliedUploads;
-
-    await mkdir(uploadsRoot, { recursive: true });
-    await this.clearDirectoryContents(uploadsRoot);
-
-    if (backupRoot && await this.pathExists(backupRoot)) {
+  async restorePreviousUploads({ uploadsRoot, backupRoot }: AppliedImportUploads) {
+    try {
+      await readdir(backupRoot);
+      await mkdir(uploadsRoot, { recursive: true });
+      await this.clearDirectoryContents(uploadsRoot);
       await this.copyDirectoryContents(backupRoot, uploadsRoot);
-      return;
+    } catch (error) {
+      this.logger.error(`Rücksicherung fehlgeschlagen. Vollständige Sicherung für manuelle Wiederherstellung: ${backupRoot}`, error);
+      throw new InternalServerErrorException('Upload-Rücksicherung fehlgeschlagen. Der Sicherungspfad steht im Serverprotokoll.');
     }
-
-    await mkdir(join(uploadsRoot, 'images'), { recursive: true });
-    await mkdir(join(uploadsRoot, 'project-documents'), { recursive: true });
+    await this.removePath(backupRoot);
   }
 
   async removePath(path: string) {
@@ -213,12 +209,7 @@ export class SystemDataUploadStore {
 
   private async copyDirectoryContents(sourceDir: string, targetDir: string) {
     await mkdir(targetDir, { recursive: true });
-    let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }> = [];
-    try {
-      entries = await readdir(sourceDir, { withFileTypes: true });
-    } catch {
-      return;
-    }
+    const entries = await readdir(sourceDir, { withFileTypes: true });
 
     for (const entry of entries) {
       const sourcePath = join(sourceDir, entry.name);
@@ -229,21 +220,13 @@ export class SystemDataUploadStore {
         continue;
       }
 
-      if (entry.isFile()) {
-        await mkdir(dirname(targetPath), { recursive: true });
-        await copyFile(sourcePath, targetPath);
-      }
+      if (!entry.isFile()) throw new Error('Nicht unterstützter Dateityp im Upload-Verzeichnis: ' + sourcePath);
+      await copyFile(sourcePath, targetPath);
     }
   }
 
   private async clearDirectoryContents(directory: string) {
-    let entries: Array<{ name: string }> = [];
-    try {
-      entries = await readdir(directory, { withFileTypes: true });
-    } catch {
-      return;
-    }
-
+    const entries = await readdir(directory, { withFileTypes: true });
     for (const entry of entries) {
       await this.removeEntryWithRetry(join(directory, entry.name));
     }
@@ -266,12 +249,4 @@ export class SystemDataUploadStore {
     }
   }
 
-  private async pathExists(path: string) {
-    try {
-      await stat(path);
-      return true;
-    } catch {
-      return false;
-    }
-  }
 }

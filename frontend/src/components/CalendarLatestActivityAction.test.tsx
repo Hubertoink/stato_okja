@@ -25,7 +25,10 @@ describe('jump to the latest calendar activity', () => {
     await waitFor(() => expect(screen.getByRole('button')).toBeEnabled());
     fireEvent.click(screen.getByRole('button'));
     expect(select).toHaveBeenCalledWith(new Date(2026, 7, 21));
-    expect(api.get).toHaveBeenCalledWith('/activities', { params: { orgId: 'org-1', order: 'desc', page: 1, limit: 1 } });
+    expect(api.get).toHaveBeenCalledWith('/activities', {
+      params: { orgId: 'org-1', order: 'desc', page: 1, limit: 1 },
+      signal: expect.any(AbortSignal),
+    });
     unmount();
     client.clear();
   });

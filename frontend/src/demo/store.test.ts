@@ -19,6 +19,14 @@ describe('demo statistics', () => {
     expect(updateDemoActivity(activity.id, { countMale: 3 })).toMatchObject({ countTotal: 3, countMale: 3 });
   });
 
+  it('persists explicit empty editor selections and leaves omitted ones alone', () => {
+    const created = createDemoActivity({ date: '2001-01-15', locationId: 'loc-house', staffIds: [listDemoStaff()[0].id] });
+    expect(created.staff).toHaveLength(1);
+    expect(updateDemoActivity(created.id, { notes: 'Test' })?.staff).toEqual(created.staff);
+    const cleared = updateDemoActivity(created.id, { locationId: null, staffIds: [], categoryIds: [], tagIds: [] });
+    expect(cleared).toMatchObject({ locationId: null, staff: [], categories: [], tags: [] });
+  });
+
   it('retains a plan without counting it in actual statistics', () => {
     const before = getDemoStatsOverview().summary;
     const planned = createDemoActivity({ date: '2099-11-19', startTime: '15:00', endTime: '18:00', executionStatus: 'planned' });

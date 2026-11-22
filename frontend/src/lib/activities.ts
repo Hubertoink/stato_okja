@@ -88,6 +88,7 @@ export type ActivitiesFilter = {
 };
 
 type ActivitiesQueryOptions = {
+  enabled?: boolean;
   refetchOnWindowFocus?: boolean | 'always';
   refetchIntervalMs?: number;
   refetchOnMount?: boolean | 'always';
@@ -118,7 +119,7 @@ export function useActivities(params?: ActivitiesFilter, options?: ActivitiesQue
   return useQuery({
     queryKey: ['activities', scopeKey, params],
     queryFn: () => fetchAllActivities(params, scope),
-    enabled: ready,
+    enabled: ready && (options?.enabled ?? true),
     refetchOnMount: options?.refetchOnMount ?? 'always',
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     refetchOnReconnect: true,
@@ -191,14 +192,15 @@ export function useActivitiesPaged(
   const { scope, scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['activities', scopeKey, 'paged', params, page, limit],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const qp = buildActivityQueryParams(params, scope);
       const res = await api.get('/activities', {
+        signal,
         params: { ...qp, page, limit: Math.min(Math.max(limit, 1), 50) },
       });
       return res.data as PagedActivitiesResult;
     },
-    enabled: ready,
+    enabled: ready && (options?.enabled ?? true),
     refetchOnMount: options?.refetchOnMount ?? 'always',
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     refetchOnReconnect: true,
@@ -207,7 +209,7 @@ export function useActivitiesPaged(
       typeof options?.refetchIntervalMs === 'number' && options.refetchIntervalMs > 0
         ? options.refetchIntervalMs
         : false,
-    placeholderData: (prev) => prev,
+    placeholderData: (previous, query) => query?.queryKey[1] === scopeKey ? previous : undefined,
   });
 }
 

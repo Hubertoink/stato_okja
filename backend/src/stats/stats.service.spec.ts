@@ -97,21 +97,14 @@ describe('StatsService date normalization', () => {
     );
   });
 
-  it('keeps available years stable for date-only rows represented as Date objects', async () => {
-    const previousTz = process.env.TZ;
-    process.env.TZ = 'Europe/Berlin';
-
-    try {
-      const { service } = createService([
-        { date: new Date('2026-01-01T00:00:00+01:00') },
-        { date: new Date('2025-12-31T00:00:00+01:00') },
-      ]);
-
-      await expect(service.getAvailableYears()).resolves.toEqual(['2026', '2025']);
-    } finally {
-      if (typeof previousTz === 'undefined') delete process.env.TZ;
-      else process.env.TZ = previousTz;
-    }
+  it('loads distinct calendar years directly from the scoped DATE column in descending order', async () => {
+    const { service, qb } = createService([]);
+    qb.getRawMany.mockResolvedValue([{ year: '2026' }, { year: '2025' }]);
+    await expect(service.getAvailableYears('org-b')).resolves.toEqual(['2026', '2025']);
+    expect(qb.andWhere).toHaveBeenCalledWith('activity.orgId = :orgId', { orgId: 'org-b' });
+    expect(qb.select).toHaveBeenCalledWith("TO_CHAR(activity.date, 'YYYY')", 'year');
+    expect(qb.distinct).toHaveBeenCalledWith(true);
+    expect(qb.orderBy).toHaveBeenCalledWith('year', 'DESC');
   });
 });
 

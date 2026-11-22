@@ -1,3 +1,4 @@
+import { activityYearExpression } from '../common/activity-year-expression';
 import { normalizeExecutionStatus, validateActivityPlanning } from './activity-planning';
 import { validateActivityContributions } from './activity-contributions';
 import { Contributor } from '../contributors/contributor.entity';
@@ -333,11 +334,7 @@ export class ActivitiesService {
       return query;
     };
 
-    const yearExpression = ['postgres', 'postgresql'].includes(
-      String(this.activityRepository.manager.dataSource.options.type).toLowerCase(),
-    )
-      ? "TO_CHAR(a.date, 'YYYY')"
-      : "strftime('%Y', a.date)";
+    const yearExpression = activityYearExpression(this.activityRepository.manager.dataSource.options.type, 'a');
 
     const categoryIdsQuery = applyOrgScope(
       this.activityRepository
@@ -569,6 +566,9 @@ export class ActivitiesService {
       const location = await this.locationRepository.findOne({ where: { id: rest.locationId } });
       if (!location) throw new BadRequestException('Invalid locationId');
       this.assertRelationsBelongToActivityOrg([location], [rest.locationId], activityOrgId, 'location');
+      existing.location = location;
+    } else if (rest.locationId === null) {
+      existing.location = null;
     }
 
     // Relations: set arrays (also allow clearing when empty array provided)

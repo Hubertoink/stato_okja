@@ -21,7 +21,7 @@ function staffPayload(data: Partial<StaffMember>) {
   return { name, email, phone, notes, active, role };
 }
 
-export function useStaff(params?: { active?: boolean }) {
+export function useStaff(params?: { active?: boolean }, enabled = true) {
   const { scopeKey, ready } = useOrgScopedQueryState();
   return useQuery({
     queryKey: ['staff', scopeKey, params],
@@ -29,7 +29,7 @@ export function useStaff(params?: { active?: boolean }) {
       const res = await api.get('/staff', { params });
       return res.data as StaffMember[];
     },
-    enabled: ready,
+    enabled: ready && enabled,
   });
 }
 

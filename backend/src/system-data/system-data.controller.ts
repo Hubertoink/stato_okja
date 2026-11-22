@@ -110,6 +110,8 @@ export class SystemDataController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.systemDataService.exportAllData(req.user);
+    if (res.destroyed) result.stream.destroy();
+    else res.once('close', () => result.stream.destroy());
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
     return new StreamableFile(result.stream);

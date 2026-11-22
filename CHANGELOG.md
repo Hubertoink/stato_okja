@@ -9,6 +9,23 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.25.3] - 2026-11-22
+
+### Korrekturen
+
+- System-ZIPs exportieren alle Tabellen aus demselben Datenbankstand. Vor dem Austausch von Uploads erstellt der Restore eine vollständige Dateisicherung. Ein vorübergehender Speicherfehler beim Wartungslauf erhält die vorhandenen Dateifreigaben.
+- Umfragen sperren Einzelantworten ab Ablauf der Aufbewahrungsfrist. Die Bereinigung speichert die Auswertung und löscht die Rohdaten in einer Transaktion. Sie erfasst auch verbliebene Rohdaten älterer Auswertungen.
+- Wiederholte Kontozuweisungen erhalten bestehende Rollen. Auch bei parallelen Änderungen bleibt der letzte Organisationsadmin geschützt. Die Benutzerverwaltung zeigt globale Superadmins mit Organisationsmitgliedschaft in beiden Ansichten korrekt an.
+- Neuanlage, Bearbeitungsseite und Kalender berechnen Einsatzzeiten nach denselben Regeln und respektieren abgewählte Projektvorgaben. Beim Bearbeiten älterer Aktivitäten bleiben vorhandene Teilnehmendenzahlen erhalten.
+- Die Teamstatistik lädt nur die benötigten Daten. Umfragelisten bündeln ihre Datenbankabfragen. Der Excel-Export verarbeitet Mitwirkungen gesammelt und unterstützt Projekte namens „Mitwirkung“. Die Demo berücksichtigt die gleichen Aktivitätsfilter wie der Server.
+- StatO Desktop findet verfügbare Windows-Updates auch dann, wenn die ersten fünf Seiten der GitHub-Release-Liste vollständig belegt sind.
+
+### Hinweise zum Update
+
+- Eigene API-Clients müssen bei Mandantenanfragen mit regulären Konten die gewählte aktive Mitgliedschaft über `X-Org-Scope: <orgId>` angeben. `GET /api/auth/me` liefert die eigenen Mitgliedschaften für die initiale Auswahl. Die StatO-Oberfläche setzt den Header automatisch.
+- Für einen gemeinsamen Sicherungszeitpunkt von Datenbank und Dateien Upload-Änderungen während des System-ZIP-Exports pausieren.
+- Gegenüber 1.25.2 sind keine Datenbankmigrationen oder zusätzlichen Umgebungsvariablen erforderlich. Für Mittwald-Stacks Backend und Backup auf `1.25.3` und Frontend auf `stack-1.25.3` setzen. Die öffentliche Demo verwendet weiterhin `demo`.
+
 ## [1.25.2] - 2026-11-17
 
 ### Security

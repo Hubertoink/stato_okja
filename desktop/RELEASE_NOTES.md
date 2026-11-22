@@ -2,10 +2,8 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Electron 45.3.3 enthält die gepatchte Node.js-Laufzeit 24.22.3. Damit kann der bisher zurückgehaltene Desktop-Sicherheitsrelease veröffentlicht werden.
-- Verwundbare minimatch-Abhängigkeiten wurden aktualisiert.
-- Der Release-Workflow prüft weiterhin die tatsächliche Electron-Laufzeit vor dem Erstellen des Installers.
-- Keine neuen Datenbankmigrationen oder Änderungen an der Serververbindung.
+- Die Windows-App findet verfügbare Updates auch bei einer langen GitHub-Release-Liste. Sind die ersten fünf Seiten mit insgesamt 500 Einträgen gefüllt, wertet die App die dort gefundenen Desktop-Releases aus.
+- Mit einem StatO-Server ab Version 1.25.3 zeigt die Benutzerverwaltung die globale Superadmin-Rolle auch bei zusätzlicher Organisationsmitgliedschaft korrekt an.
 
 ### Installation und einmaliger Umstieg
 

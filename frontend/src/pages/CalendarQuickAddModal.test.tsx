@@ -277,9 +277,27 @@ it('leaves missing project times empty and requires both before saving', () => {
   render(<ActivityQuickAdd dateISO="2026-11-03" project={{ id: 'project-1', title: 'Ohne Zeiten', type: 'event' } as import('@/lib/projects').Project} onClose={vi.fn()} />);
   expect(screen.getByLabelText('Start')).toHaveValue('');
   expect(screen.getByLabelText('Ende')).toHaveValue('');
-  expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+  const save = screen.getByRole('button', { name: 'Speichern' });
+  const start = screen.getByLabelText('Start');
+  const end = screen.getByLabelText('Ende');
+  expect(screen.getAllByText('--:--')).toHaveLength(2);
+  expect(screen.getByRole('button', { name: 'Uhrzeit auswählen (Start)' })).toBeVisible();
+  expect(screen.queryByText('Bitte Start- und Endzeit angeben.')).toBeNull();
+  fireEvent.click(save);
+  expect(start).toHaveFocus();
+  for (const field of [start, end]) {
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(field).toHaveAccessibleDescription('Bitte Start- und Endzeit angeben.');
+  }
+  expect(state.mutate).not.toHaveBeenCalled();
   fireEvent.change(screen.getByLabelText('Start'), { target: { value: '10:00' } });
-  expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+  fireEvent.click(save);
+  expect(end).toHaveFocus();
+  expect(start).toHaveAttribute('aria-invalid', 'false');
+  fireEvent.change(end, { target: { value: '09:00' } });
+  fireEvent.click(save);
+  expect(end).toHaveAccessibleDescription('Die Endzeit muss nach der Startzeit liegen.');
+  expect(state.mutate).not.toHaveBeenCalled();
   fireEvent.change(screen.getByLabelText('Ende'), { target: { value: '12:00' } });
   expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled();
   fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
@@ -294,19 +312,22 @@ it('uses configured project times but keeps manually cleared fields empty', () =
   fireEvent.change(screen.getByLabelText('Ende'), { target: { value: '' } });
   expect(screen.getByLabelText('Start')).toHaveValue('');
   expect(screen.getByLabelText('Ende')).toHaveValue('');
-  expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+  expect(screen.getByLabelText('Start')).toHaveFocus();
 });
 
 it('requires times on the standalone activity create and edit pages', () => {
-  const view = render(<MemoryRouter><ActivityCreatePage /></MemoryRouter>);
+  const view = render(<MemoryRouter initialEntries={['/activities/new?projectId=project-1']}><ActivityCreatePage /></MemoryRouter>);
   expect(screen.getByLabelText('Start')).toHaveValue('');
   expect(screen.getByLabelText('Ende')).toHaveValue('');
-  expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+  expect(screen.getByLabelText('Start')).toHaveFocus();
   view.unmount();
   state.activity = activity(1, 0);
   render(<MemoryRouter><ActivityEditPage /></MemoryRouter>);
   fireEvent.change(screen.getByLabelText('Start'), { target: { value: '' } });
   fireEvent.change(screen.getByLabelText('Ende'), { target: { value: '' } });
-  expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+  expect(screen.getByLabelText('Start')).toHaveFocus();
   expect(state.mutate).not.toHaveBeenCalled();
 });

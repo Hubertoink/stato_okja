@@ -1,3 +1,4 @@
+import { TimeRangeFields, useTimeRangeFields } from '@/components/TimeRangeFields';
 import { activityFormMinutes } from '@/lib/staffTimes';
 import { ActivityContributions } from '@/components/ActivityContributions';
 import { StaffTimesButton, StaffTimeIndicator } from '@/components/StaffTimesButton';
@@ -155,16 +156,10 @@ export default function ActivityQuickAdd({
   const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date, true), [form.date]);
   const cohortSums = getFormAttendance(form);
   const cohortTotal = cohortSums.total;
-  const { countsLocked, mustClearCounts, tooManyCategories, timeRangeIssue } = getActivityEditorValidation(form, categoryMode, selectedProject);
+  const { countsLocked, mustClearCounts, tooManyCategories } = getActivityEditorValidation(form, categoryMode, selectedProject);
   const isCohortValueChanged = (cohortId: string, gender: GenderKey, value: number) =>
     Boolean(activity) && (initialCohortCountsRef.current[cohortId]?.[gender] || 0) !== value;
-  const timeRangeError = timeRangeIssue
-    ? t(
-        timeRangeIssue === 'incomplete'
-          ? 'quickAdd.timeRangeIncomplete'
-          : 'quickAdd.timeRangeOrder',
-      )
-    : undefined;
+  const timeRange = useTimeRangeFields(form.start, form.end, true);
   const employeeStaff = useMemo(() => getStaffGroupMembers(allStaff ?? staff, 'employee', form.staffIds), [allStaff, staff, form.staffIds]);
   const volunteerStaff = useMemo(() => getStaffGroupMembers(allStaff ?? staff, 'volunteer', form.staffIds), [allStaff, staff, form.staffIds]);
   const helperStaff = useMemo(() => getStaffGroupMembers(allStaff ?? staff, 'helper', form.staffIds), [allStaff, staff, form.staffIds]);
@@ -286,10 +281,7 @@ export default function ActivityQuickAdd({
       setErrorOpen(t('quickAdd.chooseProject'));
       return;
     }
-    if (timeRangeError) {
-      setErrorOpen(timeRangeError);
-      return;
-    }
+    if (!timeRange.validate()) return;
     const payloadBase = buildActivitySavePayload({
       form,
       selectedProject,
@@ -343,8 +335,7 @@ export default function ActivityQuickAdd({
       update.isPending ||
       picker ||
       Boolean(errorOpen) ||
-      deleteOpen ||
-      Boolean(timeRangeError)
+      deleteOpen
         ? undefined
         : handleSave,
   });
@@ -500,51 +491,11 @@ export default function ActivityQuickAdd({
                   </button>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1" htmlFor="start-time">
-                    {t('quickAdd.start')}
-                  </label>
-                  <input
-                    id="start-time"
-                    type="time"
-                    required
-                    value={form.start || ''}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setForm({ ...form, start: e.target.value })
-                    }
-                    aria-invalid={Boolean(timeRangeError)}
-                    aria-describedby={timeRangeError ? 'activity-time-range-error' : undefined}
-                    className={`editor-field w-full border px-3 py-2 ${timeRangeError ? 'border-red-500' : ''}`}
-                    placeholder={autoT('ui_a4c7ee9ba5c9')}
-                    title={t('quickAdd.start')}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="end-time" className="block text-sm font-medium mb-1">
-                    {t('quickAdd.end')}
-                  </label>
-                  <input
-                    id="end-time"
-                    type="time"
-                    required
-                    value={form.end || ''}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setForm({ ...form, end: e.target.value })
-                    }
-                    aria-invalid={Boolean(timeRangeError)}
-                    aria-describedby={timeRangeError ? 'activity-time-range-error' : undefined}
-                    className={`editor-field w-full border px-3 py-2 ${timeRangeError ? 'border-red-500' : ''}`}
-                    placeholder={autoT('ui_a4c7ee9ba5c9')}
-                    title={t('quickAdd.end')}
-                  />
-                </div>
-              </div>
-              {timeRangeError ? (
-                <p id="activity-time-range-error" className="-mt-2 text-sm text-red-700">
-                  {timeRangeError}
-                </p>
-              ) : null}
+              <TimeRangeFields
+                range={timeRange}
+                onStartChange={(start) => setForm((current) => ({ ...current, start }))}
+                onEndChange={(end) => setForm((current) => ({ ...current, end }))}
+              />
               <ActivityPlanningNotice status={form.executionStatus} date={form.date} hasCounts={cohortTotal > 0}
                 onClearCounts={() => setForm((current) => ({ ...current, recordedAttendance: undefined, cohortCounts: {} }))}
                 onDocument={() => setForm((current) => ({ ...current, executionStatus: 'completed' }))} />
@@ -973,8 +924,7 @@ export default function ActivityQuickAdd({
                 update.isPending ||
                 picker ||
                 deleteOpen ||
-                Boolean(errorOpen) ||
-                Boolean(timeRangeError)
+                Boolean(errorOpen)
               }
             >
               <SaveIcon className="h-4 w-4" />

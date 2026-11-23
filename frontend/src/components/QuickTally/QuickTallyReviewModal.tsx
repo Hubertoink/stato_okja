@@ -1,5 +1,5 @@
+import { TimeRangeFields, useTimeRangeFields } from '@/components/TimeRangeFields';
 import { useState, useMemo, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Save, Clock, MapPin, AlertCircle, Loader2 } from 'lucide-react';
 import { useProjects, type Project } from '@/lib/projects';
 import { useCohorts, useTags, useCategories } from '@/lib/taxonomy';
@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/Button';
 import type { TallySession } from './useQuickTallySession';
 import { autoT } from '@/i18n/auto';
 import ActivityTitleField from '@/components/ActivityTitleField';
-import { getTimeRangeValidationIssue } from '@/lib/timeRange';
 
 interface QuickTallyReviewModalProps {
   session: TallySession;
@@ -27,7 +26,6 @@ export default function QuickTallyReviewModal({
   onClose,
   onSaved,
 }: QuickTallyReviewModalProps) {
-  const { t } = useTranslation('activities');
   const { data: projects } = useProjects({ archived: false });
   const { data: cohorts } = useCohorts({ active: true });
   const { data: locations } = useLocations({ active: true });
@@ -118,14 +116,7 @@ export default function QuickTallyReviewModal({
     });
     return { m, w, d, total: m + w + d };
   }, [session.counts]);
-  const timeRangeIssue = getTimeRangeValidationIssue(startTime, endTime);
-  const timeRangeError = timeRangeIssue
-    ? t(
-        timeRangeIssue === 'incomplete'
-          ? 'quickAdd.timeRangeIncomplete'
-          : 'quickAdd.timeRangeOrder',
-      )
-    : undefined;
+  const timeRange = useTimeRangeFields(startTime, endTime, true);
 
   // Cohort breakdown for display
   const cohortBreakdown = useMemo(() => {
@@ -144,10 +135,7 @@ export default function QuickTallyReviewModal({
   };
 
   const handleSave = async () => {
-    if (timeRangeError) {
-      showToast(timeRangeError, { type: 'error' });
-      return;
-    }
+    if (!timeRange.validate()) return;
     setSaving(true);
     try {
       // Build cohorts array in the format expected by backend (same as CalendarQuickAddModal)
@@ -211,7 +199,7 @@ export default function QuickTallyReviewModal({
         <Button
           size="lg"
           onClick={handleSave}
-          disabled={saving || totals.total === 0 || Boolean(timeRangeError)}
+          disabled={saving || totals.total === 0}
         >
           {saving ? (
             <>
@@ -315,42 +303,14 @@ export default function QuickTallyReviewModal({
                 </div>
               )}
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    {autoT('ui_4aa533c84189')}
-                  </label>
-                  <input
-                    id="quick-tally-start-time"
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    aria-invalid={Boolean(timeRangeError)}
-                    aria-describedby={timeRangeError ? 'quick-tally-time-range-error' : undefined}
-                    className={`editor-field w-full border px-4 py-3 ${timeRangeError ? 'border-red-500' : ''}`}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    {autoT('ui_352471b9c9cc')}
-                  </label>
-                  <input
-                    id="quick-tally-end-time"
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    aria-invalid={Boolean(timeRangeError)}
-                    aria-describedby={timeRangeError ? 'quick-tally-time-range-error' : undefined}
-                    className={`editor-field w-full border px-4 py-3 ${timeRangeError ? 'border-red-500' : ''}`}
-                  />
-                </div>
-              </div>
-              {timeRangeError ? (
-                <p id="quick-tally-time-range-error" className="-mt-3 text-sm text-red-700">
-                  {timeRangeError}
-                </p>
-              ) : null}
+              <TimeRangeFields
+                range={timeRange}
+                startLabel={autoT('ui_4aa533c84189')}
+                endLabel={autoT('ui_352471b9c9cc')}
+                columns="grid-cols-1 sm:grid-cols-2"
+                onStartChange={setStartTime}
+                onEndChange={setEndTime}
+              />
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="quick-tally-title">

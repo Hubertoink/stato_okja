@@ -2,8 +2,8 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Mit einem StatO-Server ab Version 1.26.0 kannst du unter „Meine Daten“ deine Anmeldeadresse ändern. Bestätige den Wechsel in beiden Postfächern innerhalb von 30 Minuten.
-- Melde dich anschließend auch in der Windows-App mit deiner neuen Adresse und deinem bisherigen Passwort an. Deine Daten und Organisationsrollen bleiben erhalten.
+- „Desktop-Updates“ zeigt den aktuellen Status, die installierte Version und den letzten Prüfzeitpunkt kompakt an. Prüfen, Herunterladen oder Installieren erscheint als eigene Aktion am unteren Dialogrand.
+- Mit einem StatO-Server ab 1.26.1 bleiben die Bedienelemente in Projekt- und Upload-Dialogen beim Scrollen sichtbar. Start- und Endzeit lassen sich über das Uhrsymbol auswählen.
 
 ### Installation und einmaliger Umstieg
 

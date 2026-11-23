@@ -5,7 +5,7 @@ eines konfigurierten Servers. Frontend, Backend und Datenbank werden nicht kopie
 oder lokal gestartet. Für den Client brauchen Nutzende weder Node.js noch Docker.
 Die erste Distribution ist ein Windows-x64-Installer für das aktuelle Benutzerkonto.
 
-Download: [StatO Desktop 1.22.5 – Windows](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.22.5).
+Download: [StatO Desktop 1.26.1 – Windows](https://github.com/Hubertoink/stato_okja/releases/tag/desktop-v1.26.1).
 
 ## Desktop-Titelleiste
 

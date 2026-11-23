@@ -1862,11 +1862,11 @@ function ProjectForm({
         }
       >
         <div
-          className="min-h-0 min-w-0 flex-1 overflow-y-auto"
+          className="flex min-h-0 min-w-0 flex-1 flex-col"
           onDragOver={(e) => e.preventDefault()}
           onDrop={onDrop}
         >
-          <div className="px-4 py-4 md:px-5 md:py-5">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-5 md:py-5">
             {initial?.id && <AnnualTargetCards compact scope={{ projectId: initial.id }} />}
             {!initial?.id && (
               <div className="mb-4">
@@ -2161,7 +2161,7 @@ function ProjectForm({
           </div>
 
           <EditorActions
-            className="project-modal-actions md:sticky md:bottom-0 md:z-10"
+            className="project-modal-actions shrink-0"
             leading={
               initial?.id ? (
                 <ArchiveRestoreControls

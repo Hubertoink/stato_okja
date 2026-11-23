@@ -381,6 +381,20 @@ async function performConnection(url, open) {
   return state;
 }
 
+// Copy presentation tokens into the trusted local dialog.
+function readDialogTheme(source) {
+  return source.executeJavaScriptInIsolatedWorld(loginWorldId, [{
+    code: `(() => {
+      const style = getComputedStyle(document.documentElement);
+      const tokens = Object.fromEntries(['--viridian', '--surface-elevated', '--text-primary',
+        '--text-secondary', '--text-muted', '--border-subtle', '--interactive-soft', '--overlay-backdrop',
+        '--focus-ring', '--status-success-bg', '--status-success-text', '--status-danger-bg',
+        '--status-danger-text', '--status-danger-border'].map(name => [name, style.getPropertyValue(name).trim()]));
+      return { ...tokens, '--desktop-font': getComputedStyle(document.body).fontFamily };
+    })()`,
+  }]).catch(() => ({}));
+}
+
 function closeServerSwitch(restoreFocus = true) {
   const view = switchView;
   switchView = undefined;
@@ -413,15 +427,7 @@ async function changeServer() {
     window.contentView.addChildView(view);
     layoutRemote();
     try {
-      // Copy only presentation tokens from the server, without giving its page IPC access.
-      const theme = await remoteView.webContents.executeJavaScriptInIsolatedWorld(loginWorldId, [{
-        code: `(() => {
-          const style = getComputedStyle(document.documentElement);
-          return Object.fromEntries(['--viridian', '--surface-elevated', '--text-primary',
-            '--text-muted', '--border-subtle', '--interactive-soft', '--overlay-backdrop',
-            '--focus-ring'].map(name => [name, style.getPropertyValue(name).trim()]));
-        })()`,
-      }]).catch(() => ({}));
+      const theme = await readDialogTheme(remoteView.webContents);
       if (switchView !== view || closing) return state;
       await view.webContents.loadFile(switchFile);
       if (switchView !== view || closing) return state;
@@ -570,18 +576,8 @@ async function openUpdates() {
   window.contentView.addChildView(panel);
   layoutRemote();
   try {
-    // Only presentation tokens cross from the server to the trusted local dialog.
     const source = remoteView?.webContents ?? window.webContents;
-    const theme = await source.executeJavaScriptInIsolatedWorld(loginWorldId, [{
-      code: `(() => {
-        const style = getComputedStyle(document.documentElement);
-        const tokens = Object.fromEntries(['--viridian', '--surface-elevated', '--text-primary',
-          '--text-muted', '--border-subtle', '--interactive-soft', '--overlay-backdrop',
-          '--focus-ring', '--status-success-bg', '--status-success-text', '--status-danger-bg',
-          '--status-danger-text'].map(name => [name, style.getPropertyValue(name).trim()]));
-        return { ...tokens, '--desktop-font': getComputedStyle(document.body).fontFamily };
-      })()`,
-    }]).catch(() => ({}));
+    const theme = await readDialogTheme(source);
     if (updateView !== panel || closing) return updateController.getState();
     await panel.webContents.loadFile(updateFile);
     if (updateView !== panel || closing) return updateController.getState();

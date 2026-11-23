@@ -9,6 +9,17 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.26.2] - 2026-11-23
+
+### Windows Desktop
+
+- Die Serverauswahl und die Dialoge „Server wechseln“ und „Desktop-Updates“ übernehmen die getönte Kopfzeile mit Titel in der Akzentfarbe und die neutrale Fußzeile der App.
+- In beiden Dialogen hebt sich das Schließen-Symbol beim Überfahren mit der Maus rot ab. Die Farben folgen dem aktiven Theme. Bei Tastaturbedienung bleibt der Fokus sichtbar.
+
+### Hinweise zum Update
+
+- Für das Update von 1.26.1 sind keine zusätzlichen Migrationen oder Konfigurationsänderungen erforderlich.
+
 ## [1.26.1] - 2026-11-23
 
 ### Änderungen

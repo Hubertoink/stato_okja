@@ -577,7 +577,8 @@ async function openUpdates() {
         const style = getComputedStyle(document.documentElement);
         const tokens = Object.fromEntries(['--viridian', '--surface-elevated', '--text-primary',
           '--text-muted', '--border-subtle', '--interactive-soft', '--overlay-backdrop',
-          '--focus-ring'].map(name => [name, style.getPropertyValue(name).trim()]));
+          '--focus-ring', '--status-success-bg', '--status-success-text', '--status-danger-bg',
+          '--status-danger-text'].map(name => [name, style.getPropertyValue(name).trim()]));
         return { ...tokens, '--desktop-font': getComputedStyle(document.body).fontFamily };
       })()`,
     }]).catch(() => ({}));

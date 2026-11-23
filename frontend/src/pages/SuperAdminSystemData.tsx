@@ -967,6 +967,8 @@ export default function SuperAdminSystemData() {
           if (!deleteUploadsMutation.isPending) setIsUploadsOpen(false);
         }}
         title={autoT('ui_85c43bca9767')}
+        variant="information"
+        contentClassName="pt-4"
         maxWidth="6xl"
       >
         <div className="space-y-5">

@@ -17,11 +17,19 @@
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
         </button>
       </header>
-      <p class="version">Version <span id="current-version"></span></p>
-      <p id="status" role="status" aria-live="polite"></p>
-      <progress id="progress" max="100" aria-label="Download-Fortschritt" hidden></progress>
-      <p id="last-check" class="hint"></p>
-      <p id="save-hint" class="hint" hidden>Bitte offene Eingaben vor dem Neustart speichern.</p>
+      <div class="status-row">
+        <span class="status-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path id="status-symbol" d="M12 11v5m0-9v.01" />
+          </svg>
+        </span>
+        <div class="status-details">
+          <p id="status" role="status"></p>
+          <p class="hint">Version <span id="current-version"></span><span id="last-check"></span></p>
+          <progress id="progress" max="100" aria-label="Download-Fortschritt" hidden></progress>
+          <p id="save-hint" class="hint" hidden>Bitte offene Eingaben vor dem Neustart speichern.</p>
+        </div>
+      </div>
       <footer>
         <button id="check-update" class="primary" type="button">Jetzt prüfen</button>
         <button id="download-update" class="primary" type="button" hidden>Update herunterladen</button>

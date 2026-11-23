@@ -9,6 +9,18 @@ und dieses Projekt hält sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
+## [1.26.1] - 2026-11-23
+
+### Änderungen
+
+- Beim Anlegen und Bearbeiten von Projekten scrollt der Formularinhalt zwischen Titel und Aktionsleiste. In der Upload-Verwaltung bleiben Titel und Schließen-Schaltfläche beim Scrollen sichtbar.
+- Start- und Endzeit zeigen bei leerer Eingabe `--:--` und ein Uhrsymbol zur Zeitauswahl. Beim Speichern markieren die Formulare ungültige Zeiten direkt am Feld und fokussieren die erste fehlerhafte Eingabe.
+- Der Windows-Dialog „Desktop-Updates“ zeigt den Status mit Symbol und die installierte Version zusammen an. Die jeweils verfügbare Aktion steht in einer separaten Fußzeile.
+
+### Hinweise zum Update
+
+- Bestehende Installationen können von 1.26.0 ohne zusätzliche Migration oder Konfiguration aktualisieren.
+
 ## [1.26.0] - 2026-11-22
 
 ### Added

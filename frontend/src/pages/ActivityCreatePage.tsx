@@ -1,3 +1,4 @@
+import { TimeRangeFields, useTimeRangeFields } from '@/components/TimeRangeFields';
 import { contributionError } from '@/lib/contributors';
 import { StaffTimesButton, StaffTimeIndicator } from '@/components/StaffTimesButton';
 import { ActivityContributions } from '@/components/ActivityContributions';
@@ -113,14 +114,8 @@ export default function ActivityCreatePage() {
   const selectedDateWeekday = useMemo(() => getWeekdayLabel(form.date, true), [form.date]);
   const cohortSums = useMemo(() => getCohortSums(form.cohortCounts), [form.cohortCounts]);
   const cohortTotal = cohortSums.m + cohortSums.w + cohortSums.d;
-  const { countsLocked, mustClearCounts, tooManyCategories, timeRangeIssue } = getActivityEditorValidation(form, categoryMode, selectedProject);
-  const timeRangeError = timeRangeIssue
-    ? t(
-        timeRangeIssue === 'incomplete'
-          ? 'quickAdd.timeRangeIncomplete'
-          : 'quickAdd.timeRangeOrder',
-      )
-    : undefined;
+  const { countsLocked, mustClearCounts, tooManyCategories } = getActivityEditorValidation(form, categoryMode, selectedProject);
+  const timeRange = useTimeRangeFields(form.start, form.end, true);
   const employeeStaff = useMemo(() => getStaffGroupMembers(allStaff ?? staff, 'employee', form.staffIds), [allStaff, staff, form.staffIds]);
   const volunteerStaff = useMemo(() => getStaffGroupMembers(allStaff ?? staff, 'volunteer', form.staffIds), [allStaff, staff, form.staffIds]);
   const helperStaff = useMemo(() => getStaffGroupMembers(allStaff ?? staff, 'helper', form.staffIds), [allStaff, staff, form.staffIds]);
@@ -189,11 +184,7 @@ export default function ActivityCreatePage() {
       });
       return;
     }
-    if (timeRangeError) {
-      document.getElementById('end-time')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      document.getElementById('end-time')?.focus({ preventScroll: true });
-      return;
-    }
+    if (!timeRange.validate()) return;
     setValidationErrors({});
     const payload = buildActivitySavePayload({
       form,
@@ -242,7 +233,7 @@ export default function ActivityCreatePage() {
   useEditorShortcuts({
     onClose: handleShortcutClose,
     onSave:
-      create.isPending || picker || Boolean(errorOpen) || Boolean(timeRangeError)
+      create.isPending || picker || Boolean(errorOpen)
         ? undefined
         : handleSave,
   });
@@ -402,47 +393,11 @@ export default function ActivityCreatePage() {
               ) : null}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium mb-1" htmlFor="start-time">
-                  {t('quickAdd.start')}
-                </label>
-                <input
-                  id="start-time"
-                  type="time"
-                  required
-                  value={form.start || ''}
-                  onChange={(e) => setForm({ ...form, start: e.target.value })}
-                  aria-invalid={Boolean(timeRangeError)}
-                  aria-describedby={timeRangeError ? 'activity-time-range-error' : undefined}
-                  className={`editor-field w-full border px-3 py-2 ${timeRangeError ? 'border-red-500' : ''}`}
-                  placeholder={autoT('ui_a4c7ee9ba5c9')}
-                  title={t('quickAdd.start')}
-                />
-              </div>
-              <div>
-                <label htmlFor="end-time" className="block text-sm font-medium mb-1">
-                  {t('quickAdd.end')}
-                </label>
-                <input
-                  id="end-time"
-                  type="time"
-                  required
-                  value={form.end || ''}
-                  onChange={(e) => setForm({ ...form, end: e.target.value })}
-                  aria-invalid={Boolean(timeRangeError)}
-                  aria-describedby={timeRangeError ? 'activity-time-range-error' : undefined}
-                  className={`editor-field w-full border px-3 py-2 ${timeRangeError ? 'border-red-500' : ''}`}
-                  placeholder={autoT('ui_a4c7ee9ba5c9')}
-                  title={t('quickAdd.end')}
-                />
-              </div>
-            </div>
-            {timeRangeError ? (
-              <p id="activity-time-range-error" className="-mt-2 text-sm text-red-700">
-                {timeRangeError}
-              </p>
-            ) : null}
+            <TimeRangeFields
+              range={timeRange}
+              onStartChange={(start) => setForm((current) => ({ ...current, start }))}
+              onEndChange={(end) => setForm((current) => ({ ...current, end }))}
+            />
 
             {/* Cohort breakdown per gender */}
             <ActivityPlanningNotice status={form.executionStatus} date={form.date} hasCounts={cohortTotal > 0}
@@ -860,7 +815,7 @@ export default function ActivityCreatePage() {
                 type="submit"
                 size="lg"
                 disabled={
-                  create.isPending || picker || Boolean(errorOpen) || Boolean(timeRangeError)
+                  create.isPending || picker || Boolean(errorOpen)
                 }
               >
                 <SaveIcon className="h-4 w-4" />

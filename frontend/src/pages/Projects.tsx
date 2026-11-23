@@ -1,3 +1,4 @@
+import { TimeRangeFields, useTimeRangeFields } from '@/components/TimeRangeFields';
 import AnnualTargetCards from '@/components/AnnualTargetCards';
 import { usePublicConfig } from '@/lib/publicConfig';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -64,7 +65,6 @@ import { useEditorShortcuts } from '@/lib/useEditorShortcuts';
 import { useUnsavedChangesGuard } from '@/lib/useUnsavedChangesGuard';
 import { getSelectableTaxonomyChipStyle } from '@/lib/taxonomyChipStyles';
 import { useAuth } from '@/lib/auth';
-import { getTimeRangeValidationIssue } from '@/lib/timeRange';
 import { useTranslation } from 'react-i18next';
 import RichTextEditor, {
   BtnBold,
@@ -1148,17 +1148,7 @@ function ProjectForm({
     );
   }, []);
   const isTitleMissing = String(form.title || '').trim().length === 0;
-  const defaultTimeRangeIssue = getTimeRangeValidationIssue(
-    form.defaultStartTime,
-    form.defaultEndTime,
-  );
-  const defaultTimeRangeError = defaultTimeRangeIssue
-    ? t(
-        defaultTimeRangeIssue === 'incomplete'
-          ? 'quickAdd.timeRangeIncomplete'
-          : 'quickAdd.timeRangeOrder',
-      )
-    : undefined;
+  const timeRange = useTimeRangeFields(form.defaultStartTime ?? undefined, form.defaultEndTime ?? undefined);
   const selectedTags = new Set(
     (form.tag || '')
       .split(',')
@@ -1199,14 +1189,7 @@ function ProjectForm({
       titleInputRef.current?.focus();
       return;
     }
-    if (defaultTimeRangeError) {
-      showToast(defaultTimeRangeError, { type: 'error' });
-      document
-        .getElementById('project-end-time')
-        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      document.getElementById('project-end-time')?.focus({ preventScroll: true });
-      return;
-    }
+    if (!timeRange.validate()) return;
 
     const allowed: (keyof Project)[] = [
       'title',
@@ -1285,7 +1268,7 @@ function ProjectForm({
       pendingDocuments,
       removedDocumentIds,
     });
-  }, [form, isTitleMissing, onSubmit, pendingDocuments, removedDocumentIds, saving, staff]);
+  }, [form, isTitleMissing, onSubmit, pendingDocuments, removedDocumentIds, saving, staff, timeRange.validate]);
 
   useEffect(() => {
     // Existing projects must remain untouched while opening the editor. The
@@ -1879,11 +1862,11 @@ function ProjectForm({
         }
       >
         <div
-          className="min-h-0 min-w-0 flex-1 overflow-y-auto"
+          className="flex min-h-0 min-w-0 flex-1 flex-col"
           onDragOver={(e) => e.preventDefault()}
           onDrop={onDrop}
         >
-          <div className="px-4 py-4 md:px-5 md:py-5">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-5 md:py-5">
             {initial?.id && <AnnualTargetCards compact scope={{ projectId: initial.id }} />}
             {!initial?.id && (
               <div className="mb-4">
@@ -2086,51 +2069,14 @@ function ProjectForm({
                     <h5 className="mb-2 text-sm font-semibold text-[var(--text-primary)]">
                       Standardzeiten für Aktivitäten
                     </h5>
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                      <div>
-                        <label
-                          className="block text-sm font-medium mb-1"
-                          htmlFor="project-start-time"
-                        >
-                          {autoT('ui_4aa533c84189')}
-                        </label>
-                        <input
-                          id="project-start-time"
-                          type="time"
-                          value={form.defaultStartTime || ''}
-                          onChange={(e) => update('defaultStartTime', e.target.value)}
-                          aria-invalid={Boolean(defaultTimeRangeError)}
-                          aria-describedby={
-                            defaultTimeRangeError ? 'project-time-range-error' : undefined
-                          }
-                          className={`${projectFieldClassName} ${defaultTimeRangeError ? 'border-red-500' : ''}`}
-                        />
-                      </div>
-                      <div>
-                        <label
-                          className="block text-sm font-medium mb-1"
-                          htmlFor="project-end-time"
-                        >
-                          {autoT('ui_352471b9c9cc')}
-                        </label>
-                        <input
-                          id="project-end-time"
-                          type="time"
-                          value={form.defaultEndTime || ''}
-                          onChange={(e) => update('defaultEndTime', e.target.value)}
-                          aria-invalid={Boolean(defaultTimeRangeError)}
-                          aria-describedby={
-                            defaultTimeRangeError ? 'project-time-range-error' : undefined
-                          }
-                          className={`${projectFieldClassName} ${defaultTimeRangeError ? 'border-red-500' : ''}`}
-                        />
-                      </div>
-                    </div>
-                    {defaultTimeRangeError ? (
-                      <p id="project-time-range-error" className="mt-2 text-sm text-red-700">
-                        {defaultTimeRangeError}
-                      </p>
-                    ) : null}
+                    <TimeRangeFields
+                      range={timeRange}
+                      startLabel={autoT('ui_4aa533c84189')}
+                      endLabel={autoT('ui_352471b9c9cc')}
+                      columns="grid-cols-1 md:grid-cols-2"
+                      onStartChange={(value) => update('defaultStartTime', value)}
+                      onEndChange={(value) => update('defaultEndTime', value)}
+                    />
                   </div>
                 </div>
               </section>
@@ -2215,7 +2161,7 @@ function ProjectForm({
           </div>
 
           <EditorActions
-            className="project-modal-actions md:sticky md:bottom-0 md:z-10"
+            className="project-modal-actions shrink-0"
             leading={
               initial?.id ? (
                 <ArchiveRestoreControls
@@ -2242,7 +2188,6 @@ function ProjectForm({
                 onClick={handleSave}
                 disabled={
                   isTitleMissing ||
-                  Boolean(defaultTimeRangeError) ||
                   saving ||
                   applyingTemplate ||
                   archiving ||

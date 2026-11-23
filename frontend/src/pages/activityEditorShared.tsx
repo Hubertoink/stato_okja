@@ -1,6 +1,5 @@
 import { useEffect, type Dispatch, type SetStateAction } from 'react';
 import { mergeActivityCategoryDefaults, type ActivityCategoryMode } from '@/lib/activityCategories';
-import { getTimeRangeValidationIssue } from '@/lib/timeRange';
 import { resolveContributionTimes, type ContributionTime } from '@/lib/contributionTimes';
 import type { Activity } from '@/lib/activities';
 import {
@@ -250,7 +249,6 @@ export function getActivityEditorValidation(form: ActivityFormState, mode: Activ
     countsLocked,
     mustClearCounts: countsLocked && getFormAttendance(form).total > 0,
     tooManyCategories: mode === 'single' && (form.categoryIds?.length ?? 0) > 1 && project?.type !== 'open_door',
-    timeRangeIssue: getTimeRangeValidationIssue(form.start, form.end, true),
   };
 }
 

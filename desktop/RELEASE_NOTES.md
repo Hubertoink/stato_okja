@@ -2,8 +2,8 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- Die Windows-App findet verfügbare Updates auch bei einer langen GitHub-Release-Liste. Sind die ersten fünf Seiten mit insgesamt 500 Einträgen gefüllt, wertet die App die dort gefundenen Desktop-Releases aus.
-- Mit einem StatO-Server ab Version 1.25.3 zeigt die Benutzerverwaltung die globale Superadmin-Rolle auch bei zusätzlicher Organisationsmitgliedschaft korrekt an.
+- „Desktop-Updates“ zeigt den aktuellen Status, die installierte Version und den letzten Prüfzeitpunkt kompakt an. Prüfen, Herunterladen oder Installieren erscheint als eigene Aktion am unteren Dialogrand.
+- Mit einem StatO-Server ab 1.26.1 bleiben die Bedienelemente in Projekt- und Upload-Dialogen beim Scrollen sichtbar. Start- und Endzeit lassen sich über das Uhrsymbol auswählen.
 
 ### Installation und einmaliger Umstieg
 

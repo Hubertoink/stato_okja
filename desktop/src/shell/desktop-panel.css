@@ -1,0 +1,95 @@
+:root {
+  font-family: var(--desktop-font, ui-sans-serif, system-ui, sans-serif);
+  --viridian: #5b6cff;
+  --surface-elevated: #ffffff;
+  --text-primary: #111827;
+  --text-muted: #6b7280;
+  --border-subtle: rgba(15, 23, 42, 0.1);
+  --interactive-soft: #eef0ff;
+  --overlay-backdrop: rgba(0, 0, 0, 0.3);
+  --focus-ring: rgba(91, 108, 255, 0.3);
+  --status-danger-bg: #fee2e2;
+  --status-danger-text: #b91c1c;
+  --status-danger-border: color-mix(in srgb, var(--status-danger-text) 34%, var(--border-subtle));
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+dialog {
+  width: min(410px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  box-shadow: 0 16px 44px rgb(19 30 43 / 18%);
+}
+dialog[open] { display: flex; flex-direction: column; }
+dialog::backdrop { background: var(--overlay-backdrop); }
+.panel-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 16px 7px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--interactive-soft) 28%, var(--surface-elevated));
+}
+.panel-header h1 {
+  margin: 0;
+  color: var(--viridian);
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 700;
+}
+.dialog-body { min-height: 0; overflow-y: auto; padding: 16px 20px; }
+dialog p { margin: 0; color: var(--text-muted); font-size: 13px; line-height: 1.55; }
+dialog .question { margin-bottom: 6px; color: var(--text-primary); font-size: 14px; font-weight: 600; }
+dialog [role="alert"] { margin-top: 8px; color: var(--status-danger-text); }
+dialog footer {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 20px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-elevated);
+}
+dialog button {
+  min-height: 35px;
+  padding: 6px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+dialog button:disabled { opacity: 0.55; cursor: wait; }
+dialog button:hover:enabled { background: var(--interactive-soft); }
+dialog button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+dialog .primary { background: var(--viridian); color: #fff; border-color: transparent; }
+dialog .primary:hover:enabled { background: color-mix(in srgb, var(--viridian) 88%, black); }
+dialog .close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  min-height: 32px;
+  margin-inline-start: auto;
+  padding: 0;
+  border-color: transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary, var(--text-muted));
+}
+dialog .close svg { width: 16px; height: 16px; }
+dialog .close:hover:enabled {
+  border-color: var(--status-danger-border);
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
+}

@@ -2,8 +2,8 @@ StatO Desktop für Windows verbindet sich mit einer bestehenden StatO-Installati
 
 ### Neu in __VERSION__
 
-- „Desktop-Updates“ zeigt den aktuellen Status, die installierte Version und den letzten Prüfzeitpunkt kompakt an. Prüfen, Herunterladen oder Installieren erscheint als eigene Aktion am unteren Dialogrand.
-- Mit einem StatO-Server ab 1.26.1 bleiben die Bedienelemente in Projekt- und Upload-Dialogen beim Scrollen sichtbar. Start- und Endzeit lassen sich über das Uhrsymbol auswählen.
+- Die Serverauswahl und die Dialoge „Server wechseln“ und „Desktop-Updates“ übernehmen die getönte Kopfzeile mit Titel in der Akzentfarbe und die neutrale Fußzeile der App.
+- In beiden Dialogen hebt sich das Schließen-Symbol beim Überfahren mit der Maus rot ab. Die Farben folgen dem aktiven Theme. Bei Tastaturbedienung bleibt der Fokus sichtbar.
 
 ### Installation und einmaliger Umstieg
 

@@ -115,6 +115,18 @@ async function remotePage(application, url) {
   });
 }
 
+async function checkDialogChrome(page, dangerText, dangerBackground) {
+  const dialog = page.getByRole('dialog');
+  const background = (el) => getComputedStyle(el).backgroundColor;
+  const surface = await dialog.evaluate(background);
+  assert.equal(await dialog.locator('footer').evaluate(background), surface);
+  assert.notEqual(await dialog.locator('header').evaluate(background), surface);
+  const close = dialog.getByRole('button', { name: 'Schließen', exact: true });
+  await close.hover();
+  assert.equal(await close.evaluate((el) => getComputedStyle(el).color), dangerText);
+  assert.equal(await close.evaluate(background), dangerBackground);
+}
+
 async function switchModal(application, local) {
   await local.locator('#change-server').click();
   for (let attempt = 0; attempt < 300; attempt += 1) {
@@ -333,6 +345,8 @@ async function switchModal(application, local) {
     await remote.evaluate(() => {
       document.documentElement.style.setProperty('--viridian', '#5b5fff');
       document.documentElement.style.setProperty('--surface-elevated', '#ffffff');
+      document.documentElement.style.setProperty('--status-danger-text', '#b91c1c');
+      document.documentElement.style.setProperty('--status-danger-bg', '#fee2e2');
       return window.statoDesktopUpdates.open();
     });
     const updatePanel = application.context().pages().find((page) => page.url().endsWith('/updates.html'));
@@ -341,6 +355,8 @@ async function switchModal(application, local) {
     assert.equal(await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length), 1);
     await updatePanel.getByRole('dialog').waitFor();
     assert.equal(await updatePanel.locator('#check-update').evaluate((el) => getComputedStyle(el).backgroundColor), 'rgb(91, 95, 255)');
+    assert.equal(await updatePanel.locator('h1').evaluate((el) => getComputedStyle(el).color), 'rgb(91, 95, 255)');
+    await checkDialogChrome(updatePanel, 'rgb(185, 28, 28)', 'rgb(254, 226, 226)');
     for (const [revision, status] of [[200, 'current'], [201, 'available'], [202, 'downloading'], [203, 'downloaded']]) {
       await application.evaluate(({ webContents }, { revision, status }) => {
         webContents.getAllWebContents().find((wc) => wc.getURL().endsWith('/updates.html'))
@@ -505,11 +521,14 @@ async function switchModal(application, local) {
     console.log('PASS: blob download, blank/blob previews and IPC sender guard');
 
     await remote.evaluate(() => {
+      document.documentElement.style.setProperty('--status-danger-text', '#fecaca');
+      document.documentElement.style.setProperty('--status-danger-bg', '#582727');
       for (const [key, value] of Object.entries({ '--viridian': '#8839ef', '--surface-elevated': '#182030', '--app-bg': '#101828', '--text-primary': '#ffffff', '--text-muted': '#b6bdd5', '--input-bg': '#202c40', '--border-subtle': '#485468' })) document.documentElement.style.setProperty(key, value);
     });
     let switchPage = await switchModal(application, local);
     await switchPage.waitForFunction(() =>
       getComputedStyle(document.querySelector('h1')).color === 'rgb(136, 57, 239)');
+    await checkDialogChrome(switchPage, 'rgb(254, 202, 202)', 'rgb(88, 39, 39)');
     assert.equal(await switchPage.evaluate(() => document.activeElement.id), 'cancel');
     await switchPage.keyboard.press('Tab');
     assert.equal(await switchPage.evaluate(() => document.activeElement.id), 'confirm');

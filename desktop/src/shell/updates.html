@@ -5,19 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'" />
     <title>Desktop-Updates</title>
-    <link rel="stylesheet" href="server-switch.css" />
+    <link rel="stylesheet" href="desktop-panel.css" />
     <link rel="stylesheet" href="updates.css" />
     <script src="updates.js" defer></script>
   </head>
   <body>
     <dialog aria-labelledby="heading" aria-describedby="status">
-      <header>
+      <header class="panel-header">
         <h1 id="heading">Desktop-Updates</h1>
         <button id="close" class="close" type="button" aria-label="Schließen" autofocus>
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
         </button>
       </header>
-      <div class="status-row">
+      <div class="status-row dialog-body">
         <span class="status-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path id="status-symbol" d="M12 11v5m0-9v.01" />

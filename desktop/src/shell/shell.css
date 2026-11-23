@@ -32,18 +32,18 @@ main {
 }
 .card {
   width: min(100%, 400px);
-  padding: 24px;
+  overflow: hidden;
   background: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 20px;
+  border-radius: 10px;
   box-shadow: 0 18px 60px #24463812;
 }
 .logo {
-  width: 48px;
-  height: 48px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
-  margin-bottom: 10px;
 }
+.setup-body { padding: 16px 20px; }
 h1 {
   font-size: 24px;
   line-height: 1.2;
@@ -145,7 +145,9 @@ button:disabled {
 .card footer {
   color: var(--text-muted);
   font-size: 11px;
-  margin-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-elevated);
+  padding: 10px 20px;
 }
 #desktop-footer {
   position: fixed;
@@ -186,6 +188,7 @@ button:disabled {
   background: var(--interactive-soft);
   color: var(--text-primary);
 }
+#change-server { display: inline-flex; align-items: center; gap: 6px; }
 #desktop-footer .icon-button {
   width: 28px;
   padding: 5px;
@@ -271,9 +274,6 @@ button:disabled {
   }
 }
 @media (max-width: 560px) {
-  .card {
-    padding: 28px 24px 20px;
-  }
   .actions {
     flex-direction: column;
   }
